@@ -1,0 +1,179 @@
+/* =============================================================
+   Empathic App — Design Tokens
+   © 2026 Eyal Gever. All rights reserved.
+   Namespace: ea- (Empathic App)
+   ============================================================= */
+
+:root {
+  /* --- Surface: warm cream, like Boundless but slightly warmer --- */
+  --ea-surface:        #FBF6EC;    /* app background */
+  --ea-surface-2:      #F5EEDF;    /* card fills, secondary surface */
+  --ea-surface-3:      #EEE4D0;    /* pressed / active surface */
+  --ea-ink:            #1B1512;    /* primary text */
+  --ea-ink-2:          #4A3F38;    /* secondary text */
+  --ea-ink-3:          #857868;    /* tertiary text, hints */
+  --ea-line:           rgba(27, 21, 18, 0.10);  /* hairlines */
+  --ea-line-strong:    rgba(27, 21, 18, 0.22);
+
+  /* Aliases for legibility in dark session states */
+  --ea-cream:          #FBF6EC;    /* alias of --ea-surface, used on dark overlays */
+
+  /* --- Signature red-orange (Empathic accent) --- */
+  --ea-accent:         #E85A3C;    /* primary CTA, active states */
+  --ea-accent-hover:   #D24A2E;
+  --ea-accent-soft:    #F4C4B8;    /* countdown numerals, subtle fills */
+  --ea-accent-tint:    rgba(232, 90, 60, 0.08);
+
+  /* --- Emotion palette (Valence × Arousal → RGB) ---
+     Anchor colors at the 4 quadrant corners; interpolated at runtime. */
+  --ea-emo-energized:  #E85A3C;    /* +Arousal midline (red-orange) */
+  --ea-emo-positive:   #E8A93C;    /* +Valence midline (amber) */
+  --ea-emo-tired:      #6B7BA8;    /* -Arousal midline (dusk blue) */
+  --ea-emo-negative:   #8C5A9E;    /* -Valence midline (violet) */
+
+  /* --- REC / recording state --- */
+  --ea-rec:            #D42C1F;
+  --ea-rec-dim:        rgba(212, 44, 31, 0.15);
+
+  /* --- Type --- */
+  --ea-font-display: "Fraunces", "Cormorant Garamond", "Georgia", serif;
+  --ea-font-ui:      "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ea-font-body:    "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ea-font-mono:    "JetBrains Mono", "SF Mono", Menlo, monospace;
+
+  /* Numeric display font — heavy, geometric, tabular. Mirrors the Boundless
+   * app's session timer / countdown style. On iOS this resolves to SF Pro
+   * Display (system), which is the exact typeface Boundless uses; on other
+   * platforms we fall back to the closest available geometric sans. */
+  --ea-font-numeric: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+                     "Helvetica Neue", "Segoe UI", "Roboto", system-ui, sans-serif;
+
+  /* Emotion word font — warm, elegant serif with italic support. Sits in
+   * the middle of the fluid canvas as the session's ephemeral "feeling"
+   * label. Falls back to platform serifs if Fraunces isn't loaded. */
+  --ea-font-feeling: "Fraunces", "Cormorant Garamond", "Iowan Old Style", "Georgia", serif;
+
+  /* Type scale */
+  --ea-t-display:    clamp(48px, 12vw, 128px);   /* countdown numeral */
+  --ea-t-title:      clamp(28px, 5vw, 40px);     /* screen title */
+  --ea-t-h2:         22px;
+  --ea-t-h3:         18px;
+  --ea-t-body:       16px;
+  --ea-t-small:      14px;
+  --ea-t-mono:       12px;
+
+  --ea-leading-tight:  1.1;
+  --ea-leading-normal: 1.45;
+  --ea-leading-loose:  1.65;
+
+  /* Weights */
+  --ea-w-light:  300;
+  --ea-w-regular: 400;
+  --ea-w-medium: 500;
+  --ea-w-semi:   600;
+  --ea-w-bold:   700;
+
+  /* --- Spacing (8pt system) --- */
+  --ea-s-1:  4px;
+  --ea-s-2:  8px;
+  --ea-s-3:  12px;
+  --ea-s-4:  16px;
+  --ea-s-5:  20px;
+  --ea-s-6:  24px;
+  --ea-s-8:  32px;
+  --ea-s-10: 40px;
+  --ea-s-12: 48px;
+  --ea-s-16: 64px;
+  --ea-s-20: 80px;
+
+  /* --- Radii --- */
+  --ea-r-sm:  8px;
+  --ea-r-md:  14px;
+  --ea-r-lg:  20px;
+  --ea-r-xl:  28px;
+  --ea-r-pill: 999px;
+
+  /* --- Elevation (very subtle — cream background) --- */
+  --ea-shadow-1: 0 1px 2px rgba(27, 21, 18, 0.04),
+                 0 2px 8px  rgba(27, 21, 18, 0.03);
+  --ea-shadow-2: 0 2px 6px  rgba(27, 21, 18, 0.06),
+                 0 8px 24px rgba(27, 21, 18, 0.05);
+  --ea-shadow-cta: 0 4px 12px rgba(232, 90, 60, 0.28);
+
+  /* --- Motion --- */
+  --ea-ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+  --ea-ease-in:    cubic-bezier(0.55, 0, 0.68, 0.28);
+  --ea-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --ea-dur-fast:   140ms;
+  --ea-dur-med:    260ms;
+  --ea-dur-slow:   520ms;
+
+  /* --- Safe areas (iOS) --- */
+  --ea-safe-top:    env(safe-area-inset-top, 0px);
+  --ea-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* --- Layout zones (prevents overlap: reserved bands) --- */
+  --ea-zone-header:  56px;   /* top row: back / brand / clock */
+  --ea-zone-chips:   48px;   /* below header: voice / muse / gallery */
+  --ea-zone-cta:     72px;   /* bottom CTA band */
+
+  /* --- Z-index scale --- */
+  --ea-z-canvas:   0;
+  --ea-z-content:  10;
+  --ea-z-header:   20;
+  --ea-z-sheet:    30;
+  --ea-z-modal:    40;
+  --ea-z-toast:    50;
+}
+
+/* Reduced motion honoring */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ea-dur-fast: 0ms;
+    --ea-dur-med:  0ms;
+    --ea-dur-slow: 0ms;
+  }
+}
+
+/* ─── Cycle 17: global text-selection lock ────────────────────────────
+   Empathic Art is an immersive art app, not a document. Text selection
+   creates ugly blue overlays across the circumplex, YOU marker, emotion
+   names, tooltips, and brain-wave labels — which broke the aesthetic
+   in Eyal's iOS Safari sessions. We disable selection app-wide and
+   only re-enable it in the two places where the user might legitimately
+   need to copy text: voice-note filenames and future share URLs.
+
+   Rules covered by these three properties:
+     • -webkit-user-select: none  → Safari desktop + iOS
+     • user-select: none          → Chrome, Firefox, all standards
+     • -webkit-touch-callout: none → suppresses iOS long-press magnifier
+                                     and the copy/share callout menu
+   Cross-platform: works on Chrome desktop/Android, Safari desktop/iOS,
+   Firefox, and future WKWebView native wrappers. */
+html, body,
+.ea-app,
+.ea-screen,
+.ea-circumplex, .ea-circumplex *,
+.ea-you, .ea-you *,
+.ea-emotion-name, .ea-emotion-name *,
+.ea-tip, .ea-tip *,
+.ea-brainwaves, .ea-brainwaves *,
+.ea-chip, .ea-chip *,
+.ea-muse-toggle, .ea-muse-toggle *,
+.ea-topbar, .ea-topbar *,
+.ea-btn, .ea-btn *,
+button, [role="button"] {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Explicitly allow selection in places where the user might need it. */
+input, textarea, [contenteditable="true"], .ea-selectable, .ea-selectable * {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}

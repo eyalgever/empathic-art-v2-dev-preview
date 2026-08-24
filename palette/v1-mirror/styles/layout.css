@@ -1,0 +1,351 @@
+/* =============================================================
+   Empathic App — Layout
+   Reserved zones prevent overlap between header, chips, hint, CTA.
+   ============================================================= */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--ea-surface);
+  color: var(--ea-ink);
+  font-family: var(--ea-font-ui);
+  font-size: var(--ea-t-body);
+  line-height: var(--ea-leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  overflow: hidden;   /* app shell — screens scroll internally */
+}
+
+body {
+  padding-top: var(--ea-safe-top);
+  padding-bottom: var(--ea-safe-bottom);
+}
+
+/* App shell — full viewport */
+.ea-app {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows:
+    var(--ea-zone-header)   /* header — never has anything else */
+    1fr                     /* screen content */;
+  overflow: hidden;
+  background: var(--ea-surface);
+}
+
+/* -------- Header (top row: back / brand / clock) -------- */
+.ea-header {
+  z-index: var(--ea-z-header);
+  display: grid;
+  /* Left column widens to accommodate the contextual back-label ("Home"
+     during a live session). Center column takes remaining space; right
+     column fixed for the clock. Kept the title centered with min-content
+     tricks so odd label widths never push the brand off-center. */
+  grid-template-columns: minmax(48px, auto) 1fr minmax(48px, auto);
+  align-items: center;
+  padding: 0 var(--ea-s-4);
+  gap: var(--ea-s-3);
+  background: var(--ea-surface);
+  border-bottom: 1px solid transparent;   /* becomes visible on scroll */
+  transition: border-color var(--ea-dur-med) var(--ea-ease-out);
+}
+
+.ea-header--elevated {
+  border-bottom-color: var(--ea-line);
+}
+
+.ea-header__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px 0 6px;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  color: var(--ea-ink);
+  cursor: pointer;
+  transition: background var(--ea-dur-fast) var(--ea-ease-out);
+}
+.ea-header__back:hover { background: var(--ea-surface-3); }
+.ea-header__back:disabled { opacity: 0.3; cursor: default; }
+.ea-header__back svg { width: 20px; height: 20px; flex: 0 0 auto; }
+/* Contextual label next to the back chevron. Empty by default; populated
+   by app.js when the current screen has a meaningful destination (e.g.
+   "Home" during a live session so users always know where the arrow leads).
+   Rendered as inline text so it flows with the chevron without disrupting
+   the header grid. */
+.ea-header__back-label {
+  font-family: var(--ea-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: currentColor;
+  white-space: nowrap;
+}
+.ea-header__back-label:empty { display: none; }
+
+.ea-header__title {
+  font-family: var(--ea-font-ui);
+  font-weight: var(--ea-w-semi);
+  font-size: 18px;
+  text-align: center;
+  letter-spacing: -0.01em;
+  color: var(--ea-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ea-header__meta {
+  font-family: var(--ea-font-mono);
+  font-size: var(--ea-t-mono);
+  color: var(--ea-ink-3);
+  text-align: right;
+}
+
+/* -------- Screen container --------
+   Bottom padding reserves space for the fixed iPhone/Watch/PC view
+   switcher pill (bottom-right) so scrollable screen content and CTAs
+   never end up visually pinned underneath it on narrow viewports. */
+.ea-screen {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--ea-s-6) var(--ea-s-5)
+          calc(var(--ea-s-6) + var(--ea-viewswitch-reserve, 0px));
+  display: none;
+}
+.ea-screen--active { display: block; }
+.ea-screen--fullbleed { padding: 0; }
+
+/* -------- Session (fullbleed fluid) -------- */
+.ea-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  z-index: var(--ea-z-canvas);
+  touch-action: none;
+}
+
+/* -------- CTA (inline within screen flow) --------
+   Sits AFTER the last content block on before / active / countdown
+   screens. The session screen overrides with .ea-cta--session to
+   float above the fluid canvas. Not sticky — we let the whole screen
+   scroll so the button always appears below the content, never on top. */
+.ea-cta {
+  margin-top: var(--ea-s-8);
+  padding-top: var(--ea-s-2);
+  padding-bottom: var(--ea-s-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ea-s-3);
+  width: 100%;
+}
+.ea-cta .ea-btn { min-width: 260px; }
+.ea-cta .ea-btn--primary {
+  width: min(320px, 84%);
+  min-width: 0;
+}
+
+/* Voice chip band on the Session screen. Cycle 12:
+   The upper row is a strict 3-column layout — [i] on the far left
+   (`left:14`, 36px round), [Emotion Map] plaque on the far right
+   (`right:14`, 48px pill), and Voice sits centered. Voice was too small
+   in Cycle 11 (36px vs plaque's 48px) and the centered flex-row could
+   drift right and visually touch the plaque. Cycle 12: Voice is now
+   pinned to viewport center via `left:50% + translateX(-50%)` so it
+   never drifts, and the chip itself is upsized to 48px matching the
+   plaque's optical weight. The band's left/right insets are bumped to
+   96px to guarantee a clear gap even at the narrowest viewport. */
+/* Cycle 14: full-width flex bar with three slots — [i] · Voice · Emotion Map.
+   justify-content:space-between pushes the help chip to the left edge, the
+   Emotion Map plaque to the right edge, and centers Voice between them. A
+   minimum gap is enforced via `gap` so even if labels grow, the browser
+   never lets them touch. `flex-shrink:0` on the outer slots keeps them at
+   their natural size and lets the middle Voice chip absorb any pressure. */
+.ea-chips-band {
+  position: absolute;
+  top: calc(var(--ea-safe-top) + var(--ea-zone-header) + 14px);
+  left: 14px; right: 14px;
+  height: 48px;   /* matches plaque height so vertical centers align */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  z-index: var(--ea-z-content);
+  pointer-events: none;   /* individual chips re-enable */
+}
+.ea-chips-band > * {
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+.ea-chips-band[hidden] { display: none; }
+.ea-hint-band[hidden]  { display: none; }
+
+/* Hint zone: sits below the chips band, above the canvas focal area.
+   Never overlaps chips or header. */
+.ea-hint-band {
+  position: absolute;
+  top: calc(var(--ea-zone-header) + var(--ea-zone-chips) + var(--ea-s-2));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--ea-z-content);
+  padding: var(--ea-s-2) var(--ea-s-4);
+  background: rgba(251, 246, 236, 0.86);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: var(--ea-r-pill);
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink-2);
+  pointer-events: none;
+  max-width: calc(100vw - var(--ea-s-8));
+  text-align: center;
+  opacity: 0;
+  transition: opacity var(--ea-dur-med) var(--ea-ease-out);
+}
+.ea-hint-band--visible { opacity: 1; }
+
+/* Session HUD at bottom */
+.ea-session-hud {
+  position: absolute;
+  bottom: calc(var(--ea-s-6) + var(--ea-safe-bottom));
+  left: 0; right: 0;
+  z-index: var(--ea-z-content);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ea-s-2);
+  pointer-events: none;
+}
+.ea-session-hud > * { pointer-events: auto; }
+
+/* -------- Breakpoints -------- */
+@media (min-width: 780px) {
+  .ea-screen { padding: var(--ea-s-10) var(--ea-s-12); }
+  :root { --ea-zone-header: 64px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Session view specifics: full-bleed canvas + floating controls
+   ───────────────────────────────────────────────────────────────────── */
+.ea-screen[data-screen="session"] {
+  padding: 0;
+  position: absolute;
+  inset: 0;
+}
+.ea-fluid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: var(--ea-surface, #fbf6ec);
+}
+.ea-cta--session {
+  position: absolute;
+  left: 0; right: 0;
+  /* Bottom-band composition on the session screen (Eyal Gever, 2026-07):
+     three rows stacked with symmetric 8pt gaps, all centered.
+
+       [ STOP pill ]                <- this element
+       [ 20px gap ]
+       [ Eyal Gever mark ]          <- re-centered by legal.css override
+       [ 12px gap ]
+       [ iPhone / Watch / PC ]      <- re-centered by views.css override
+       [ safe-area inset ]
+
+     The Stop pill therefore needs enough clearance for TWO rows below
+     it plus their two SYMMETRIC 12px gaps plus the safe-area inset.
+     Values:
+       switcher (~26) + gap (12) + legal (~25) + gap (12) + baseline (10)
+                                              = ~85px above safe-area. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 85px);
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--ea-s-6);
+  z-index: var(--ea-z-content);
+  pointer-events: none;
+}
+/* End Session button is a centered pill, not a full-width bar.
+   Overrides the default .ea-btn--danger { width: 100% } used elsewhere. */
+.ea-cta--session .ea-btn {
+  pointer-events: auto;
+  width: auto;
+  min-width: 200px;
+  padding: 0 var(--ea-s-8);
+  background: #1b1512;
+  color: #f5f2ea;
+  border-radius: var(--ea-r-pill);
+  box-shadow: 0 8px 24px -10px rgba(27, 21, 18, 0.45),
+              0 0 0 3px rgba(251, 246, 236, 0.5);
+  border: 1px solid rgba(27, 21, 18, 0.15);
+}
+.ea-cta--session .ea-btn:hover:not(:disabled) {
+  background: #2a2320;
+}
+.ea-screen__inner--center {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ea-s-6);
+  text-align: center;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Phone-like column: keep the app feeling like a mobile flow even on
+   desktop. Everything centers in a narrow column so labels don't
+   scatter to the corners of a 1440px viewport.
+   ───────────────────────────────────────────────────────────────────── */
+.ea-screen__inner {
+  max-width: 420px;
+  margin: 0 auto;
+  padding-bottom: var(--ea-s-8);
+}
+.ea-screen[data-screen="session"] .ea-screen__inner,
+.ea-screen__inner--center {
+  max-width: none;
+}
+
+/* Circumplex sits at column width, always square */
+.ea-circumplex {
+  max-width: 380px;
+  margin: 0 auto var(--ea-s-6);
+}
+
+/* ─── Immersive mode: hard scroll lock ───────────────────────────────────
+   Backs up the JS scroll trick with hard CSS. When [data-immersive] is
+   set on the body, the document is locked so the mobile URL bar stays
+   collapsed even if the user tries to scroll.
+   ───────────────────────────────────────────────────────────────────── */
+body[data-immersive="true"],
+html:has(body[data-immersive="true"]) {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  overscroll-behavior: none !important;
+  -webkit-overflow-scrolling: auto !important;
+  touch-action: none !important;
+}
+
+/* When immersive, promote the app to fill the true viewport. */
+body[data-immersive="true"] .ea-app {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
