@@ -414,17 +414,61 @@
     .feeling.expanded .feeling__stats { display: flex; }
     .feeling__stats .k { color: rgba(251, 246, 236, 0.55); text-transform: uppercase; letter-spacing: 0.1em; margin-right: 4px; }
 
-    /* ── CIRCUMPLEX MINI (bottom-left, v1 hairline style) ──────────── */
+    /* ── CIRCUMPLEX MINI (top-right, Open-style cream hairline) ──── */
     .miniplot {
       position: fixed;
-      bottom: calc(72px + env(safe-area-inset-bottom, 0));
-      left: 20px;
-      width: 88px; height: 88px;
+      top: calc(env(safe-area-inset-top, 0px) + 72px);
+      right: 16px;
+      width: 116px; height: 116px;
       z-index: 10;
       pointer-events: none;
     }
     .miniplot canvas { width: 100%; height: 100%; display: block; }
     .miniplot.hidden { display: none; }
+
+    /* ── CIRCUMPLEX LARGE (inside Sensing view) ──────────────────── */
+    .circumplex-large {
+      position: relative;
+      width: 100%;
+      max-width: 320px;
+      aspect-ratio: 1 / 1;
+      margin: 0 auto;
+    }
+    .circumplex-large canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+    }
+    .circumplex-large .cp-labels {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      font-family: var(--ea-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(27, 21, 18, 0.55);
+    }
+    .circumplex-large .cp-label { position: absolute; }
+    .circumplex-large .cp-label--top    { top: 4px;    left: 50%;  transform: translateX(-50%); }
+    .circumplex-large .cp-label--bottom { bottom: 4px; left: 50%;  transform: translateX(-50%); }
+    .circumplex-large .cp-label--left   { top: 50%;    left: 4px;  transform: translateY(-50%); }
+    .circumplex-large .cp-label--right  { top: 50%;    right: 4px; transform: translateY(-50%); }
+    .circumplex-large .cp-center-word {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      font-family: var(--ea-font-display);
+      font-size: 20px;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      color: rgba(27, 21, 18, 0.85);
+      white-space: nowrap;
+      background: rgba(251, 246, 236, 0.72);
+      padding: 2px 10px;
+      border-radius: 999px;
+      backdrop-filter: blur(6px);
+    }
 
     /* ── CONTROLS BAR (v1 chip band, cream) ────────────────────────── */
     .ctrls {
@@ -1329,41 +1373,76 @@
     const miniCanvas = document.getElementById('circumplex');
     const miniCtx = miniCanvas.getContext('2d');
     const miniTrail = [];
+    // Corner circumplex — Open-style cream hairline.
+    // 30-second trail; current position glows softly.
+    const MINI_TRAIL_MS = 30000;
     function drawMiniPlot() {
       const S = 240, cx = S/2, cy = S/2, R = S * 0.42;
       miniCtx.clearRect(0, 0, S, S);
-      // v1 style: cream hairline circle + cross, red-orange dot
-      miniCtx.strokeStyle = 'rgba(251,246,236,0.85)';
-      miniCtx.lineWidth = 2;
+
+      // Subtle dark cushion so the plot reads on any shader
+      miniCtx.fillStyle = 'rgba(0,0,0,0.28)';
+      miniCtx.beginPath(); miniCtx.arc(cx, cy, R + 6, 0, Math.PI*2); miniCtx.fill();
+
+      // Outer hairline circle
+      miniCtx.strokeStyle = 'rgba(238,236,231,0.55)';
+      miniCtx.lineWidth = 1.25;
       miniCtx.beginPath(); miniCtx.arc(cx, cy, R, 0, Math.PI*2); miniCtx.stroke();
-      miniCtx.strokeStyle = 'rgba(251,246,236,0.35)';
+
+      // Inner cross
+      miniCtx.strokeStyle = 'rgba(238,236,231,0.20)';
       miniCtx.lineWidth = 1;
       miniCtx.beginPath();
       miniCtx.moveTo(cx-R,cy); miniCtx.lineTo(cx+R,cy);
       miniCtx.moveTo(cx,cy-R); miniCtx.lineTo(cx,cy+R);
       miniCtx.stroke();
 
+      // Record trail
+      const now = performance.now();
       if (lastFused.v != null) {
-        miniTrail.push({ t: performance.now(), v: lastFused.v, a: lastFused.a });
-        const cutoff = performance.now() - 6000;
+        miniTrail.push({ t: now, v: lastFused.v, a: lastFused.a });
+        const cutoff = now - MINI_TRAIL_MS;
         while (miniTrail.length && miniTrail[0].t < cutoff) miniTrail.shift();
       }
-      const now = performance.now();
+
+      // Trail as connected polyline (fades from tail to head)
+      if (miniTrail.length > 1) {
+        for (let i = 1; i < miniTrail.length; i++) {
+          const p0 = miniTrail[i-1], p1 = miniTrail[i];
+          const age = (now - p1.t) / MINI_TRAIL_MS;
+          const alpha = Math.max(0, 1 - age) * 0.55;
+          miniCtx.strokeStyle = `rgba(238,236,231,${alpha})`;
+          miniCtx.lineWidth = 1.5;
+          miniCtx.beginPath();
+          miniCtx.moveTo(cx + p0.v * R, cy - p0.a * R);
+          miniCtx.lineTo(cx + p1.v * R, cy - p1.a * R);
+          miniCtx.stroke();
+        }
+      }
+
+      // Trail dots
       for (const p of miniTrail) {
-        const age = (now - p.t) / 6000;
-        const alpha = Math.max(0, 1 - age) * 0.45;
-        const size = 1.5 + (1 - age) * 2.5;
-        miniCtx.fillStyle = `rgba(232,90,60,${alpha})`;
+        const age = (now - p.t) / MINI_TRAIL_MS;
+        const alpha = Math.max(0, 1 - age) * 0.6;
+        const size = 1.0 + (1 - age) * 1.2;
+        miniCtx.fillStyle = `rgba(238,236,231,${alpha})`;
         miniCtx.beginPath();
         miniCtx.arc(cx + p.v * R, cy - p.a * R, size, 0, Math.PI*2);
         miniCtx.fill();
       }
+
+      // Current position — soft cream glow + solid dot
       if (lastFused.v != null) {
         const x = cx + smV * R, y = cy - smA * R;
-        miniCtx.fillStyle = 'rgba(232,90,60,0.28)';
-        miniCtx.beginPath(); miniCtx.arc(x, y, 12, 0, Math.PI*2); miniCtx.fill();
-        miniCtx.fillStyle = '#E85A3C';
-        miniCtx.beginPath(); miniCtx.arc(x, y, 5, 0, Math.PI*2); miniCtx.fill();
+        // Outer glow
+        const grd = miniCtx.createRadialGradient(x, y, 0, x, y, 22);
+        grd.addColorStop(0, 'rgba(238,236,231,0.55)');
+        grd.addColorStop(1, 'rgba(238,236,231,0.0)');
+        miniCtx.fillStyle = grd;
+        miniCtx.beginPath(); miniCtx.arc(x, y, 22, 0, Math.PI*2); miniCtx.fill();
+        // Cream inner
+        miniCtx.fillStyle = 'rgba(238,236,231,0.95)';
+        miniCtx.beginPath(); miniCtx.arc(x, y, 4.2, 0, Math.PI*2); miniCtx.fill();
       }
     }
 
@@ -1421,9 +1500,12 @@
       vlSessionStartMs = sessionStartMs;
       humanLastFpsAt = sessionStartMs;
       lastRenderFpsAt = sessionStartMs;
-      // Reveal v1-styled header + feeling word
+      // Reveal v1-styled header + feeling word + circumplex
       document.getElementById('header').classList.remove('hidden');
       document.getElementById('feeling').classList.remove('hidden');
+      document.getElementById('miniplot').classList.remove('hidden');
+      document.getElementById('btnPlot').classList.add('active');
+      document.getElementById('btnClean').classList.remove('active');
       startHeaderClock();
       requestAnimationFrame(humanLoop);
       requestAnimationFrame(renderLoop);
