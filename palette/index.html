@@ -104,7 +104,7 @@
 
     /* ── HEADER (v1 style, cream on artwork) ───────────────────────── */
     .ea-header {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 25;
       height: calc(56px + env(safe-area-inset-top, 0));
       padding: env(safe-area-inset-top, 0) 20px 0;
       display: grid; grid-template-columns: 40px 1fr 60px;
@@ -134,6 +134,127 @@
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
+    /* SENSING chip in header — right-aligned, tiny mono */
+    .ea-header--sensing { grid-template-columns: 40px 1fr auto 60px; column-gap: 12px; }
+    .ea-header__sense-btn {
+      background: transparent;
+      border: 1px solid var(--ea-line);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-family: var(--ea-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ea-ink-2);
+      cursor: pointer;
+      -webkit-appearance: none;
+      transition: background 140ms, color 140ms, border-color 140ms;
+    }
+    .ea-header__sense-btn:active { background: var(--ea-surface-2); }
+    .ea-header__sense-btn.active {
+      background: var(--ea-accent);
+      border-color: var(--ea-accent);
+      color: var(--ea-surface);
+    }
+
+    /* ── SENSING VIEW ── the mechanism, visible ───────────────────── */
+    .sensing {
+      position: fixed;
+      top: calc(56px + env(safe-area-inset-top, 0));
+      left: 0; right: 0;
+      bottom: calc(56px + env(safe-area-inset-bottom, 0));
+      z-index: 15;
+      background: rgba(251, 246, 236, 0.94);
+      backdrop-filter: saturate(140%) blur(24px);
+      -webkit-backdrop-filter: saturate(140%) blur(24px);
+      color: var(--ea-ink);
+      overflow-y: auto;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 240ms ease;
+      font-family: var(--ea-font-ui);
+    }
+    .sensing.open { opacity: 1; pointer-events: auto; }
+    .sensing__inner { padding: 20px 20px 40px; max-width: 520px; margin: 0 auto; }
+    .sensing__caption {
+      font-family: var(--ea-font-display);
+      font-style: italic;
+      font-weight: 300;
+      font-size: 22px;
+      color: var(--ea-ink);
+      margin: 4px 0 20px;
+      line-height: 1.25;
+    }
+    .sensing__caption em { color: var(--ea-accent); font-style: italic; }
+
+    .sense-panel {
+      border-top: 1px solid var(--ea-line);
+      padding: 16px 0;
+    }
+    .sense-panel:first-of-type { border-top: 0; padding-top: 0; }
+    .sense-panel__label {
+      font-family: var(--ea-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ea-ink-3);
+      margin-bottom: 10px;
+    }
+
+    /* Self-view panel */
+    .sense-selfview {
+      position: relative;
+      width: 200px; aspect-ratio: 4/3;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+      border: 1px solid var(--ea-line);
+    }
+    .sense-selfview video, .sense-selfview canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+    }
+    .sense-selfview video { object-fit: cover; transform: scaleX(-1); }
+
+    /* Emotion bars */
+    .emo-row { display: grid; grid-template-columns: 76px 1fr 44px; align-items: center; gap: 10px; padding: 3px 0; }
+    .emo-row__k { font-family: var(--ea-font-mono); font-size: 10.5px; color: var(--ea-ink-2); text-transform: lowercase; letter-spacing: 0.04em; }
+    .emo-row__bar { height: 4px; background: var(--ea-surface-2); border-radius: 2px; overflow: hidden; position: relative; }
+    .emo-row__fill { position: absolute; inset: 0 auto 0 0; background: var(--ea-ink-2); border-radius: 2px; transition: width 180ms ease; }
+    .emo-row.top .emo-row__fill { background: var(--ea-accent); }
+    .emo-row__v { font-family: var(--ea-font-mono); font-size: 10.5px; color: var(--ea-ink); text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* HR block */
+    .hr-block { display: flex; align-items: baseline; gap: 12px; }
+    .hr-block__bpm { font-family: var(--ea-font-display); font-weight: 300; font-size: 44px; line-height: 1; color: var(--ea-ink); font-variant-numeric: tabular-nums; }
+    .hr-block__unit { font-family: var(--ea-font-mono); font-size: 11px; color: var(--ea-ink-3); }
+    .hr-block__delta { margin-left: auto; font-family: var(--ea-font-mono); font-size: 11px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--ea-line); color: var(--ea-ink-2); font-variant-numeric: tabular-nums; }
+    .hr-block__delta.up { color: var(--ea-accent); border-color: rgba(232,90,60,0.35); }
+    .hr-block__delta.down { color: #6B7BA8; border-color: rgba(107,123,168,0.35); }
+    .hr-baseline { font-family: var(--ea-font-mono); font-size: 10.5px; color: var(--ea-ink-3); margin-top: 4px; letter-spacing: 0.06em; }
+
+    /* rPPG waveform */
+    .rppg-canvas { width: 100%; height: 46px; display: block; background: transparent; }
+
+    /* Big circumplex */
+    .big-plot { position: relative; width: 220px; height: 220px; margin: 6px auto; }
+    .big-plot canvas { width: 100%; height: 100%; display: block; }
+    .big-plot__label { position: absolute; font-family: var(--ea-font-mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ea-ink-3); }
+    .big-plot__label.q1 { top: 6px; right: 6px; }
+    .big-plot__label.q2 { top: 6px; left: 6px; }
+    .big-plot__label.q3 { bottom: 6px; left: 6px; }
+    .big-plot__label.q4 { bottom: 6px; right: 6px; }
+
+    /* Uniforms grid */
+    .uni-row { display: grid; grid-template-columns: 60px 60px 1fr; align-items: center; gap: 12px; padding: 6px 0; }
+    .uni-row__k { font-family: var(--ea-font-mono); font-size: 11px; color: var(--ea-ink-2); }
+    .uni-row__v { font-family: var(--ea-font-mono); font-size: 11px; color: var(--ea-ink); font-variant-numeric: tabular-nums; text-align: right; }
+    .uni-row__spark { height: 20px; }
+    .uni-row__spark canvas { width: 100%; height: 100%; display: block; }
+
+    /* Perf line */
+    .perf-line { font-family: var(--ea-font-mono); font-size: 10.5px; color: var(--ea-ink-3); letter-spacing: 0.06em; line-height: 1.7; }
 
     /* ── FEELING WORD (bottom-center of artwork) ───────────────────── */
     .feeling {
@@ -299,15 +420,68 @@
   </div>
 
   <!-- Header (v1 style, cream on artwork) -->
-  <header class="ea-header hidden" id="header">
+  <header class="ea-header ea-header--sensing hidden" id="header">
     <button class="ea-header__back" aria-label="Back" onclick="history.length > 1 ? history.back() : location.href='../'">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
         <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
     <div class="ea-header__brand">Empathic Art</div>
+    <button class="ea-header__sense-btn" id="senseBtn" aria-pressed="false">Sensing</button>
     <div class="ea-header__time" id="headerTime">—</div>
   </header>
+
+  <!-- Sensing view: the mechanism, made visible -->
+  <div class="sensing" id="sensing" aria-hidden="true">
+    <div class="sensing__inner">
+      <div class="sensing__caption">How the machine is <em>sensing</em> you.</div>
+
+      <section class="sense-panel">
+        <div class="sense-panel__label">Camera · face landmarks · pulse ROI</div>
+        <div class="sense-selfview">
+          <video id="senseVideo" autoplay muted playsinline></video>
+          <canvas id="senseOverlay" width="320" height="240"></canvas>
+        </div>
+      </section>
+
+      <section class="sense-panel">
+        <div class="sense-panel__label">Emotion probabilities · Human</div>
+        <div id="emoBars"></div>
+      </section>
+
+      <section class="sense-panel">
+        <div class="sense-panel__label">Heart rate · VitalLens (rPPG)</div>
+        <div class="hr-block">
+          <span class="hr-block__bpm" id="hrBpm">—</span>
+          <span class="hr-block__unit">bpm</span>
+          <span class="hr-block__delta" id="hrDelta">—</span>
+        </div>
+        <div class="hr-baseline" id="hrBaseline">baseline learning…</div>
+        <canvas class="rppg-canvas" id="rppgCanvas" width="600" height="92"></canvas>
+      </section>
+
+      <section class="sense-panel">
+        <div class="sense-panel__label">Fused feeling · circumplex of affect</div>
+        <div class="big-plot">
+          <canvas id="bigPlot" width="440" height="440"></canvas>
+          <span class="big-plot__label q1">energized</span>
+          <span class="big-plot__label q2">tense</span>
+          <span class="big-plot__label q3">tired</span>
+          <span class="big-plot__label q4">at ease</span>
+        </div>
+      </section>
+
+      <section class="sense-panel">
+        <div class="sense-panel__label">Shader inputs · what becomes color</div>
+        <div id="uniRows"></div>
+      </section>
+
+      <section class="sense-panel">
+        <div class="sense-panel__label">Performance</div>
+        <div class="perf-line" id="perfLine">—</div>
+      </section>
+    </div>
+  </div>
 
   <!-- Camera preview (dim, top-right) -->
   <div class="stage">
@@ -632,6 +806,20 @@
     }
     function onVitals(result) {
       vlEventCount++;
+      // Feed rPPG waveform into the sensing view (best-effort — shape varies)
+      try {
+        const wf = result?.waveforms?.ppg_waveform;
+        const arr = Array.isArray(wf) ? wf
+                  : Array.isArray(wf?.data) ? wf.data
+                  : Array.isArray(wf?.values) ? wf.values
+                  : null;
+        if (arr && arr.length) {
+          for (const s of arr) if (typeof s === 'number' && isFinite(s)) senseState.ppg.push(s);
+          // Keep last ~10s at 30fps = 300 samples worth of headroom
+          const KEEP = 512;
+          if (senseState.ppg.length > KEEP) senseState.ppg.splice(0, senseState.ppg.length - KEEP);
+        }
+      } catch (e) { /* keep going */ }
       const hr = result?.vitals?.heart_rate;
       const now = performance.now();
       const hrRaw = hr?.value, hrConf = hr?.confidence;
@@ -714,6 +902,9 @@
       if (face && face.emotion && face.emotion.length) {
         updateHumanSmoothing(face.emotion);
         humanLastVA = computeVA();
+        // Feed the sensing view
+        senseState.face = face;
+        senseState.emotions = face.emotion.slice();
       }
       humanFrameCount++;
       const now = performance.now();
@@ -851,8 +1042,271 @@
       updateOverlay();
       drawMiniPlot();
 
+      // Uniform history for sensing view
+      senseState.uV.push(smV);
+      senseState.uA.push(smA);
+      senseState.uP.push(smP);
+      senseState.uI.push(intensity);
+      for (const k of ['uV','uA','uP','uI']) {
+        if (senseState[k].length > 240) senseState[k].splice(0, senseState[k].length - 240);
+      }
+
+      if (sensingOpen) updateSensing();
+
       requestAnimationFrame(renderLoop);
     }
+
+    // ── SENSING VIEW state + rendering ─────────────────────────────────
+    const senseState = {
+      face: null,
+      emotions: [],   // [{ emotion, score }...]
+      ppg: [],        // rolling waveform samples
+      uV: [], uA: [], uP: [], uI: [],
+    };
+    let sensingOpen = false;
+    const sensingEl = document.getElementById('sensing');
+    const senseBtn = document.getElementById('senseBtn');
+    const senseVideo = document.getElementById('senseVideo');
+    const senseOverlay = document.getElementById('senseOverlay');
+    const senseCtx = senseOverlay.getContext('2d');
+    const emoBarsEl = document.getElementById('emoBars');
+    const uniRowsEl = document.getElementById('uniRows');
+    const bigPlot = document.getElementById('bigPlot');
+    const bigPlotCtx = bigPlot.getContext('2d');
+    const rppgCanvas = document.getElementById('rppgCanvas');
+    const rppgCtx = rppgCanvas.getContext('2d');
+    const hrBpmEl = document.getElementById('hrBpm');
+    const hrDeltaEl = document.getElementById('hrDelta');
+    const hrBaselineEl = document.getElementById('hrBaseline');
+    const perfLineEl = document.getElementById('perfLine');
+
+    // Human's emotion vocabulary (order matches how bars render)
+    const HUMAN_EMOTIONS = ['happy', 'surprise', 'neutral', 'sad', 'fear', 'disgust', 'angry'];
+
+    // Build static rows once
+    function buildSensePanels() {
+      // Emotion bars
+      emoBarsEl.innerHTML = HUMAN_EMOTIONS.map(k =>
+        `<div class="emo-row" data-k="${k}">
+           <div class="emo-row__k">${k}</div>
+           <div class="emo-row__bar"><div class="emo-row__fill" style="width:0%"></div></div>
+           <div class="emo-row__v">0.00</div>
+         </div>`
+      ).join('');
+      // Uniform rows with sparkline canvases
+      uniRowsEl.innerHTML = ['uV','uA','uPulse','uIntensity'].map(k =>
+        `<div class="uni-row" data-k="${k}">
+           <div class="uni-row__k">${k}</div>
+           <div class="uni-row__v">—</div>
+           <div class="uni-row__spark"><canvas width="200" height="20"></canvas></div>
+         </div>`
+      ).join('');
+    }
+    buildSensePanels();
+
+    function drawSparkline(canvas, buf, opts) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      if (!buf || buf.length < 2) return;
+      const n = Math.min(buf.length, 120);
+      const slice = buf.slice(-n);
+      let lo = Infinity, hi = -Infinity;
+      for (const v of slice) { if (v < lo) lo = v; if (v > hi) hi = v; }
+      if (opts && opts.range) { lo = opts.range[0]; hi = opts.range[1]; }
+      if (hi - lo < 1e-6) { lo -= 0.5; hi += 0.5; }
+      // Zero line if signed
+      if (opts && opts.zero) {
+        const y0 = h - ((0 - lo) / (hi - lo)) * h;
+        ctx.strokeStyle = 'rgba(27,21,18,0.10)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(w, y0); ctx.stroke();
+      }
+      ctx.strokeStyle = (opts && opts.color) || '#1B1512';
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      for (let i = 0; i < slice.length; i++) {
+        const x = (i / (slice.length - 1)) * w;
+        const y = h - ((slice[i] - lo) / (hi - lo)) * h;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    function drawSenseOverlay() {
+      const w = senseOverlay.width, h = senseOverlay.height;
+      senseCtx.clearRect(0, 0, w, h);
+      const f = senseState.face;
+      if (!f) return;
+      // face.box is [x, y, w, h] in source video coords; senseVideo mirrors X (scaleX(-1))
+      const vv = senseVideo.videoWidth || 640, vh = senseVideo.videoHeight || 480;
+      const box = f.box; // [x,y,w,h]
+      if (box && box.length === 4) {
+        // Mirror X to match the flipped video display
+        const [bx, by, bw, bh] = box;
+        const mx = vv - (bx + bw);
+        const sx = mx / vv * w, sy = by / vh * h, sw = bw / vv * w, sh = bh / vh * h;
+        // Face box — hairline
+        senseCtx.strokeStyle = 'rgba(232,90,60,0.9)';
+        senseCtx.lineWidth = 1.5;
+        senseCtx.strokeRect(sx, sy, sw, sh);
+        // Forehead ROI (approx: top 25% of face box, middle 60% horizontally) — what VitalLens likely samples
+        const rx = sx + sw * 0.20, ry = sy + sh * 0.05, rw = sw * 0.60, rh = sh * 0.22;
+        senseCtx.strokeStyle = 'rgba(232,90,60,0.6)';
+        senseCtx.setLineDash([3, 3]);
+        senseCtx.strokeRect(rx, ry, rw, rh);
+        senseCtx.setLineDash([]);
+        // Landmarks — tiny ink dots (mesh is large; sample every 5th)
+        if (f.mesh && f.mesh.length) {
+          senseCtx.fillStyle = 'rgba(27,21,18,0.55)';
+          for (let i = 0; i < f.mesh.length; i += 5) {
+            const p = f.mesh[i];
+            const px = (vv - p[0]) / vv * w, py = p[1] / vh * h;
+            senseCtx.fillRect(px - 0.5, py - 0.5, 1, 1);
+          }
+        }
+      }
+    }
+
+    function drawBigPlot() {
+      const S = 440, cx = S/2, cy = S/2, R = S * 0.42;
+      bigPlotCtx.clearRect(0, 0, S, S);
+      // Cream backdrop for the circle
+      bigPlotCtx.fillStyle = 'rgba(245,238,223,0.5)';
+      bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.fill();
+      // Ink hairline circle + cross
+      bigPlotCtx.strokeStyle = 'rgba(27,21,18,0.30)';
+      bigPlotCtx.lineWidth = 1.5;
+      bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.stroke();
+      bigPlotCtx.strokeStyle = 'rgba(27,21,18,0.12)';
+      bigPlotCtx.lineWidth = 1;
+      bigPlotCtx.beginPath();
+      bigPlotCtx.moveTo(cx-R,cy); bigPlotCtx.lineTo(cx+R,cy);
+      bigPlotCtx.moveTo(cx,cy-R); bigPlotCtx.lineTo(cx,cy+R);
+      bigPlotCtx.stroke();
+      // Trail
+      const now = performance.now();
+      for (const p of miniTrail) {
+        const age = (now - p.t) / 6000;
+        const alpha = Math.max(0, 1 - age) * 0.55;
+        const size = 2 + (1 - age) * 4;
+        bigPlotCtx.fillStyle = `rgba(232,90,60,${alpha})`;
+        bigPlotCtx.beginPath();
+        bigPlotCtx.arc(cx + p.v * R, cy - p.a * R, size, 0, Math.PI*2);
+        bigPlotCtx.fill();
+      }
+      if (lastFused.v != null) {
+        const x = cx + smV * R, y = cy - smA * R;
+        bigPlotCtx.fillStyle = 'rgba(232,90,60,0.22)';
+        bigPlotCtx.beginPath(); bigPlotCtx.arc(x, y, 18, 0, Math.PI*2); bigPlotCtx.fill();
+        bigPlotCtx.fillStyle = '#E85A3C';
+        bigPlotCtx.beginPath(); bigPlotCtx.arc(x, y, 8, 0, Math.PI*2); bigPlotCtx.fill();
+      }
+    }
+
+    function drawRppg() {
+      const w = rppgCanvas.width, h = rppgCanvas.height;
+      rppgCtx.clearRect(0, 0, w, h);
+      const buf = senseState.ppg;
+      if (buf.length < 4) return;
+      const n = Math.min(buf.length, 300);
+      const slice = buf.slice(-n);
+      let lo = Infinity, hi = -Infinity;
+      for (const v of slice) { if (v < lo) lo = v; if (v > hi) hi = v; }
+      if (hi - lo < 1e-6) return;
+      rppgCtx.strokeStyle = '#E85A3C';
+      rppgCtx.lineWidth = 1.5;
+      rppgCtx.beginPath();
+      for (let i = 0; i < slice.length; i++) {
+        const x = (i / (slice.length - 1)) * w;
+        const y = h - ((slice[i] - lo) / (hi - lo)) * (h - 8) - 4;
+        if (i === 0) rppgCtx.moveTo(x, y); else rppgCtx.lineTo(x, y);
+      }
+      rppgCtx.stroke();
+    }
+
+    function updateSensing() {
+      // 1) Self-view overlay
+      drawSenseOverlay();
+      // 2) Emotion bars (raw scores from Human)
+      if (senseState.emotions.length) {
+        // Build a top-emotion lookup
+        let topK = null, topS = -1;
+        const scores = {};
+        for (const e of senseState.emotions) { scores[e.emotion] = e.score; if (e.score > topS) { topS = e.score; topK = e.emotion; } }
+        for (const k of HUMAN_EMOTIONS) {
+          const row = emoBarsEl.querySelector(`[data-k="${k}"]`);
+          if (!row) continue;
+          const s = scores[k] || 0;
+          row.classList.toggle('top', k === topK);
+          row.querySelector('.emo-row__fill').style.width = Math.min(100, s * 100).toFixed(1) + '%';
+          row.querySelector('.emo-row__v').textContent = s.toFixed(2);
+        }
+      }
+      // 3) Heart rate
+      if (vlDisplayedHr != null) {
+        hrBpmEl.textContent = vlDisplayedHr.toFixed(0);
+        if (vlBaseline != null) {
+          const d = vlDisplayedHr - vlBaseline;
+          hrDeltaEl.textContent = (d >= 0 ? 'Δ+' : 'Δ') + d.toFixed(1);
+          hrDeltaEl.className = 'hr-block__delta ' + (d > 1.5 ? 'up' : d < -1.5 ? 'down' : '');
+          hrBaselineEl.textContent = 'baseline ' + vlBaseline.toFixed(0) + ' bpm';
+        } else {
+          hrDeltaEl.textContent = 'learning';
+          hrDeltaEl.className = 'hr-block__delta';
+          hrBaselineEl.textContent = 'baseline learning…';
+        }
+      } else {
+        hrBpmEl.textContent = '—';
+        hrDeltaEl.textContent = '—';
+        hrDeltaEl.className = 'hr-block__delta';
+      }
+      drawRppg();
+      // 4) Big circumplex
+      drawBigPlot();
+      // 5) Shader uniform rows + sparks
+      const uniData = { uV: senseState.uV, uA: senseState.uA, uPulse: senseState.uP, uIntensity: senseState.uI };
+      const uniRange = { uV: [-1, 1], uA: [-1, 1], uPulse: [0, 1], uIntensity: [0, 1] };
+      const uniZero  = { uV: true, uA: true, uPulse: false, uIntensity: false };
+      for (const k of ['uV','uA','uPulse','uIntensity']) {
+        const row = uniRowsEl.querySelector(`[data-k="${k}"]`);
+        if (!row) continue;
+        const buf = uniData[k];
+        const last = buf.length ? buf[buf.length - 1] : null;
+        row.querySelector('.uni-row__v').textContent = last != null ? last.toFixed(2) : '—';
+        drawSparkline(row.querySelector('canvas'), buf, { range: uniRange[k], zero: uniZero[k], color: '#1B1512' });
+      }
+      // 6) Perf
+      const p50 = humanInferSamples.length
+        ? [...humanInferSamples].sort((a,b)=>a-b)[Math.floor(humanInferSamples.length/2)]
+        : null;
+      perfLineEl.textContent =
+        `human ${humanRecentFps.toFixed(1)} fps · infer p50 ${p50 != null ? p50.toFixed(0) + 'ms' : '—'} · ` +
+        `render ${renderFps.toFixed(0)} fps · vitals ${vlEventCount} events`;
+    }
+
+    // Toggle sensing view
+    function setSensing(open) {
+      sensingOpen = !!open;
+      sensingEl.classList.toggle('open', sensingOpen);
+      sensingEl.setAttribute('aria-hidden', String(!sensingOpen));
+      senseBtn.classList.toggle('active', sensingOpen);
+      senseBtn.setAttribute('aria-pressed', String(sensingOpen));
+      if (sensingOpen) updateSensing();
+    }
+    senseBtn.addEventListener('click', () => setSensing(!sensingOpen));
+
+    // Triple-tap the feeling word to also toggle sensing (easter egg for the piece)
+    (function () {
+      const w = document.getElementById('feelingWord');
+      let taps = 0, lastT = 0;
+      w.addEventListener('click', () => {
+        const now = performance.now();
+        if (now - lastT > 400) taps = 0;
+        taps++; lastT = now;
+        if (taps >= 3) { taps = 0; setSensing(!sensingOpen); }
+      });
+    })();
 
     // ── FEELING WORD + OVERLAY + MINI PLOT ───────────────────────────
     const feeling = document.getElementById('feeling');
@@ -962,6 +1416,11 @@
       const video = document.getElementById('video');
       video.srcObject = stream;
       await video.play();
+      // Attach the same stream to the sensing view's self-view (silent, no upload).
+      try {
+        const sv = document.getElementById('senseVideo');
+        if (sv) { sv.srcObject = stream; sv.play().catch(() => {}); }
+      } catch (e) { /* non-fatal */ }
       log('event', 'camera ready', { w: video.videoWidth, h: video.videoHeight });
 
       log('event', 'initializing Human');
