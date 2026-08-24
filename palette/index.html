@@ -146,7 +146,13 @@
       font-size: 16px; line-height: 1.5;
       font-weight: 400;
       margin: 0;
-      max-width: 42ch;
+      max-width: 46ch;
+    }
+    .gate-body + .gate-body { margin-top: 12px; }
+    .gate-body--quiet {
+      color: rgba(238, 236, 231, 0.62);
+      font-size: 14px;
+      letter-spacing: 0.01em;
     }
 
     /* Chip row */
@@ -275,6 +281,176 @@
     }
     @media (max-width: 480px) {
       .style-sheet__list { grid-template-columns: 1fr; }
+    }
+
+    /* End button in controls bar */
+    .btn-end {
+      color: rgba(238, 236, 231, 0.85);
+      border: 1px solid rgba(238, 236, 231, 0.35);
+      background: transparent;
+    }
+    .btn-end:hover { border-color: rgba(238, 236, 231, 0.65); }
+
+    /* ---- GALLERY ---- */
+    .gallery {
+      position: fixed; inset: 0; z-index: 900;
+      background: #000;
+      color: #eeece7;
+      overflow-y: auto;
+      padding: calc(env(safe-area-inset-top, 0) + 32px) 20px calc(env(safe-area-inset-bottom, 0) + 40px);
+    }
+    .gallery.hidden { display: none; }
+    .gallery__inner { max-width: 960px; margin: 0 auto; }
+    .gallery__head { margin-bottom: 28px; }
+    .gallery__eyebrow {
+      font-family: var(--ea-font-mono); font-size: 10px;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      color: rgba(238, 236, 231, 0.55);
+      margin-bottom: 12px;
+    }
+    .gallery__title {
+      font-family: var(--ea-font-display);
+      font-size: clamp(32px, 7vw, 56px);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      margin: 0 0 6px;
+    }
+    .gallery__meta {
+      font-family: var(--ea-font-mono); font-size: 10px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(238, 236, 231, 0.55);
+    }
+    .gallery__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 24px 0 32px;
+    }
+    .gallery__card {
+      position: relative;
+      aspect-ratio: 3 / 4;
+      border-radius: 14px;
+      border: 1px solid rgba(238, 236, 231, 0.12);
+      overflow: hidden;
+      cursor: pointer;
+      background: #111;
+      transition: transform 180ms cubic-bezier(0.22,1,0.36,1), border-color 200ms;
+    }
+    .gallery__card:hover { border-color: rgba(238, 236, 231, 0.45); transform: translateY(-2px); }
+    .gallery__card__swatch { position: absolute; inset: 0; }
+    .gallery__card__grad {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.72) 100%);
+    }
+    .gallery__card__body {
+      position: absolute; left: 12px; right: 12px; bottom: 10px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .gallery__card__seq {
+      font-family: var(--ea-font-mono); font-size: 9px;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      color: rgba(238, 236, 231, 0.7);
+    }
+    .gallery__card__name {
+      font-family: var(--ea-font-display);
+      font-size: 18px; font-weight: 500;
+      letter-spacing: -0.01em;
+      color: #eeece7;
+    }
+    .gallery__card__meta {
+      font-family: var(--ea-font-mono); font-size: 9.5px;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(238, 236, 231, 0.7);
+    }
+    .gallery__cta { display: flex; justify-content: center; margin-top: 8px; }
+    .gallery__empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: rgba(238, 236, 231, 0.55);
+      font-family: var(--ea-font-mono); font-size: 12px;
+      letter-spacing: 0.10em; text-transform: uppercase;
+    }
+
+    /* ---- REPLAY ---- */
+    .replay {
+      position: fixed; inset: 0; z-index: 950;
+      background: #000;
+      color: #eeece7;
+      overflow: hidden;
+    }
+    .replay.hidden { display: none; }
+    #replayArt {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+    }
+    .replay__scrim {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.0) 25%, rgba(0,0,0,0.0) 55%, rgba(0,0,0,0.72) 100%);
+      pointer-events: none;
+    }
+    .replay__topbar {
+      position: absolute; top: 0; left: 0; right: 0;
+      padding: calc(env(safe-area-inset-top, 0) + 16px) 20px 12px;
+      display: flex; align-items: center; gap: 16px;
+      z-index: 2;
+    }
+    .replay__back {
+      background: transparent;
+      border: 1px solid rgba(238, 236, 231, 0.45);
+      color: #eeece7;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-family: var(--ea-font-mono); font-size: 11px;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      cursor: pointer;
+    }
+    .replay__title {
+      font-family: var(--ea-font-display);
+      font-size: 18px; font-weight: 500;
+      color: rgba(238, 236, 231, 0.9);
+    }
+    .replay__panel {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      padding: 16px 20px calc(env(safe-area-inset-bottom, 0) + 20px);
+      z-index: 2;
+    }
+    .replay__meta {
+      font-family: var(--ea-font-mono); font-size: 10px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(238, 236, 231, 0.72);
+      margin-bottom: 10px;
+    }
+    .replay__timeline {
+      width: 100%;
+      height: 80px;
+      display: block;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.32);
+      border: 1px solid rgba(238, 236, 231, 0.14);
+    }
+    .replay__scrub-row {
+      display: flex; align-items: center; gap: 12px;
+      margin-top: 10px;
+    }
+    .replay__playbtn {
+      background: #eeece7; color: #0a0a0a;
+      border: 0; border-radius: 999px;
+      padding: 8px 18px;
+      font-family: var(--ea-font-ui);
+      font-size: 13px; font-weight: 500;
+      cursor: pointer;
+    }
+    .replay__scrub {
+      flex: 1;
+      accent-color: #eeece7;
+    }
+    .replay__time {
+      font-family: var(--ea-font-mono); font-size: 10.5px;
+      letter-spacing: 0.10em;
+      color: rgba(238, 236, 231, 0.7);
+      white-space: nowrap;
     }
 
     /* Footer meta band: SESSION 01 · EMPATHIC ART — [STYLE NAME] */
@@ -664,20 +840,15 @@
     <div class="gate-block">
       <div class="gate-headrow">
         <h1>Feel yourself <em>feeling</em>.<sup>2026</sup></h1>
-        <p class="gate-body">Your face and your pulse become color, in real time. Nothing leaves this device.</p>
-      </div>
-
-      <div class="gate-chips">
-        <span class="gate-chip">Face becomes color</span>
-        <span class="gate-chip">Pulse becomes rhythm</span>
-        <span class="gate-chip">On-device</span>
+        <p class="gate-body">Turrell said, seeing yourself seeing. Rothko made emotion palpable. Serra made space palpable. This work senses your presence, and answers.</p>
+        <p class="gate-body gate-body--quiet">Stand still. Let the work meet you.</p>
       </div>
 
       <div class="gate-hint">Camera stays on this device · no upload</div>
 
       <!-- Session 1: single Begin. Session 2+: three chips (Plan B "Love b") -->
       <div class="gate-cta" id="gate-cta-single">
-        <button class="start" id="startBtn">Begin →</button>
+        <button class="start" id="startBtn" type="button">Begin →</button>
       </div>
       <div class="gate-cta gate-cta--multi hidden" id="gate-cta-multi">
         <button class="start start--outline" id="startContinue" data-mode="continue">Continue <span class="start__sub" id="continueStyleName">—</span></button>
@@ -784,8 +955,43 @@
     <button id="btnPlot">Map</button>
     <button id="btnClean" class="active">Clean</button>
     <div class="spacer"></div>
+    <button id="btnEnd" class="btn-end">End</button>
     <button id="logToggle">Log</button>
     <button id="shareLogBtn">Share</button>
+  </div>
+
+  <!-- Gallery screen (opens when a session ends, or from End) -->
+  <div class="gallery hidden" id="gallery">
+    <div class="gallery__inner">
+      <div class="gallery__head">
+        <div class="gallery__eyebrow">Sessions</div>
+        <h2 class="gallery__title" id="galleryTitle">Your past feelings</h2>
+        <div class="gallery__meta" id="galleryMeta">—</div>
+      </div>
+      <div class="gallery__grid" id="galleryGrid"></div>
+      <div class="gallery__cta">
+        <button class="start" id="galleryNew">New session →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Replay screen (opens from a gallery card) -->
+  <div class="replay hidden" id="replay">
+    <canvas id="replayArt"></canvas>
+    <div class="replay__scrim"></div>
+    <div class="replay__topbar">
+      <button class="replay__back" id="replayBack">← Gallery</button>
+      <div class="replay__title" id="replayTitle">Session</div>
+    </div>
+    <div class="replay__panel">
+      <div class="replay__meta" id="replayMeta">—</div>
+      <canvas class="replay__timeline" id="replayTimeline" width="800" height="120"></canvas>
+      <div class="replay__scrub-row">
+        <button class="replay__playbtn" id="replayPlayBtn">Play</button>
+        <input type="range" class="replay__scrub" id="replayScrub" min="0" max="1000" value="0">
+        <div class="replay__time" id="replayTime">00:00 / 00:00</div>
+      </div>
+    </div>
   </div>
 
   <!-- Log drawer -->
@@ -893,7 +1099,7 @@
     const VL_BASELINE_LOCK_MS = 60 * 1000;
 
     // ── STATE ────────────────────────────────────────────────────────
-    let human = null, vl = null, running = false;
+    let human = null, vl = null, running = false, mediaStream = null;
     let sessionStartMs = 0;
     let humanFrameCount = 0, humanInferSamples = [], humanRecentFps = 0, humanLastFpsAt = 0;
     let humanLastVA = { v: null, a: null };
@@ -1659,6 +1865,7 @@
     async function start() {
       let stream;
       try {
+        // Hoist camera stream so End can stop it later
         stream = await Promise.race([
           navigator.mediaDevices.getUserMedia({
             audio: false,
@@ -1671,6 +1878,7 @@
         alert('Camera denied: ' + err.message);
         return;
       }
+      mediaStream = stream;
       const video = document.getElementById('video');
       video.srcObject = stream;
       await video.play();
@@ -1806,7 +2014,353 @@
       catch (err) {}
     });
 
-    document.getElementById('startBtn').addEventListener('click', start);
+    // ── END SESSION / GALLERY / REPLAY ─────────────────────────
+
+    // Emotion-name → hex, matching v1 palette. Falls back to V/A quadrant color.
+    const EMO_HEX = {
+      happy:    '#F5C86E',
+      surprise: '#7DD3B8',
+      neutral:  '#B7B0A0',
+      sad:      '#4E6CB8',
+      fear:     '#7A5EA6',
+      disgust:  '#6B8E5F',
+      angry:    '#C8503A',
+    };
+    // Session → dominant color: prefer top emotion by frequency; else V/A quadrant
+    function sessionSwatch(sess) {
+      if (!sess || !sess.samples || !sess.samples.length) return { hex: '#222', name: 'unknown', v: 0, a: 0 };
+      const emoCount = {};
+      let sumV = 0, sumA = 0, n = 0;
+      for (const s of sess.samples) {
+        if (s.emo) emoCount[s.emo] = (emoCount[s.emo] || 0) + 1;
+        if (s.v != null) { sumV += s.v; sumA += s.a; n++; }
+      }
+      const avgV = n ? sumV / n : 0;
+      const avgA = n ? sumA / n : 0;
+      let topEmo = null, topN = 0;
+      for (const k in emoCount) if (emoCount[k] > topN) { topN = emoCount[k]; topEmo = k; }
+      const hex = (topEmo && EMO_HEX[topEmo]) || quadrantHex(avgV, avgA);
+      return { hex, name: topEmo || quadrantName(avgV, avgA), v: avgV, a: avgA };
+    }
+    function quadrantHex(v, a) {
+      if (v >= 0 && a >= 0) return '#E9A464'; // happy / warm
+      if (v <  0 && a >= 0) return '#B76B7A'; // tense / red-mauve
+      if (v <  0 && a <  0) return '#4A5A78'; // heavy / cool blue
+      return '#8FA88C';                       // at ease / soft green
+    }
+    function quadrantName(v, a) {
+      if (Math.abs(v) < 0.1 && Math.abs(a) < 0.1) return 'still';
+      if (v >= 0 && a >= 0) return Math.abs(a) > 0.55 ? 'alive' : 'warming';
+      if (v <  0 && a >= 0) return 'tense';
+      if (v <  0 && a <  0) return 'heavy';
+      return 'at ease';
+    }
+    function fmtDuration(ms) {
+      const s = Math.max(0, Math.round(ms / 1000));
+      const m = Math.floor(s / 60), r = s % 60;
+      return m + ':' + String(r).padStart(2, '0');
+    }
+    function fmtRelDate(ms) {
+      const d = new Date(ms);
+      const now = new Date();
+      const sameDay = d.toDateString() === now.toDateString();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      if (sameDay) return 'Today ' + hh + ':' + mm;
+      const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+      if (d.toDateString() === yesterday.toDateString()) return 'Yesterday ' + hh + ':' + mm;
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + hh + ':' + mm;
+    }
+
+    // End the current session: stop loops, commit to store, open gallery.
+    function endSession() {
+      if (!running) { openGallery(); return; }
+      running = false;
+      log('event', 'session end');
+      try { const rec = store.end(); if (rec) log('event', 'session committed', { seq: rec.seq, samples: rec.samples.length, durationSec: Math.round(rec.durationMs / 1000) }); }
+      catch (e) { log('err', 'session commit failed', { err: String(e) }); }
+      // Stop the camera
+      try {
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      } catch (e) { log('err', 'stop camera', { err: String(e) }); }
+      // Tear down style
+      try { if (style && typeof style.destroy === 'function') style.destroy(); } catch (e) {}
+      style = null;
+      // Hide runtime UI
+      document.getElementById('header').classList.add('hidden');
+      document.getElementById('feeling').classList.add('hidden');
+      document.getElementById('miniplot').classList.add('hidden');
+      openGallery();
+    }
+
+    // Open the gallery screen. Renders cards from store.history (newest first).
+    function openGallery() {
+      const g = document.getElementById('gallery');
+      const grid = document.getElementById('galleryGrid');
+      const meta = document.getElementById('galleryMeta');
+      const history = store.history.slice().reverse();
+      meta.textContent = history.length + ' session' + (history.length === 1 ? '' : 's');
+      grid.innerHTML = '';
+      if (!history.length) {
+        const empty = document.createElement('div');
+        empty.className = 'gallery__empty';
+        empty.textContent = 'No sessions yet — tap New Session to begin.';
+        grid.appendChild(empty);
+      } else {
+        for (const sess of history) {
+          const sw = sessionSwatch(sess);
+          const card = document.createElement('div');
+          card.className = 'gallery__card';
+          card.dataset.id = sess.id;
+          card.innerHTML = `
+            <div class="gallery__card__swatch" style="background: radial-gradient(circle at 30% 30%, ${sw.hex} 0%, ${adjustHex(sw.hex, -0.35)} 100%);"></div>
+            <div class="gallery__card__grad"></div>
+            <div class="gallery__card__body">
+              <div class="gallery__card__seq">Session ${String(sess.seq).padStart(2, '0')}</div>
+              <div class="gallery__card__name">${escapeHtml(sess.styleName || sess.styleId)}</div>
+              <div class="gallery__card__meta">${escapeHtml(sw.name)} · ${fmtDuration(sess.durationMs)} · ${fmtRelDate(sess.startedAt)}</div>
+            </div>`;
+          card.addEventListener('click', () => openReplay(sess));
+          grid.appendChild(card);
+        }
+      }
+      g.classList.remove('hidden');
+    }
+    function closeGallery() {
+      document.getElementById('gallery').classList.add('hidden');
+    }
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[c]));
+    }
+    // Adjust a #rrggbb by lightness delta (-1..+1)
+    function adjustHex(hex, delta) {
+      const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+      if (!m) return hex;
+      const n = parseInt(m[1], 16);
+      let r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
+      const f = 1 + delta;
+      r = Math.max(0, Math.min(255, Math.round(r * f)));
+      g = Math.max(0, Math.min(255, Math.round(g * f)));
+      b = Math.max(0, Math.min(255, Math.round(b * f)));
+      return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+    }
+
+    // ── REPLAY ───────────────────────────────────────
+    // Re-runs the same shader driven by recorded samples over the session duration.
+    let replayStyle = null;
+    let replayRAF = null;
+    let replaySess = null;
+    let replayPlaying = false;
+    let replayStartWallMs = 0; // performance.now() when play began
+    let replayOffsetMs = 0;    // scrubbed position
+
+    function openReplay(sess) {
+      replaySess = sess;
+      const rEl = document.getElementById('replay');
+      const rArt = document.getElementById('replayArt');
+      document.getElementById('replayTitle').textContent =
+        'Session ' + String(sess.seq).padStart(2, '0') + ' — ' + (sess.styleName || sess.styleId);
+      const sw = sessionSwatch(sess);
+      document.getElementById('replayMeta').textContent =
+        `${sw.name.toUpperCase()} · ${fmtDuration(sess.durationMs)} · ${fmtRelDate(sess.startedAt)} · ${sess.samples.length} samples`;
+
+      // Instantiate the recorded shader
+      const cls = catalog.find(c => c.id === sess.styleId) || catalog[0];
+      if (replayStyle && typeof replayStyle.destroy === 'function') {
+        try { replayStyle.destroy(); } catch {}
+      }
+      try {
+        replayStyle = new cls(rArt);
+        // Prime with first sample
+        const s0 = sess.samples[0] || { v: 0, a: 0 };
+        replayStyle.setEmotion(s0.v || 0, s0.a || 0, 0.5, sw.name);
+        replayStyle.start();
+        if (typeof replayStyle.resize === 'function') replayStyle.resize();
+      } catch (e) {
+        log('err', 'replay style init', { id: cls.id, err: String(e) });
+      }
+
+      // Timeline
+      drawReplayTimeline();
+      // Scrub state
+      replayOffsetMs = 0;
+      replayPlaying = false;
+      document.getElementById('replayScrub').value = 0;
+      document.getElementById('replayPlayBtn').textContent = 'Play';
+      updateReplayTime();
+
+      rEl.classList.remove('hidden');
+      closeGallery();
+
+      // Autoplay for delight
+      togglePlay(true);
+    }
+
+    function closeReplay() {
+      const rEl = document.getElementById('replay');
+      replayPlaying = false;
+      if (replayRAF) cancelAnimationFrame(replayRAF);
+      replayRAF = null;
+      if (replayStyle && typeof replayStyle.destroy === 'function') {
+        try { replayStyle.destroy(); } catch {}
+      }
+      replayStyle = null;
+      rEl.classList.add('hidden');
+      openGallery();
+    }
+
+    function togglePlay(force) {
+      const want = (force === true || force === false) ? force : !replayPlaying;
+      replayPlaying = want;
+      document.getElementById('replayPlayBtn').textContent = want ? 'Pause' : 'Play';
+      if (want) {
+        replayStartWallMs = performance.now() - replayOffsetMs;
+        replayRAF = requestAnimationFrame(replayTick);
+      } else if (replayRAF) {
+        cancelAnimationFrame(replayRAF);
+        replayRAF = null;
+      }
+    }
+
+    function replayTick() {
+      if (!replayPlaying || !replaySess) return;
+      const dur = replaySess.durationMs || 1;
+      replayOffsetMs = performance.now() - replayStartWallMs;
+      if (replayOffsetMs >= dur) {
+        replayOffsetMs = dur;
+        replayPlaying = false;
+        document.getElementById('replayPlayBtn').textContent = 'Play';
+        applyReplayFrame(replayOffsetMs);
+        updateReplayTime();
+        document.getElementById('replayScrub').value = 1000;
+        return;
+      }
+      applyReplayFrame(replayOffsetMs);
+      const scrub = document.getElementById('replayScrub');
+      scrub.value = Math.round((replayOffsetMs / dur) * 1000);
+      updateReplayTime();
+      drawReplayTimeline(replayOffsetMs);
+      replayRAF = requestAnimationFrame(replayTick);
+    }
+
+    // Find sample nearest offsetMs; drive the shader with its V/A.
+    function applyReplayFrame(offsetMs) {
+      if (!replayStyle || !replaySess || !replaySess.samples.length) return;
+      const samples = replaySess.samples;
+      // Linear search from a small hint; sessions are typically <30 min => <1800 samples.
+      let idx = 0;
+      for (let i = 0; i < samples.length; i++) {
+        if (samples[i].t <= offsetMs) idx = i;
+        else break;
+      }
+      const s = samples[idx];
+      const v = s.v || 0, a = s.a || 0;
+      try { replayStyle.setEmotion(v, a, 0.5, 'replay'); } catch {}
+    }
+
+    function updateReplayTime() {
+      if (!replaySess) return;
+      const el = document.getElementById('replayTime');
+      el.textContent = fmtDuration(replayOffsetMs) + ' / ' + fmtDuration(replaySess.durationMs);
+    }
+
+    function drawReplayTimeline(cursorMs) {
+      const cv = document.getElementById('replayTimeline');
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const cssW = cv.clientWidth || 800;
+      const cssH = cv.clientHeight || 80;
+      if (cv.width !== cssW * dpr || cv.height !== cssH * dpr) {
+        cv.width = cssW * dpr; cv.height = cssH * dpr;
+      }
+      const w = cv.width, h = cv.height;
+      const ctx = cv.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      if (!replaySess || !replaySess.samples.length) return;
+      const dur = replaySess.durationMs || 1;
+      const samples = replaySess.samples;
+
+      // Baseline mid-line
+      ctx.strokeStyle = 'rgba(238,236,231,0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2);
+      ctx.stroke();
+
+      // Valence trace (top) — cream
+      // Arousal trace (bottom half) — cream faded
+      function drawTrace(getter, color, yTop, yBot) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5 * dpr;
+        ctx.beginPath();
+        for (let i = 0; i < samples.length; i++) {
+          const s = samples[i];
+          const x = (s.t / dur) * w;
+          const val = getter(s) || 0;              // -1..1
+          const norm = (val + 1) / 2;              // 0..1
+          const y = yBot + (1 - norm) * (yTop - yBot);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      drawTrace(s => s.v, 'rgba(238,236,231,0.85)', 4, h/2 - 2);
+      drawTrace(s => s.a, 'rgba(238,236,231,0.50)', h/2 + 2, h - 4);
+
+      // Cursor
+      const cx = ((cursorMs != null ? cursorMs : replayOffsetMs) / dur) * w;
+      ctx.strokeStyle = '#eeece7';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+    }
+
+    // Wire End button + gallery/replay controls (defensive: any missing DOM
+    // element must NOT break the top-level init that follows).
+    try {
+      const _btnEnd = document.getElementById('btnEnd');
+      if (_btnEnd) _btnEnd.addEventListener('click', endSession);
+      const _galN = document.getElementById('galleryNew');
+      if (_galN) _galN.addEventListener('click', () => {
+        closeGallery();
+        window.location.reload();
+      });
+      const _repBack = document.getElementById('replayBack');
+      if (_repBack) _repBack.addEventListener('click', closeReplay);
+      const _repPlay = document.getElementById('replayPlayBtn');
+      if (_repPlay) _repPlay.addEventListener('click', () => togglePlay());
+      const _repScrub = document.getElementById('replayScrub');
+      if (_repScrub) _repScrub.addEventListener('input', (e) => {
+        if (!replaySess) return;
+        replayPlaying = false;
+        const pb = document.getElementById('replayPlayBtn');
+        if (pb) pb.textContent = 'Play';
+        if (replayRAF) { cancelAnimationFrame(replayRAF); replayRAF = null; }
+        const frac = e.target.value / 1000;
+        replayOffsetMs = frac * (replaySess.durationMs || 0);
+        applyReplayFrame(replayOffsetMs);
+        updateReplayTime();
+        drawReplayTimeline(replayOffsetMs);
+      });
+      window.addEventListener('resize', () => {
+        const rep = document.getElementById('replay');
+        if (rep && !rep.classList.contains('hidden')) drawReplayTimeline(replayOffsetMs);
+        if (replayStyle && typeof replayStyle.resize === 'function') replayStyle.resize();
+      });
+    } catch (e) {
+      log('err', 'C4b/C4c wiring failed', { err: String(e) });
+    }
+
+    // Attach with both pointerup + click for iOS Safari 26 resilience.
+    // Guard against double-fire with a debounce flag.
+    let __beginFired = false;
+    function __safeBegin(ev) {
+      if (__beginFired) return;
+      __beginFired = true;
+      log('event', 'Begin tapped', { via: ev && ev.type });
+      try { start(); } catch (e) { __beginFired = false; log('err', 'start() threw', { err: String(e) }); alert('Begin failed: ' + e.message); }
+    }
+    const __btn = document.getElementById('startBtn');
+    __btn.addEventListener('click', __safeBegin);
+    __btn.addEventListener('pointerup', __safeBegin);
     log('info', 'page ready · tap Begin');
   </script>
 
