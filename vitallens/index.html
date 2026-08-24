@@ -512,13 +512,28 @@
          5. Signal-lock gate: only update the DISPLAYED value when 3
             consecutive smoothed samples agree within ±3 bpm. Between
             modes, freeze the last good value and show 'resyncing'. */
+    /* v3 (Aug 24 pm) refinements after the second test:
+       - Face wiring perfect (0 -> 2012 events).
+       - Signal-lock kept display in 'locked' 79% of post-lock time.
+       - BUT: displayed HR mean 59.3 vs baseline 67.6 (8 bpm low, only
+         12% within +/-3). Cause: raw shifted from trimodal to bimodal
+         (65 real + 42 sub-harmonic, no high mode). Trimmed mean now
+         gets pulled DOWN by the low mode, and signal-lock happily
+         locks on wrong-but-consistent values.
+
+       Fixes:
+         - Tighter outlier reject: was |hr - baseline| > 20
+         - Now ASYMMETRIC: allow +15 above baseline (real spikes),
+           only -8 below (sub-harmonics are always artifact at rest).
+         - MIN_CONF 0.5 -> 0.6 (sub-harmonic often has lower conf). */
     const MEDIAN_WINDOW_MS = 10000;
-    const OUTLIER_REJECT_BPM = 20;   // reject if |hr - baseline| > 20
+    const OUTLIER_ABOVE_BPM = 15;    // allow +15 above baseline (real arousal)
+    const OUTLIER_BELOW_BPM = 8;     // only -8 below (sub-harmonics)
     const LOCK_AGREEMENT_BPM = 3;    // consecutive samples must agree within this
     const LOCK_CONSECUTIVE_N = 3;    // ...this many times in a row
     const HR_MIN = 35;
     const HR_MAX = 200;
-    const MIN_CONF = 0.5;
+    const MIN_CONF = 0.6;
 
     // Signal-lock state
     let lastGoodDisplayedHr = null;
@@ -694,14 +709,19 @@
 
     /* Robust smoothing over the last MEDIAN_WINDOW_MS ms of history.
        Uses the interquartile-trimmed mean when baseline is unknown,
-       or drops samples too far from baseline first when it's known. */
+       or drops samples too far from baseline first when it's known.
+       Asymmetric reject: sub-harmonics (below baseline) are always
+       artifact at rest, but real arousal can push HR well above. */
     function robustSmooth(hist, nowMs, baseline) {
       const windowVals = hist.filter(x => x.t > nowMs - MEDIAN_WINDOW_MS).map(x => x.hr);
       if (windowVals.length < 5) return null;
 
       let filtered = windowVals;
       if (baseline != null) {
-        filtered = windowVals.filter(v => Math.abs(v - baseline) <= OUTLIER_REJECT_BPM);
+        filtered = windowVals.filter(v =>
+          v >= baseline - OUTLIER_BELOW_BPM &&
+          v <= baseline + OUTLIER_ABOVE_BPM
+        );
         if (filtered.length < 3) return null;
       }
       // Interquartile-trimmed mean: sort, drop outer 25%, mean the middle 50%
@@ -850,7 +870,10 @@
       // outlier-filtered set if baseline is known, else on the raw window.
       const rawWin = hrHist.filter(x => x.t > now - MEDIAN_WINDOW_MS).map(x => x.hr);
       const winForStdev = baseline != null
-        ? rawWin.filter(v => Math.abs(v - baseline) <= OUTLIER_REJECT_BPM)
+        ? rawWin.filter(v =>
+            v >= baseline - OUTLIER_BELOW_BPM &&
+            v <= baseline + OUTLIER_ABOVE_BPM
+          )
         : rawWin;
       if (winForStdev.length >= 5) {
         const mean = winForStdev.reduce((a, b) => a + b, 0) / winForStdev.length;
@@ -965,10 +988,13 @@
           windowVals.push(hrHist[j].hr);
         }
         if (windowVals.length < 5) continue;
-        // Apply outlier reject if baseline known
+        // Apply asymmetric outlier reject if baseline known
         let filtered = windowVals;
         if (baseline != null) {
-          filtered = windowVals.filter(v => Math.abs(v - baseline) <= OUTLIER_REJECT_BPM);
+          filtered = windowVals.filter(v =>
+            v >= baseline - OUTLIER_BELOW_BPM &&
+            v <= baseline + OUTLIER_ABOVE_BPM
+          );
           if (filtered.length < 3) continue;
         }
         const sorted = [...filtered].sort((a, b) => a - b);
