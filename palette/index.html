@@ -35,9 +35,8 @@
     /* Full-bleed shader canvas is THE artwork */
     #art { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; }
 
-    /* Video preview is tiny and offscreen-ish (needs to be in DOM for engines) */
-    .stage { position: fixed; top: 12px; right: 12px; width: 90px; height: 120px; border-radius: 8px; overflow: hidden; background: #000; z-index: 5; box-shadow: 0 2px 12px rgba(0,0,0,0.4); opacity: 0.55; transition: opacity 0.2s; }
-    .stage:hover { opacity: 1; }
+    /* Video is offscreen 1x1 - engines need it in DOM, viewer doesn't need to see themselves */
+    .stage { position: fixed; top: -100px; left: -100px; width: 2px; height: 2px; overflow: hidden; opacity: 0; pointer-events: none; z-index: -1; }
     #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
     #video::-webkit-media-controls,
     #video::-webkit-media-controls-panel,
@@ -103,38 +102,184 @@
       letter-spacing: 0.06em;
     }
 
-    /* ── STATE OVERLAY (top-left) ──────────────────────────────────── */
-    .overlay { position: fixed; top: 20px; left: 20px; z-index: 10; color: rgba(239,236,229,0.85); font-family: 'SF Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.06em; line-height: 1.7; text-shadow: 0 1px 3px rgba(0,0,0,0.6); pointer-events: none; }
-    .overlay .k { color: rgba(239,236,229,0.5); text-transform: uppercase; letter-spacing: 0.1em; }
-    .overlay .v { color: rgba(239,236,229,0.95); }
-    .overlay.hidden { display: none; }
+    /* ── HEADER (v1 style, cream on artwork) ───────────────────────── */
+    .ea-header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      height: calc(56px + env(safe-area-inset-top, 0));
+      padding: env(safe-area-inset-top, 0) 20px 0;
+      display: grid; grid-template-columns: 40px 1fr 60px;
+      align-items: center;
+      background: rgba(251, 246, 236, 0.86);
+      backdrop-filter: saturate(140%) blur(14px);
+      -webkit-backdrop-filter: saturate(140%) blur(14px);
+      border-bottom: 1px solid var(--ea-line);
+      color: var(--ea-ink);
+    }
+    .ea-header.hidden { display: none; }
+    .ea-header__back {
+      width: 40px; height: 40px;
+      background: transparent; border: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ea-ink); cursor: pointer; -webkit-appearance: none;
+      margin-left: -8px;
+    }
+    .ea-header__brand {
+      font-family: var(--ea-font-mono);
+      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--ea-accent); text-align: center;
+    }
+    .ea-header__time {
+      font-family: var(--ea-font-mono);
+      font-size: 11px; color: var(--ea-ink-3);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
 
-    /* ── CIRCUMPLEX MINI (bottom-left, toggleable) ─────────────────── */
-    .miniplot { position: fixed; bottom: 60px; left: 20px; width: 120px; height: 120px; z-index: 10; opacity: 0.7; pointer-events: none; }
+    /* ── FEELING WORD (bottom-center of artwork) ───────────────────── */
+    .feeling {
+      position: fixed;
+      left: 0; right: 0;
+      bottom: calc(72px + env(safe-area-inset-bottom, 0));
+      z-index: 10;
+      text-align: center;
+      pointer-events: auto;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .feeling.hidden { display: none; }
+    .feeling__word {
+      display: inline-block;
+      font-family: var(--ea-font-display);
+      font-style: italic;
+      font-weight: 300;
+      font-size: clamp(32px, 8vw, 48px);
+      line-height: 1;
+      color: rgba(251, 246, 236, 0.94);
+      text-shadow: 0 2px 24px rgba(27, 21, 18, 0.4), 0 1px 3px rgba(27, 21, 18, 0.25);
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: opacity var(--ea-dur-med, 260ms) ease;
+    }
+    .feeling__word:active { opacity: 0.6; }
+    .feeling__stats {
+      margin-top: 12px;
+      display: none;
+      justify-content: center;
+      gap: 20px;
+      font-family: var(--ea-font-mono);
+      font-size: 11px;
+      color: rgba(251, 246, 236, 0.85);
+      text-shadow: 0 1px 3px rgba(27, 21, 18, 0.4);
+      letter-spacing: 0.06em;
+      font-variant-numeric: tabular-nums;
+    }
+    .feeling.expanded .feeling__stats { display: flex; }
+    .feeling__stats .k { color: rgba(251, 246, 236, 0.55); text-transform: uppercase; letter-spacing: 0.1em; margin-right: 4px; }
+
+    /* ── CIRCUMPLEX MINI (bottom-left, v1 hairline style) ──────────── */
+    .miniplot {
+      position: fixed;
+      bottom: calc(72px + env(safe-area-inset-bottom, 0));
+      left: 20px;
+      width: 88px; height: 88px;
+      z-index: 10;
+      pointer-events: none;
+    }
     .miniplot canvas { width: 100%; height: 100%; display: block; }
     .miniplot.hidden { display: none; }
 
-    /* ── CONTROLS BAR ──────────────────────────────────────────────── */
-    .ctrls { position: fixed; bottom: 0; left: 0; right: 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0)); background: rgba(10,10,10,0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid rgba(239,236,229,0.1); display: flex; gap: 8px; align-items: center; z-index: 20; }
-    .ctrls button { background: transparent; border: 1px solid rgba(239,236,229,0.2); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: #efece5; cursor: pointer; -webkit-appearance: none; }
-    .ctrls button.active { background: rgba(239,236,229,0.15); border-color: rgba(239,236,229,0.5); }
+    /* ── CONTROLS BAR (v1 chip band, cream) ────────────────────────── */
+    .ctrls {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0));
+      background: rgba(251, 246, 236, 0.90);
+      backdrop-filter: saturate(140%) blur(14px);
+      -webkit-backdrop-filter: saturate(140%) blur(14px);
+      border-top: 1px solid var(--ea-line);
+      display: flex; gap: 8px; align-items: center;
+      z-index: 20;
+      font-family: var(--ea-font-ui);
+    }
+    .ctrls button {
+      background: transparent;
+      border: 1px solid var(--ea-line);
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ea-ink-2);
+      cursor: pointer;
+      -webkit-appearance: none;
+      font-family: var(--ea-font-ui);
+      transition: background 140ms, color 140ms, border-color 140ms;
+    }
+    .ctrls button:active { background: var(--ea-surface-2); }
+    .ctrls button.active {
+      background: var(--ea-ink);
+      border-color: var(--ea-ink);
+      color: var(--ea-surface);
+    }
     .ctrls .spacer { flex: 1; }
-    .ctrls .badge { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #8f8c85; padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(239,236,229,0.1); }
+    .ctrls .badge {
+      font-family: var(--ea-font-mono);
+      font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--ea-ink-3);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--ea-line);
+    }
 
-    /* ── LOG DRAWER ────────────────────────────────────────────────── */
-    .logdrawer { position: fixed; left: 0; right: 0; bottom: 0; height: 60vh; background: #0a0a0a; border-top: 1px solid rgba(239,236,229,0.1); transform: translateY(100%); transition: transform 0.25s ease; z-index: 30; display: flex; flex-direction: column; }
+    /* ── LOG DRAWER (v1 cream sheet) ───────────────────────────────── */
+    .logdrawer {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      height: 60vh;
+      background: var(--ea-surface);
+      border-top: 1px solid var(--ea-line);
+      transform: translateY(100%);
+      transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+      z-index: 30;
+      display: flex; flex-direction: column;
+      box-shadow: 0 -2px 24px rgba(27, 21, 18, 0.08);
+    }
     .logdrawer.open { transform: translateY(0); }
-    .logdrawer .head { padding: 10px 14px; border-bottom: 1px solid rgba(239,236,229,0.1); display: flex; align-items: center; gap: 8px; }
-    .logdrawer .head h4 { margin: 0; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8f8c85; font-weight: 500; }
+    .logdrawer .head {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--ea-line);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .logdrawer .head h4 {
+      margin: 0;
+      font-family: var(--ea-font-mono);
+      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--ea-ink-3);
+      font-weight: 500;
+    }
     .logdrawer .head .spacer { flex: 1; }
-    .logdrawer .head button { background: transparent; border: 1px solid rgba(239,236,229,0.2); border-radius: 999px; padding: 4px 10px; font-size: 11px; color: #efece5; }
-    .logdrawer .body { flex: 1; overflow-y: auto; padding: 8px 14px 14px; font-family: 'SF Mono', ui-monospace, monospace; font-size: 10px; line-height: 1.55; color: #efece5; }
-    .logdrawer .body .l { padding: 2px 0; border-bottom: 1px solid rgba(239,236,229,0.05); }
-    .logdrawer .body .k-info { color: #8f8c85; }
-    .logdrawer .body .k-event { color: #7fa87a; }
+    .logdrawer .head button {
+      background: transparent;
+      border: 1px solid var(--ea-line);
+      border-radius: 999px;
+      padding: 5px 11px;
+      font-size: 11px;
+      color: var(--ea-ink-2);
+      font-family: var(--ea-font-ui);
+    }
+    .logdrawer .body {
+      flex: 1; overflow-y: auto;
+      padding: 10px 16px 16px;
+      font-family: var(--ea-font-mono);
+      font-size: 10.5px; line-height: 1.55;
+      color: var(--ea-ink);
+    }
+    .logdrawer .body .l {
+      padding: 3px 0;
+      border-bottom: 1px solid var(--ea-line);
+    }
+    .logdrawer .body .k-info { color: var(--ea-ink-3); }
+    .logdrawer .body .k-event { color: #4a7a4a; }
     .logdrawer .body .k-perf { color: #7a6bc4; }
     .logdrawer .body .k-warn { color: #b8802a; }
-    .logdrawer .body .k-err { color: #d97575; }
+    .logdrawer .body .k-err { color: var(--ea-rec, #D42C1F); }
   </style>
 </head>
 <body>
@@ -153,33 +298,47 @@
     </div>
   </div>
 
+  <!-- Header (v1 style, cream on artwork) -->
+  <header class="ea-header hidden" id="header">
+    <button class="ea-header__back" aria-label="Back" onclick="history.length > 1 ? history.back() : location.href='../'">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="ea-header__brand">Empathic Art</div>
+    <div class="ea-header__time" id="headerTime">—</div>
+  </header>
+
   <!-- Camera preview (dim, top-right) -->
   <div class="stage">
     <video id="video" autoplay muted playsinline></video>
   </div>
 
-  <!-- Text overlay (state) -->
-  <div class="overlay" id="overlay">
-    <div><span class="k">state</span> <span class="v" id="ovMode">idle</span></div>
-    <div><span class="k">valence</span> <span class="v" id="ovV">—</span></div>
-    <div><span class="k">arousal</span> <span class="v" id="ovA">—</span></div>
-    <div><span class="k">pulse</span> <span class="v" id="ovHr">—</span></div>
-    <div><span class="k">fps</span> <span class="v" id="ovFps">—</span></div>
+  <!-- Feeling word (bottom-center) - tap to expand stats -->
+  <div class="feeling hidden" id="feeling">
+    <span class="feeling__word" id="feelingWord">breathing in</span>
+    <div class="feeling__stats">
+      <span><span class="k">V</span><span id="ovV">—</span></span>
+      <span><span class="k">A</span><span id="ovA">—</span></span>
+      <span><span class="k">♥</span><span id="ovHr">—</span></span>
+      <span><span class="k">fps</span><span id="ovFps">—</span></span>
+    </div>
   </div>
+  <!-- Kept hidden for JS compat with old ID; state mode still updates -->
+  <span id="ovMode" style="display:none"></span>
 
   <!-- Mini circumplex plot -->
-  <div class="miniplot" id="miniplot">
+  <div class="miniplot hidden" id="miniplot">
     <canvas id="circumplex" width="240" height="240"></canvas>
   </div>
 
   <!-- Controls -->
   <div class="ctrls">
-    <button id="btnOverlay" class="active">Text</button>
-    <button id="btnPlot" class="active">Plot</button>
-    <button id="btnClean">Clean</button>
+    <button id="btnPlot">Map</button>
+    <button id="btnClean" class="active">Clean</button>
     <div class="spacer"></div>
-    <button id="logToggle">▲ Log</button>
-    <button id="shareLogBtn">Share log</button>
+    <button id="logToggle">Log</button>
+    <button id="shareLogBtn">Share</button>
   </div>
 
   <!-- Log drawer -->
@@ -695,7 +854,38 @@
       requestAnimationFrame(renderLoop);
     }
 
-    // ── OVERLAY + MINI PLOT ──────────────────────────────────────────
+    // ── FEELING WORD + OVERLAY + MINI PLOT ───────────────────────────
+    const feeling = document.getElementById('feeling');
+    const feelingWord = document.getElementById('feelingWord');
+
+    // Map fused V/A to a one-word feeling. Quadrant + intensity.
+    function feelingLabel(v, a, mode) {
+      if (v == null || a == null) return 'breathing in';
+      if (mode === 'idle' || mode === 'starting') return 'breathing in';
+      const av = Math.abs(v), aa = Math.abs(a);
+      if (av < 0.15 && aa < 0.15) return 'still';
+      if (v >= 0 && a >= 0) return aa > 0.55 ? 'alive' : (av > 0.4 ? 'happy' : 'warming');
+      if (v < 0 && a >= 0) return aa > 0.55 ? 'tense' : 'unsettled';
+      if (v < 0 && a < 0) return aa > 0.4 ? 'heavy' : 'quiet';
+      return aa > 0.4 ? 'calm' : 'at ease';
+    }
+
+    // Tap the feeling word to expand numeric stats row
+    if (feelingWord) feelingWord.addEventListener('click', () => feeling.classList.toggle('expanded'));
+
+    // Header clock
+    function startHeaderClock() {
+      const el = document.getElementById('headerTime');
+      const tick = () => {
+        const d = new Date();
+        const hh = d.getHours().toString().padStart(2,'0');
+        const mm = d.getMinutes().toString().padStart(2,'0');
+        el.textContent = hh + ':' + mm;
+      };
+      tick();
+      setInterval(tick, 30000);
+    }
+
     const ovMode = document.getElementById('ovMode');
     const ovV = document.getElementById('ovV');
     const ovA = document.getElementById('ovA');
@@ -706,9 +896,11 @@
       ovV.textContent = lastFused.v != null ? lastFused.v.toFixed(2) : '—';
       ovA.textContent = lastFused.a != null ? lastFused.a.toFixed(2) : '—';
       ovHr.textContent = vlDisplayedHr != null
-        ? vlDisplayedHr.toFixed(0) + ' bpm' + (vlBaseline != null ? ' (Δ ' + (vlDisplayedHr - vlBaseline >= 0 ? '+' : '') + (vlDisplayedHr - vlBaseline).toFixed(1) + ')' : '')
+        ? vlDisplayedHr.toFixed(0) + (vlBaseline != null ? ' Δ' + (vlDisplayedHr - vlBaseline >= 0 ? '+' : '') + (vlDisplayedHr - vlBaseline).toFixed(0) : '')
         : '—';
       ovFps.textContent = humanRecentFps.toFixed(1) + '/' + renderFps.toFixed(0);
+      const label = feelingLabel(lastFused.v, lastFused.a, lastFused.mode);
+      if (feelingWord && feelingWord.textContent !== label) feelingWord.textContent = label;
     }
     const miniCanvas = document.getElementById('circumplex');
     const miniCtx = miniCanvas.getContext('2d');
@@ -716,10 +908,11 @@
     function drawMiniPlot() {
       const S = 240, cx = S/2, cy = S/2, R = S * 0.42;
       miniCtx.clearRect(0, 0, S, S);
-      miniCtx.strokeStyle = 'rgba(239,236,229,0.35)';
+      // v1 style: cream hairline circle + cross, red-orange dot
+      miniCtx.strokeStyle = 'rgba(251,246,236,0.85)';
       miniCtx.lineWidth = 2;
       miniCtx.beginPath(); miniCtx.arc(cx, cy, R, 0, Math.PI*2); miniCtx.stroke();
-      miniCtx.strokeStyle = 'rgba(239,236,229,0.15)';
+      miniCtx.strokeStyle = 'rgba(251,246,236,0.35)';
       miniCtx.lineWidth = 1;
       miniCtx.beginPath();
       miniCtx.moveTo(cx-R,cy); miniCtx.lineTo(cx+R,cy);
@@ -734,19 +927,19 @@
       const now = performance.now();
       for (const p of miniTrail) {
         const age = (now - p.t) / 6000;
-        const alpha = Math.max(0, 1 - age) * 0.55;
-        const size = 2 + (1 - age) * 4;
-        miniCtx.fillStyle = `rgba(217,119,87,${alpha})`;
+        const alpha = Math.max(0, 1 - age) * 0.45;
+        const size = 1.5 + (1 - age) * 2.5;
+        miniCtx.fillStyle = `rgba(232,90,60,${alpha})`;
         miniCtx.beginPath();
         miniCtx.arc(cx + p.v * R, cy - p.a * R, size, 0, Math.PI*2);
         miniCtx.fill();
       }
       if (lastFused.v != null) {
         const x = cx + smV * R, y = cy - smA * R;
-        miniCtx.fillStyle = 'rgba(217,119,87,0.25)';
+        miniCtx.fillStyle = 'rgba(232,90,60,0.28)';
         miniCtx.beginPath(); miniCtx.arc(x, y, 12, 0, Math.PI*2); miniCtx.fill();
-        miniCtx.fillStyle = '#d97757';
-        miniCtx.beginPath(); miniCtx.arc(x, y, 6, 0, Math.PI*2); miniCtx.fill();
+        miniCtx.fillStyle = '#E85A3C';
+        miniCtx.beginPath(); miniCtx.arc(x, y, 5, 0, Math.PI*2); miniCtx.fill();
       }
     }
 
@@ -798,6 +991,10 @@
       vlSessionStartMs = sessionStartMs;
       humanLastFpsAt = sessionStartMs;
       lastRenderFpsAt = sessionStartMs;
+      // Reveal v1-styled header + feeling word
+      document.getElementById('header').classList.remove('hidden');
+      document.getElementById('feeling').classList.remove('hidden');
+      startHeaderClock();
       requestAnimationFrame(humanLoop);
       requestAnimationFrame(renderLoop);
       setInterval(perfSnapshot, 5000);
@@ -820,18 +1017,22 @@
     }
 
     // ── UI CONTROLS ──────────────────────────────────────────────────
-    const overlay = document.getElementById('overlay');
     const miniplot = document.getElementById('miniplot');
-    const btnOverlay = document.getElementById('btnOverlay');
     const btnPlot = document.getElementById('btnPlot');
     const btnClean = document.getElementById('btnClean');
-    btnOverlay.addEventListener('click', () => { overlay.classList.toggle('hidden'); btnOverlay.classList.toggle('active', !overlay.classList.contains('hidden')); });
-    btnPlot.addEventListener('click', () => { miniplot.classList.toggle('hidden'); btnPlot.classList.toggle('active', !miniplot.classList.contains('hidden')); });
+    // Map = show mini circumplex plot
+    btnPlot.addEventListener('click', () => {
+      miniplot.classList.toggle('hidden');
+      const visible = !miniplot.classList.contains('hidden');
+      btnPlot.classList.toggle('active', visible);
+      if (visible) btnClean.classList.remove('active');
+    });
+    // Clean = feeling word only
     btnClean.addEventListener('click', () => {
-      overlay.classList.add('hidden');
       miniplot.classList.add('hidden');
-      btnOverlay.classList.remove('active');
+      feeling.classList.remove('expanded');
       btnPlot.classList.remove('active');
+      btnClean.classList.add('active');
     });
 
     // ── LOG DRAWER ───────────────────────────────────────────────────
