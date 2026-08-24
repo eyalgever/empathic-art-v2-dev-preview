@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Empathic Art v2 · VitalLens smoke test</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --ink: #EEECE7;
+      --dim: #7a756e;
+      --accent: #d97757;
+      --ok: #7bd48a;
+      --warn: #d9a457;
+      --err: #d97575;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      overflow-x: hidden;
+    }
+    body { padding: env(safe-area-inset-top, 20px) 16px 20px 16px; }
+
+    h1 { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+    .mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+    .subtitle { font-size: 12px; color: var(--dim); margin-bottom: 16px; }
+    .method-picker { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .method-picker input { display: none; }
+    .method-picker label {
+      font-family: ui-monospace, monospace; font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--dim); border: 1px solid rgba(238,236,231,0.25);
+      padding: 8px 12px; cursor: pointer; border-radius: 4px;
+    }
+    .method-picker input:checked + label { color: var(--bg); background: var(--ink); border-color: var(--ink); }
+
+    button.start {
+      font-family: ui-monospace, monospace; font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--ink); background: transparent;
+      border: 1px solid var(--ink); padding: 10px 20px; cursor: pointer;
+      margin-bottom: 16px;
+    }
+
+    #video {
+      width: 100%; max-width: 320px; aspect-ratio: 3/4; object-fit: cover;
+      background: #000; border-radius: 10px; display: block; margin-bottom: 16px;
+      transform: scaleX(-1);
+    }
+    #video.hidden { display: none; }
+
+    .readout {
+      background: rgba(238,236,231,0.05); border: 1px solid rgba(238,236,231,0.10);
+      padding: 12px; margin-bottom: 16px; border-radius: 8px;
+      display: none;
+    }
+    .readout.on { display: block; }
+    .readout .row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+    .readout .row .k { color: var(--dim); font-family: ui-monospace, monospace; font-size: 11px; }
+    .readout .row .v { font-family: ui-monospace, monospace; }
+    .readout .v.good { color: var(--ok); }
+    .readout .v.warn { color: var(--warn); }
+    .readout .v.err { color: var(--err); }
+
+    .actions { display: flex; gap: 8px; margin-bottom: 12px; }
+    .actions button {
+      font-family: ui-monospace, monospace; font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--ink); background: transparent;
+      border: 1px solid rgba(238,236,231,0.25); padding: 8px 12px; cursor: pointer;
+      border-radius: 4px;
+    }
+    .actions button:active { background: rgba(238,236,231,0.10); }
+
+    .log {
+      background: #000; border: 1px solid rgba(238,236,231,0.10);
+      padding: 8px; border-radius: 4px; font-family: ui-monospace, monospace;
+      font-size: 10px; color: var(--dim);
+      max-height: 40vh; overflow-y: auto; white-space: pre-wrap;
+    }
+    .log .info { color: var(--ink); }
+    .log .event { color: var(--accent); }
+    .log .err { color: var(--err); }
+    .log .warn { color: var(--warn); }
+    .log .perf { color: var(--ok); }
+  </style>
+</head>
+<body>
+
+  <h1>VitalLens smoke test</h1>
+  <p class="subtitle mono">Empathic Art v2 · Engine 2 preflight · Does VitalLens load and produce output on iPhone Safari?</p>
+
+  <div class="method-picker">
+    <input type="radio" name="method" id="m-pos" value="pos" checked>
+    <label for="m-pos">POS (local)</label>
+    <input type="radio" name="method" id="m-chrom" value="chrom">
+    <label for="m-chrom">CHROM (local)</label>
+    <input type="radio" name="method" id="m-g" value="g">
+    <label for="m-g">G (local)</label>
+  </div>
+
+  <button class="start" id="startBtn">Start camera</button>
+
+  <video id="video" autoplay muted playsinline class="hidden"></video>
+
+  <div class="readout" id="readout">
+    <div class="row"><span class="k">Method</span><span class="v" id="method">—</span></div>
+    <div class="row"><span class="k">Heart rate</span><span class="v" id="hr">—</span></div>
+    <div class="row"><span class="k">HR conf</span><span class="v" id="hrConf">—</span></div>
+    <div class="row"><span class="k">Respiratory rate</span><span class="v" id="rr">—</span></div>
+    <div class="row"><span class="k">RR conf</span><span class="v" id="rrConf">—</span></div>
+    <div class="row"><span class="k">Estimation time</span><span class="v" id="estMs">—</span></div>
+    <div class="row"><span class="k">Face detected</span><span class="v" id="face">—</span></div>
+    <div class="row"><span class="k">Events received</span><span class="v" id="evtCount">0</span></div>
+  </div>
+
+  <div class="actions">
+    <button id="stopBtn">Stop</button>
+    <button id="copyLogBtn">Copy log</button>
+    <button id="shareLogBtn">Share log</button>
+    <button id="dlLogBtn">Save log</button>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <script type="module">
+    /* Purpose: bare-minimum test to answer three questions before we
+       invest in a full VitalLens test route:
+
+         1. Does the VitalLens 7 MB CDN bundle load on iPhone Safari?
+            (Cold start, WASM support, memory pressure)
+         2. Does the local `pos` / `chrom` / `g` rPPG method fire
+            `vitals` events with heart rate and respiratory rate?
+         3. What's the observed estimation latency and event cadence?
+
+       If all three answer favorably we build the full test route
+       (dev/vitallens-test.html) mirroring human-test.html's shape.
+       If any fails we'll know what to change (switch to vitallens-core,
+       vary method, adjust window size, etc).
+
+       Not intended as a permanent test surface. */
+
+    const logEl = document.getElementById('log');
+    const LOG = [];
+    const iso = () => new Date().toISOString();
+
+    function log(level, msg, data) {
+      const entry = { t: iso(), level, msg, data: data || null };
+      LOG.push(entry);
+      const line = `[${entry.t.slice(11, 23)}] ${level.toUpperCase().padEnd(5)} ${msg}` +
+        (data ? '  ' + JSON.stringify(data) : '');
+      const div = document.createElement('div');
+      div.className = level;
+      div.textContent = line;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+      if (level === 'err') console.error(line, data);
+      else if (level === 'warn') console.warn(line, data);
+      else console.log(line, data);
+    }
+
+    // Environment probe
+    log('info', 'environment', {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      cpuCores: navigator.hardwareConcurrency,
+      pixelRatio: window.devicePixelRatio,
+      screen: `${screen.width}x${screen.height}`,
+      viewport: `${window.innerWidth}x${window.innerHeight}`,
+      wasm: typeof WebAssembly !== 'undefined',
+      mediaDevices: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+    });
+
+    let vl = null;
+    let running = false;
+    let evtCount = 0;
+    const evtCountEl = document.getElementById('evtCount');
+    const readout = document.getElementById('readout');
+
+    async function loadLibrary() {
+      log('event', 'importing vitallens from jsdelivr');
+      const t0 = performance.now();
+      try {
+        /* Loading with a version pin so the smoke test can't break
+           when a new VitalLens version is published. */
+        const mod = await import('https://cdn.jsdelivr.net/npm/vitallens@0.4.5/dist/vitallens.browser.js');
+        const dt = performance.now() - t0;
+        log('event', 'vitallens module imported', {
+          ms: Math.round(dt),
+          exports: Object.keys(mod).slice(0, 20),
+        });
+        return mod.VitalLens || mod.default;
+      } catch (err) {
+        log('err', 'import failed', { message: err.message, ms: Math.round(performance.now() - t0) });
+        throw err;
+      }
+    }
+
+    async function start() {
+      const method = document.querySelector('input[name=method]:checked').value;
+      document.getElementById('method').textContent = method;
+      log('event', 'start requested', { method });
+
+      let VitalLens;
+      try {
+        VitalLens = await loadLibrary();
+        if (!VitalLens) {
+          log('err', 'VitalLens class not found in module');
+          return;
+        }
+      } catch (err) {
+        return;
+      }
+
+      log('event', 'constructing VitalLens instance', { method });
+      try {
+        vl = new VitalLens({ method });
+        log('info', 'VitalLens instance created');
+      } catch (err) {
+        log('err', 'constructor threw', { message: err.message });
+        return;
+      }
+
+      // Request camera
+      log('info', 'getUserMedia request begin');
+      let stream;
+      try {
+        stream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('camera timeout 15s')), 15000)),
+        ]);
+      } catch (err) {
+        log('err', 'getUserMedia failed', { message: err.message });
+        return;
+      }
+      const video = document.getElementById('video');
+      video.srcObject = stream;
+      video.classList.remove('hidden');
+      await video.play();
+      const settings = stream.getVideoTracks()[0].getSettings();
+      log('event', 'camera stream started', {
+        w: video.videoWidth, h: video.videoHeight,
+        actual: `${settings.width}x${settings.height}`,
+        frameRate: settings.frameRate,
+      });
+
+      // Wire event listener
+      vl.addEventListener('vitals', (result) => {
+        evtCount++;
+        evtCountEl.textContent = String(evtCount);
+        readout.classList.add('on');
+
+        /* Structure of the vitals event isn't fully documented in the
+           README — we log the whole shape on the first event so we know
+           what fields are actually available for our fusion pipeline. */
+        if (evtCount === 1) {
+          log('info', 'first vitals event — raw shape', result);
+        }
+
+        try {
+          const hr = result?.vitals?.heart_rate;
+          const rr = result?.vitals?.respiratory_rate;
+          const face = result?.face;
+
+          document.getElementById('hr').textContent = hr?.value != null ? hr.value.toFixed(1) + ' bpm' : '—';
+          document.getElementById('hrConf').textContent = hr?.confidence != null ? (hr.confidence * 100).toFixed(0) + '%' : '—';
+          document.getElementById('rr').textContent = rr?.value != null ? rr.value.toFixed(1) + ' /min' : '—';
+          document.getElementById('rrConf').textContent = rr?.confidence != null ? (rr.confidence * 100).toFixed(0) + '%' : '—';
+          document.getElementById('face').textContent = face ? 'yes' : 'unknown';
+          document.getElementById('estMs').textContent = result?.time?.total != null ? result.time.total.toFixed(0) + ' ms' : '—';
+
+          // Log a compact PERF entry every 5th event
+          if (evtCount % 5 === 0) {
+            log('perf', 'vitals sample', {
+              n: evtCount,
+              hr: hr?.value != null ? Number(hr.value.toFixed(1)) : null,
+              hrConf: hr?.confidence != null ? Number(hr.confidence.toFixed(2)) : null,
+              rr: rr?.value != null ? Number(rr.value.toFixed(1)) : null,
+              rrConf: rr?.confidence != null ? Number(rr.confidence.toFixed(2)) : null,
+              estMs: result?.time?.total != null ? Math.round(result.time.total) : null,
+            });
+          }
+        } catch (err) {
+          log('warn', 'result parse error', { message: err.message });
+        }
+      });
+
+      vl.addEventListener('error', (err) => {
+        log('err', 'vitallens error event', { message: err.message || String(err) });
+      });
+
+      // Attach stream and start
+      log('event', 'setVideoStream');
+      try {
+        await vl.setVideoStream(stream, video);
+      } catch (err) {
+        log('err', 'setVideoStream threw', { message: err.message });
+        return;
+      }
+
+      log('event', 'startVideoStream');
+      try {
+        vl.startVideoStream();
+        running = true;
+      } catch (err) {
+        log('err', 'startVideoStream threw', { message: err.message });
+      }
+    }
+
+    document.getElementById('startBtn').addEventListener('click', start);
+    document.getElementById('stopBtn').addEventListener('click', () => {
+      if (vl && running) {
+        try { vl.stop(); log('event', 'stopped'); } catch (err) { log('err', 'stop threw', { message: err.message }); }
+        running = false;
+      }
+    });
+
+    document.getElementById('copyLogBtn').addEventListener('click', async () => {
+      const text = LOG.map(e => `[${e.t}] ${e.level.toUpperCase()} ${e.msg}` + (e.data ? '  ' + JSON.stringify(e.data) : '')).join('\n');
+      try {
+        await navigator.clipboard.writeText(text);
+        log('info', 'log copied to clipboard', { chars: text.length });
+      } catch (err) {
+        // Fallback: hidden textarea
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed'; ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); log('info', 'log copied (execCommand)'); }
+        catch (e) { log('err', 'copy failed', { message: e.message }); }
+        ta.remove();
+      }
+    });
+
+    document.getElementById('shareLogBtn').addEventListener('click', async () => {
+      const summary = `VitalLens smoke test — ${LOG.length} entries — ${evtCount} vitals events`;
+      const text = summary + '\n\n' + LOG.map(e => `[${e.t}] ${e.level.toUpperCase()} ${e.msg}` + (e.data ? '  ' + JSON.stringify(e.data) : '')).join('\n');
+      const fname = `vitallens-smoke-${iso().replace(/[:.]/g, '-')}.txt`;
+      if (navigator.share) {
+        try {
+          const file = new File([text], fname, { type: 'text/plain' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'VitalLens smoke log' });
+            log('info', 'share sheet opened with file');
+            return;
+          }
+        } catch (err) { log('warn', 'share (files) failed, fallback', { message: err.message }); }
+        try { await navigator.share({ title: 'VitalLens smoke log', text: text.slice(0, 100000) }); log('info', 'share sheet opened with text'); return; }
+        catch (err) { log('warn', 'share text failed', { message: err.message }); }
+      }
+      // Fallback to download
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      log('info', 'log downloaded (share unavailable)');
+    });
+
+    document.getElementById('dlLogBtn').addEventListener('click', () => {
+      const text = LOG.map(e => `[${e.t}] ${e.level.toUpperCase()} ${e.msg}` + (e.data ? '  ' + JSON.stringify(e.data) : '')).join('\n');
+      const fname = `vitallens-smoke-${iso().replace(/[:.]/g, '-')}.txt`;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      log('info', 'log downloaded', { chars: text.length });
+    });
+
+    log('info', 'page ready · pick method and Start camera');
+  </script>
+
+</body>
+</html>
