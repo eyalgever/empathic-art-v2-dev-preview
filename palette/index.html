@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>Palette · Engine 4 · fluid field driven by fused V/A</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; background: #000; color: #efece5; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; overflow: hidden; }
+
+    /* Full-bleed shader canvas is THE artwork */
+    #art { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; }
+
+    /* Video preview is tiny and offscreen-ish (needs to be in DOM for engines) */
+    .stage { position: fixed; top: 12px; right: 12px; width: 90px; height: 120px; border-radius: 8px; overflow: hidden; background: #000; z-index: 5; box-shadow: 0 2px 12px rgba(0,0,0,0.4); opacity: 0.55; transition: opacity 0.2s; }
+    .stage:hover { opacity: 1; }
+    #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    #video::-webkit-media-controls,
+    #video::-webkit-media-controls-panel,
+    #video::-webkit-media-controls-play-button,
+    #video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none; }
+
+    /* ── GATE (pre-start) ──────────────────────────────────────────── */
+    .gate { position: fixed; inset: 0; background: #0a0a0a; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .gate.hidden { display: none; }
+    .gate-inner { max-width: 480px; }
+    .gate-mark { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #8f8c85; margin-bottom: 16px; }
+    .gate h1 { font-size: 30px; line-height: 1.15; margin: 0 0 12px; font-weight: 400; letter-spacing: -0.02em; color: #efece5; }
+    .gate p { color: #8f8c85; font-size: 14px; line-height: 1.6; margin: 0 0 28px; }
+    .start { background: #efece5; color: #0a0a0a; border: 0; border-radius: 999px; padding: 14px 28px; font-size: 15px; font-weight: 500; cursor: pointer; -webkit-appearance: none; }
+    .foot { margin-top: 20px; font-size: 11px; color: #6b6a67; letter-spacing: 0.06em; }
+
+    /* ── STATE OVERLAY (top-left) ──────────────────────────────────── */
+    .overlay { position: fixed; top: 20px; left: 20px; z-index: 10; color: rgba(239,236,229,0.85); font-family: 'SF Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.06em; line-height: 1.7; text-shadow: 0 1px 3px rgba(0,0,0,0.6); pointer-events: none; }
+    .overlay .k { color: rgba(239,236,229,0.5); text-transform: uppercase; letter-spacing: 0.1em; }
+    .overlay .v { color: rgba(239,236,229,0.95); }
+    .overlay.hidden { display: none; }
+
+    /* ── CIRCUMPLEX MINI (bottom-left, toggleable) ─────────────────── */
+    .miniplot { position: fixed; bottom: 60px; left: 20px; width: 120px; height: 120px; z-index: 10; opacity: 0.7; pointer-events: none; }
+    .miniplot canvas { width: 100%; height: 100%; display: block; }
+    .miniplot.hidden { display: none; }
+
+    /* ── CONTROLS BAR ──────────────────────────────────────────────── */
+    .ctrls { position: fixed; bottom: 0; left: 0; right: 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0)); background: rgba(10,10,10,0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid rgba(239,236,229,0.1); display: flex; gap: 8px; align-items: center; z-index: 20; }
+    .ctrls button { background: transparent; border: 1px solid rgba(239,236,229,0.2); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: #efece5; cursor: pointer; -webkit-appearance: none; }
+    .ctrls button.active { background: rgba(239,236,229,0.15); border-color: rgba(239,236,229,0.5); }
+    .ctrls .spacer { flex: 1; }
+    .ctrls .badge { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #8f8c85; padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(239,236,229,0.1); }
+
+    /* ── LOG DRAWER ────────────────────────────────────────────────── */
+    .logdrawer { position: fixed; left: 0; right: 0; bottom: 0; height: 60vh; background: #0a0a0a; border-top: 1px solid rgba(239,236,229,0.1); transform: translateY(100%); transition: transform 0.25s ease; z-index: 30; display: flex; flex-direction: column; }
+    .logdrawer.open { transform: translateY(0); }
+    .logdrawer .head { padding: 10px 14px; border-bottom: 1px solid rgba(239,236,229,0.1); display: flex; align-items: center; gap: 8px; }
+    .logdrawer .head h4 { margin: 0; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #8f8c85; font-weight: 500; }
+    .logdrawer .head .spacer { flex: 1; }
+    .logdrawer .head button { background: transparent; border: 1px solid rgba(239,236,229,0.2); border-radius: 999px; padding: 4px 10px; font-size: 11px; color: #efece5; }
+    .logdrawer .body { flex: 1; overflow-y: auto; padding: 8px 14px 14px; font-family: 'SF Mono', ui-monospace, monospace; font-size: 10px; line-height: 1.55; color: #efece5; }
+    .logdrawer .body .l { padding: 2px 0; border-bottom: 1px solid rgba(239,236,229,0.05); }
+    .logdrawer .body .k-info { color: #8f8c85; }
+    .logdrawer .body .k-event { color: #7fa87a; }
+    .logdrawer .body .k-perf { color: #7a6bc4; }
+    .logdrawer .body .k-warn { color: #b8802a; }
+    .logdrawer .body .k-err { color: #d97575; }
+  </style>
+</head>
+<body>
+
+  <!-- The artwork -->
+  <canvas id="art"></canvas>
+
+  <!-- Start gate -->
+  <div class="gate" id="gate">
+    <div class="gate-inner">
+      <div class="gate-mark">Empathic Art · Engine test 04 · Palette</div>
+      <h1>A field that responds to you.</h1>
+      <p>Human reads your face. VitalLens reads your pulse from the same camera. Together they place you in a Circumplex, and the Circumplex places you in a color field. Warm and open when you smile; deep and slow when you settle. Nothing is uploaded — everything stays on this device.</p>
+      <button class="start" id="startBtn">Begin</button>
+      <div class="foot">Dev route · Engine 04 · placeholder visual · shader-based flow field</div>
+    </div>
+  </div>
+
+  <!-- Camera preview (dim, top-right) -->
+  <div class="stage">
+    <video id="video" autoplay muted playsinline></video>
+  </div>
+
+  <!-- Text overlay (state) -->
+  <div class="overlay" id="overlay">
+    <div><span class="k">state</span> <span class="v" id="ovMode">idle</span></div>
+    <div><span class="k">valence</span> <span class="v" id="ovV">—</span></div>
+    <div><span class="k">arousal</span> <span class="v" id="ovA">—</span></div>
+    <div><span class="k">pulse</span> <span class="v" id="ovHr">—</span></div>
+    <div><span class="k">fps</span> <span class="v" id="ovFps">—</span></div>
+  </div>
+
+  <!-- Mini circumplex plot -->
+  <div class="miniplot" id="miniplot">
+    <canvas id="circumplex" width="240" height="240"></canvas>
+  </div>
+
+  <!-- Controls -->
+  <div class="ctrls">
+    <button id="btnOverlay" class="active">Text</button>
+    <button id="btnPlot" class="active">Plot</button>
+    <button id="btnClean">Clean</button>
+    <div class="spacer"></div>
+    <button id="logToggle">▲ Log</button>
+    <button id="shareLogBtn">Share log</button>
+  </div>
+
+  <!-- Log drawer -->
+  <div class="logdrawer" id="logdrawer">
+    <div class="head">
+      <h4>Palette log · <span id="logCount">0</span></h4>
+      <div class="spacer"></div>
+      <button id="copyLog">Copy</button>
+      <button id="closeLog">Close</button>
+    </div>
+    <div class="body" id="logbody"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SHADERS
+       ─────────────
+       Vertex: full-screen quad (two triangles) with clipspace passthrough.
+       Fragment: domain-warped fBm flow field. Colors are driven by V/A
+       via a palette function tuned to Eyal's FORCES palette (warm coral
+       through deep teal). Speed and turbulence are driven by A.
+       ═══════════════════════════════════════════════════════════════ -->
+  <script id="vert" type="x-shader/x-vertex">
+    attribute vec2 aPos;
+    varying vec2 vUv;
+    void main() {
+      vUv = aPos * 0.5 + 0.5;
+      gl_Position = vec4(aPos, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="frag" type="x-shader/x-fragment">
+    precision highp float;
+    varying vec2 vUv;
+    uniform float uTime;         // seconds since start
+    uniform float uV;            // valence [-1..+1]
+    uniform float uA;            // arousal [-1..+1]
+    uniform float uPulse;        // 0..1 heart-rate bright pulse
+    uniform float uIntensity;    // 0..1 how "engaged" (|V| + |A|) / 2
+    uniform vec2  uRes;
+
+    /* ───── Simplex-ish noise (Ashima 2D) ───── */
+    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+    float snoise(vec2 v) {
+      const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                         -0.577350269189626, 0.024390243902439);
+      vec2 i  = floor(v + dot(v, C.yy));
+      vec2 x0 = v -   i + dot(i, C.xx);
+      vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+      vec4 x12 = x0.xyxy + C.xxzz;
+      x12.xy -= i1;
+      i = mod289(i);
+      vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0))
+                           + i.x + vec3(0.0, i1.x, 1.0));
+      vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
+                              dot(x12.zw,x12.zw)), 0.0);
+      m = m*m; m = m*m;
+      vec3 x = 2.0 * fract(p * C.www) - 1.0;
+      vec3 h = abs(x) - 0.5;
+      vec3 ox = floor(x + 0.5);
+      vec3 a0 = x - ox;
+      m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+      vec3 g;
+      g.x  = a0.x  * x0.x  + h.x  * x0.y;
+      g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+      return 130.0 * dot(m, g);
+    }
+
+    /* fBm: 4 octaves, warping the domain of each */
+    float fbm(vec2 p) {
+      float s = 0.0;
+      float a = 0.5;
+      float f = 1.0;
+      for (int i = 0; i < 4; i++) {
+        s += a * snoise(p * f);
+        f *= 2.03;
+        a *= 0.55;
+      }
+      return s;
+    }
+
+    /* Domain-warped fBm — this is what reads as fluid */
+    float warpedFbm(vec2 p, float turb) {
+      vec2 q = vec2(fbm(p + vec2(0.0, 0.0)),
+                    fbm(p + vec2(5.2, 1.3)));
+      vec2 r = vec2(fbm(p + 4.0 * q + vec2(1.7, 9.2) + uTime * 0.11),
+                    fbm(p + 4.0 * q + vec2(8.3, 2.8) + uTime * 0.09));
+      return fbm(p + turb * r);
+    }
+
+    /* ───── Palette (Eyal's FORCES anchors) ─────
+       Valence hue axis:
+         V = +1: coral/gold  (warm, open)
+         V =  0: warm sand    (neutral, breathing)
+         V = -1: deep teal    (cool, held)
+       Arousal brightness axis:
+         A = +1: brighter, higher contrast
+         A = -1: dimmer, dust
+       Intensity (|V|+|A|)/2 pushes saturation. */
+    vec3 palette(float t, float v, float a, float intensity) {
+      // Warm anchor: FORCES coral (rgb ~ 217, 119, 87)
+      vec3 warm     = vec3(0.851, 0.467, 0.341);
+      // Sand anchor: neutral warm ochre
+      vec3 sand     = vec3(0.65, 0.55, 0.42);
+      // Cool anchor: deep teal
+      vec3 cool     = vec3(0.20, 0.42, 0.48);
+      // Ink for lows
+      vec3 ink      = vec3(0.06, 0.08, 0.10);
+      // Ember highlight (for high A)
+      vec3 ember    = vec3(0.98, 0.78, 0.42);
+
+      // v ∈ [-1..1]; sw ∈ [0..1] warm side, cw ∈ [0..1] cool side
+      float sw = clamp((v + 1.0) * 0.5, 0.0, 1.0);   // 0=cool, 1=warm
+      vec3 hueMid = mix(cool, warm, sw);
+      // Blend hueMid with sand near neutral (v≈0), based on |v|
+      vec3 hue = mix(sand, hueMid, clamp(abs(v) * 1.3, 0.0, 1.0));
+
+      // Value driven by the fBm scalar t (in [-1..1] roughly) — makes bands
+      float band = smoothstep(-0.5, 0.7, t);
+      vec3 c = mix(ink, hue, band);
+
+      // High-arousal adds ember highlight in bright regions
+      float highArousal = smoothstep(0.2, 0.9, a);
+      c = mix(c, mix(c, ember, 0.55), highArousal * smoothstep(0.5, 0.9, band));
+
+      // Low arousal darkens overall (dust settles)
+      float lowArousal = smoothstep(0.2, 0.9, -a);
+      c = mix(c, c * 0.55, lowArousal * 0.5);
+
+      // Intensity boosts saturation (subtle desat at neutral)
+      float lum = dot(c, vec3(0.299, 0.587, 0.114));
+      c = mix(vec3(lum), c, 0.55 + 0.45 * intensity);
+
+      return c;
+    }
+
+    void main() {
+      vec2 uv = vUv;
+      // Aspect-correct sampling
+      vec2 p = uv;
+      p.x *= uRes.x / uRes.y;
+
+      // Arousal drives speed (a=+1 → 3x faster; a=-1 → slow)
+      float speed = 0.06 + 0.35 * clamp(uA * 0.5 + 0.5, 0.0, 1.0);
+      // Arousal drives turbulence (higher = more chaotic domain warping)
+      float turb  = 0.9 + 1.6 * clamp(uA * 0.5 + 0.5, 0.0, 1.0);
+
+      vec2 flow = p * 1.8 + vec2(0.0, uTime * speed);
+      float n = warpedFbm(flow, turb);
+
+      vec3 col = palette(n, uV, uA, uIntensity);
+
+      // Heart-rate pulse: gentle global brightness modulation
+      col += 0.05 * uPulse * vec3(1.0, 0.9, 0.75);
+
+      // Vignette for depth
+      float vig = smoothstep(1.3, 0.35, length(uv - 0.5));
+      col *= 0.65 + 0.35 * vig;
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  </script>
+
+  <script type="module">
+    /* ────────────────────────────────────────────────────────────────
+       ENGINE 4 — PALETTE
+
+       This is the first visual that consumes fused V/A. It re-uses the
+       exact dual-engine core from /fusion/ (Human + VitalLens on one
+       shared camera stream, POS smoothing, HR baseline lock at 60s,
+       same fusion formula) — and adds a full-screen fragment shader
+       that reads the fused state as uniforms.
+
+       Fusion (unchanged from Engine 3):
+         valence = humanV
+         arousal = 0.6 * humanA + 0.4 * clip((hr - baseline)/15, -1, +1)
+
+       Shader gets:
+         uV        — fused valence [-1..+1]
+         uA        — fused arousal [-1..+1]
+         uPulse    — 0..1 raised cosine locked to displayed HR bpm
+         uIntensity — (|V| + |A|)/2, drives saturation
+       ──────────────────────────────────────────────────────────────── */
+
+    import Human from 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/dist/human.esm.js';
+
+    // ── LOG PLUMBING ─────────────────────────────────────────────────
+    const LOG = [];
+    const logBody = document.getElementById('logbody');
+    const logCountEl = document.getElementById('logCount');
+    function iso() { return new Date().toISOString(); }
+    function log(kind, msg, data) {
+      const e = { t: iso(), kind, msg, data };
+      LOG.push(e);
+      const div = document.createElement('div');
+      div.className = 'l';
+      const timePart = e.t.slice(11, 23);
+      const kindPart = `<span class="k-${kind}">${kind.toUpperCase()}</span>`;
+      const dataPart = data ? ' ' + JSON.stringify(data) : '';
+      div.innerHTML = `${timePart} ${kindPart} ${msg}${dataPart}`;
+      logBody.appendChild(div);
+      logBody.scrollTop = logBody.scrollHeight;
+      logCountEl.textContent = LOG.length;
+    }
+    log('info', 'environment', {
+      userAgent: navigator.userAgent,
+      host: location.host,
+      hasWebGL2: !!document.createElement('canvas').getContext('webgl2'),
+    });
+
+    // ── HUMAN CONFIG (from Engine 1 final tuning) ────────────────────
+    const HUMAN_CONFIG = {
+      backend: 'webgl',
+      modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/models/',
+      wasmPlatformFetch: false,
+      wasmPath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/dist/',
+      debug: false,
+      warmup: 'none',
+      cacheSensitivity: 0.7,
+      face: {
+        enabled: true,
+        detector: { rotation: false, maxDetected: 1, minConfidence: 0.4, return: false },
+        mesh: { enabled: false },
+        iris: { enabled: false },
+        description: { enabled: false },
+        emotion: { enabled: true, minConfidence: 0.1 },
+        antispoof: { enabled: false },
+        liveness: { enabled: false },
+      },
+      body: { enabled: false }, hand: { enabled: false }, object: { enabled: false },
+      gesture: { enabled: false }, segmentation: { enabled: false },
+    };
+    const EMO_VA = {
+      happy:    { v:  0.85, a:  0.55 }, sad:      { v: -0.75, a: -0.40 },
+      angry:    { v: -0.65, a:  0.75 }, fear:     { v: -0.60, a:  0.80 },
+      disgust:  { v: -0.70, a:  0.35 }, surprise: { v:  0.35, a:  0.85 },
+      neutral:  { v:  0.00, a:  0.00 },
+    };
+    const EMOTION_KEYS = ['happy','sad','angry','fear','disgust','surprise','neutral'];
+    const smoothedEmotion = Object.fromEntries(EMOTION_KEYS.map(k => [k, 0]));
+    const EMA_ALPHA = 0.08;
+    const INFERENCE_DUTY = 0.85;
+
+    // ── VITALLENS CONFIG (from Engine 2 A/B winner) ──────────────────
+    const VL_METHOD = 'pos';
+    const VL_MEDIAN_WINDOW_MS = 10000;
+    const VL_OUTLIER_ABOVE_BPM = 15;
+    const VL_OUTLIER_BELOW_BPM = 8;
+    const VL_LOCK_AGREEMENT_BPM = 3;
+    const VL_LOCK_CONSECUTIVE_N = 3;
+    const VL_HR_MIN = 35;
+    const VL_HR_MAX = 200;
+    const VL_MIN_CONF = 0.6;
+    const VL_BASELINE_LOCK_MS = 60 * 1000;
+
+    // ── STATE ────────────────────────────────────────────────────────
+    let human = null, vl = null, running = false;
+    let sessionStartMs = 0;
+    let humanFrameCount = 0, humanInferSamples = [], humanRecentFps = 0, humanLastFpsAt = 0;
+    let humanLastVA = { v: null, a: null };
+    let nextInferenceEarliestAt = 0;
+    let vlBaseline = null, vlHrHist = [], vlRecentSmoothed = [];
+    let vlSignalLocked = false, vlLastGoodDisplayedHr = null, vlDisplayedHr = null;
+    let vlEventCount = 0, vlSessionStartMs = 0;
+    let lastFused = { v: 0, a: 0, mode: 'idle' };
+    let lastFusionMode = 'idle';
+
+    // ── VITALLENS ────────────────────────────────────────────────────
+    async function loadVitalLens() {
+      log('event', 'importing vitallens');
+      const t0 = performance.now();
+      const mod = await import('https://cdn.jsdelivr.net/npm/vitallens@0.4.5/dist/vitallens.browser.js');
+      log('event', 'vitallens imported', { ms: Math.round(performance.now() - t0) });
+      return mod.VitalLens || mod.default;
+    }
+    function vlRobustSmooth(nowMs) {
+      const w = vlHrHist.filter(x => x.t > nowMs - VL_MEDIAN_WINDOW_MS).map(x => x.hr);
+      if (w.length < 5) return null;
+      let f = w;
+      if (vlBaseline != null) {
+        f = w.filter(v => v >= vlBaseline - VL_OUTLIER_BELOW_BPM && v <= vlBaseline + VL_OUTLIER_ABOVE_BPM);
+        if (f.length < 3) return null;
+      }
+      const sorted = [...f].sort((a, b) => a - b);
+      const lo = Math.floor(sorted.length * 0.25);
+      const hi = Math.ceil(sorted.length * 0.75);
+      const mid = sorted.slice(lo, hi);
+      if (!mid.length) return null;
+      return mid.reduce((a, b) => a + b, 0) / mid.length;
+    }
+    function onVitals(result) {
+      vlEventCount++;
+      const hr = result?.vitals?.heart_rate;
+      const now = performance.now();
+      const hrRaw = hr?.value, hrConf = hr?.confidence;
+      if (typeof hrRaw === 'number' && typeof hrConf === 'number'
+          && hrConf >= VL_MIN_CONF && hrRaw >= VL_HR_MIN && hrRaw <= VL_HR_MAX) {
+        vlHrHist.push({ t: now, hr: hrRaw });
+        const cutoff = now - 60000;
+        while (vlHrHist.length && vlHrHist[0].t < cutoff) vlHrHist.shift();
+      }
+      const smoothed = vlRobustSmooth(now);
+      let displayed = null;
+      if (smoothed != null) {
+        vlRecentSmoothed.push(smoothed);
+        if (vlRecentSmoothed.length > VL_LOCK_CONSECUTIVE_N) vlRecentSmoothed.shift();
+        if (vlRecentSmoothed.length === VL_LOCK_CONSECUTIVE_N) {
+          const spread = Math.max(...vlRecentSmoothed) - Math.min(...vlRecentSmoothed);
+          if (spread <= VL_LOCK_AGREEMENT_BPM) {
+            vlSignalLocked = true;
+            vlLastGoodDisplayedHr = smoothed;
+            displayed = smoothed;
+          } else if (vlLastGoodDisplayedHr != null) {
+            vlSignalLocked = false;
+            displayed = vlLastGoodDisplayedHr;
+          } else displayed = smoothed;
+        } else if (vlLastGoodDisplayedHr != null) displayed = vlLastGoodDisplayedHr;
+      } else if (vlLastGoodDisplayedHr != null) displayed = vlLastGoodDisplayedHr;
+
+      vlDisplayedHr = displayed;
+      const sessionMs = now - vlSessionStartMs;
+      if (vlBaseline == null && sessionMs >= VL_BASELINE_LOCK_MS && vlHrHist.length >= 30) {
+        const sorted = [...vlHrHist.map(x => x.hr)].sort((a, b) => a - b);
+        const lo = Math.floor(sorted.length * 0.25);
+        const hi = Math.ceil(sorted.length * 0.75);
+        vlBaseline = sorted.slice(lo, hi).reduce((a, b) => a + b, 0) / (hi - lo);
+        log('event', 'HR baseline locked', { bpm: Number(vlBaseline.toFixed(1)) });
+      }
+      resolveFusion();
+
+      if (vlEventCount % 20 === 0) {
+        log('perf', 'vitals sample', {
+          n: vlEventCount,
+          hrDisplayed: displayed != null ? Number(displayed.toFixed(1)) : null,
+          baseline: vlBaseline != null ? Number(vlBaseline.toFixed(1)) : null,
+          fusedV: lastFused.v != null ? Number(lastFused.v.toFixed(2)) : null,
+          fusedA: lastFused.a != null ? Number(lastFused.a.toFixed(2)) : null,
+        });
+      }
+    }
+
+    // ── HUMAN LOOP ───────────────────────────────────────────────────
+    function updateHumanSmoothing(rawEmotions) {
+      if (!rawEmotions?.length) return;
+      const frame = Object.fromEntries(EMOTION_KEYS.map(k => [k, 0]));
+      for (const e of rawEmotions) if (frame[e.emotion] !== undefined) frame[e.emotion] = e.score;
+      for (const k of EMOTION_KEYS) smoothedEmotion[k] = smoothedEmotion[k] * (1 - EMA_ALPHA) + frame[k] * EMA_ALPHA;
+    }
+    function computeVA() {
+      let v = 0, a = 0, w = 0;
+      for (const k of EMOTION_KEYS) {
+        const m = EMO_VA[k]; const s = smoothedEmotion[k];
+        v += m.v * s; a += m.a * s; w += s;
+      }
+      if (w > 0) { v /= w; a /= w; }
+      return { v, a };
+    }
+    async function humanLoop() {
+      if (!running) return;
+      const now0 = performance.now();
+      if (now0 < nextInferenceEarliestAt) { requestAnimationFrame(humanLoop); return; }
+      const t0 = performance.now();
+      let result;
+      try { result = await human.detect(document.getElementById('video')); }
+      catch (err) { log('err', 'human.detect threw', { message: err.message }); requestAnimationFrame(humanLoop); return; }
+      const infMs = performance.now() - t0;
+      humanInferSamples.push(infMs);
+      if (humanInferSamples.length > 60) humanInferSamples.shift();
+      nextInferenceEarliestAt = performance.now() + infMs * (1 - INFERENCE_DUTY) / INFERENCE_DUTY;
+
+      const face = result.face && result.face[0];
+      if (face && face.emotion && face.emotion.length) {
+        updateHumanSmoothing(face.emotion);
+        humanLastVA = computeVA();
+      }
+      humanFrameCount++;
+      const now = performance.now();
+      if (now - humanLastFpsAt >= 500) {
+        humanRecentFps = (humanFrameCount * 1000) / (now - humanLastFpsAt);
+        humanFrameCount = 0; humanLastFpsAt = now;
+      }
+      resolveFusion();
+      requestAnimationFrame(humanLoop);
+    }
+
+    // ── FUSION ───────────────────────────────────────────────────────
+    function resolveFusion() {
+      const hV = humanLastVA.v, hA = humanLastVA.a;
+      const proxy = (vlBaseline != null && vlDisplayedHr != null)
+        ? Math.max(-1, Math.min(1, (vlDisplayedHr - vlBaseline) / 15))
+        : null;
+      let mode, fusedV, fusedA;
+      if (hV != null && hA != null && proxy != null) {
+        fusedV = hV; fusedA = 0.6 * hA + 0.4 * proxy; mode = 'human+hr';
+      } else if (hV != null && hA != null) {
+        fusedV = hV; fusedA = hA; mode = 'human only';
+      } else if (proxy != null) {
+        fusedV = 0; fusedA = proxy; mode = 'hr only';
+      } else {
+        fusedV = 0; fusedA = 0; mode = 'idle';
+      }
+      lastFused = { v: fusedV, a: fusedA, mode };
+      if (mode !== lastFusionMode) {
+        log('event', 'fusion mode transition', {
+          from: lastFusionMode, to: mode,
+          tSec: sessionStartMs ? Number(((performance.now() - sessionStartMs) / 1000).toFixed(1)) : null,
+        });
+        lastFusionMode = mode;
+      }
+    }
+
+    // ── WEBGL SHADER ─────────────────────────────────────────────────
+    const canvas = document.getElementById('art');
+    let gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) { log('err', 'no WebGL'); alert('WebGL not available'); }
+
+    function compile(type, src) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        log('err', 'shader compile', { info: gl.getShaderInfoLog(s) });
+        throw new Error('shader compile: ' + gl.getShaderInfoLog(s));
+      }
+      return s;
+    }
+    const vs = compile(gl.VERTEX_SHADER, document.getElementById('vert').textContent);
+    const fs = compile(gl.FRAGMENT_SHADER, document.getElementById('frag').textContent);
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      log('err', 'program link', { info: gl.getProgramInfoLog(prog) });
+      throw new Error('program link: ' + gl.getProgramInfoLog(prog));
+    }
+    gl.useProgram(prog);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1,  1,-1, 1,1, -1,1]), gl.STATIC_DRAW);
+    const aPos = gl.getAttribLocation(prog, 'aPos');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+    const uTime      = gl.getUniformLocation(prog, 'uTime');
+    const uV         = gl.getUniformLocation(prog, 'uV');
+    const uA         = gl.getUniformLocation(prog, 'uA');
+    const uPulse     = gl.getUniformLocation(prog, 'uPulse');
+    const uIntensity = gl.getUniformLocation(prog, 'uIntensity');
+    const uRes       = gl.getUniformLocation(prog, 'uRes');
+
+    function resizeCanvas() {
+      // Cap DPR at 1.5 for iPhone thermal — full DPR on top of two ML models cooks.
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      const w = Math.floor(window.innerWidth  * dpr);
+      const h = Math.floor(window.innerHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w; canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // EMA-smoothed shader inputs (so the visual moves gently even while
+    // the signal ticks discretely at 4-5 Hz)
+    let smV = 0, smA = 0, smP = 0;
+    const SHADER_EMA = 0.06;   // ~1s half-life
+
+    let renderFrames = 0;
+    let lastRenderFpsAt = 0;
+    let renderFps = 0;
+
+    function renderLoop(tMs) {
+      resizeCanvas();
+      const t = tMs / 1000;
+
+      // Smooth toward fused targets so shader never twitches
+      const tgtV = lastFused.v || 0;
+      const tgtA = lastFused.a || 0;
+      smV = smV * (1 - SHADER_EMA) + tgtV * SHADER_EMA;
+      smA = smA * (1 - SHADER_EMA) + tgtA * SHADER_EMA;
+
+      // Heart-rate pulse: 1-hz-ish sinusoid at displayed bpm.
+      let pulse = 0;
+      if (vlDisplayedHr != null) {
+        const beatsPerSec = vlDisplayedHr / 60;
+        // Raised-cosine bump each beat (asymmetric feels more heart-like)
+        const phase = (t * beatsPerSec) % 1.0;
+        pulse = Math.max(0, Math.cos((phase - 0.15) * Math.PI * 2)) * 0.55;
+      }
+      smP = smP * 0.85 + pulse * 0.15;
+
+      const intensity = Math.min(1, (Math.abs(smV) + Math.abs(smA)) / 2 + 0.15);
+
+      gl.uniform1f(uTime, t);
+      gl.uniform1f(uV, smV);
+      gl.uniform1f(uA, smA);
+      gl.uniform1f(uPulse, smP);
+      gl.uniform1f(uIntensity, intensity);
+      gl.uniform2f(uRes, canvas.width, canvas.height);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      renderFrames++;
+      if (tMs - lastRenderFpsAt >= 1000) {
+        renderFps = renderFrames * 1000 / (tMs - lastRenderFpsAt);
+        renderFrames = 0; lastRenderFpsAt = tMs;
+      }
+
+      updateOverlay();
+      drawMiniPlot();
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    // ── OVERLAY + MINI PLOT ──────────────────────────────────────────
+    const ovMode = document.getElementById('ovMode');
+    const ovV = document.getElementById('ovV');
+    const ovA = document.getElementById('ovA');
+    const ovHr = document.getElementById('ovHr');
+    const ovFps = document.getElementById('ovFps');
+    function updateOverlay() {
+      ovMode.textContent = lastFused.mode;
+      ovV.textContent = lastFused.v != null ? lastFused.v.toFixed(2) : '—';
+      ovA.textContent = lastFused.a != null ? lastFused.a.toFixed(2) : '—';
+      ovHr.textContent = vlDisplayedHr != null
+        ? vlDisplayedHr.toFixed(0) + ' bpm' + (vlBaseline != null ? ' (Δ ' + (vlDisplayedHr - vlBaseline >= 0 ? '+' : '') + (vlDisplayedHr - vlBaseline).toFixed(1) + ')' : '')
+        : '—';
+      ovFps.textContent = humanRecentFps.toFixed(1) + '/' + renderFps.toFixed(0);
+    }
+    const miniCanvas = document.getElementById('circumplex');
+    const miniCtx = miniCanvas.getContext('2d');
+    const miniTrail = [];
+    function drawMiniPlot() {
+      const S = 240, cx = S/2, cy = S/2, R = S * 0.42;
+      miniCtx.clearRect(0, 0, S, S);
+      miniCtx.strokeStyle = 'rgba(239,236,229,0.35)';
+      miniCtx.lineWidth = 2;
+      miniCtx.beginPath(); miniCtx.arc(cx, cy, R, 0, Math.PI*2); miniCtx.stroke();
+      miniCtx.strokeStyle = 'rgba(239,236,229,0.15)';
+      miniCtx.lineWidth = 1;
+      miniCtx.beginPath();
+      miniCtx.moveTo(cx-R,cy); miniCtx.lineTo(cx+R,cy);
+      miniCtx.moveTo(cx,cy-R); miniCtx.lineTo(cx,cy+R);
+      miniCtx.stroke();
+
+      if (lastFused.v != null) {
+        miniTrail.push({ t: performance.now(), v: lastFused.v, a: lastFused.a });
+        const cutoff = performance.now() - 6000;
+        while (miniTrail.length && miniTrail[0].t < cutoff) miniTrail.shift();
+      }
+      const now = performance.now();
+      for (const p of miniTrail) {
+        const age = (now - p.t) / 6000;
+        const alpha = Math.max(0, 1 - age) * 0.55;
+        const size = 2 + (1 - age) * 4;
+        miniCtx.fillStyle = `rgba(217,119,87,${alpha})`;
+        miniCtx.beginPath();
+        miniCtx.arc(cx + p.v * R, cy - p.a * R, size, 0, Math.PI*2);
+        miniCtx.fill();
+      }
+      if (lastFused.v != null) {
+        const x = cx + smV * R, y = cy - smA * R;
+        miniCtx.fillStyle = 'rgba(217,119,87,0.25)';
+        miniCtx.beginPath(); miniCtx.arc(x, y, 12, 0, Math.PI*2); miniCtx.fill();
+        miniCtx.fillStyle = '#d97757';
+        miniCtx.beginPath(); miniCtx.arc(x, y, 6, 0, Math.PI*2); miniCtx.fill();
+      }
+    }
+
+    // ── START ────────────────────────────────────────────────────────
+    async function start() {
+      let stream;
+      try {
+        stream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('camera timeout 15s')), 15000)),
+        ]);
+      } catch (err) {
+        log('err', 'getUserMedia failed', { message: err.message });
+        alert('Camera denied: ' + err.message);
+        return;
+      }
+      const video = document.getElementById('video');
+      video.srcObject = stream;
+      await video.play();
+      log('event', 'camera ready', { w: video.videoWidth, h: video.videoHeight });
+
+      log('event', 'initializing Human');
+      const tH = performance.now();
+      try {
+        human = new Human(HUMAN_CONFIG);
+        await human.load();
+        await human.warmup();
+      } catch (err) { log('err', 'Human init failed', { message: err.message }); return; }
+      log('event', 'Human ready', { ms: Math.round(performance.now() - tH) });
+
+      let VitalLens;
+      try { VitalLens = await loadVitalLens(); }
+      catch (err) { log('err', 'VitalLens import failed', { message: err.message }); return; }
+      try {
+        vl = new VitalLens({ method: VL_METHOD });
+        vl.addEventListener('vitals', onVitals);
+        vl.addEventListener('error', (err) => log('err', 'vitallens error event', { message: err.message || String(err) }));
+        await vl.setVideoStream(stream, video);
+        vl.startVideoStream();
+        log('event', 'VitalLens started', { method: VL_METHOD });
+      } catch (err) { log('err', 'VitalLens start failed', { message: err.message }); return; }
+
+      document.getElementById('gate').classList.add('hidden');
+      running = true;
+      sessionStartMs = performance.now();
+      vlSessionStartMs = sessionStartMs;
+      humanLastFpsAt = sessionStartMs;
+      lastRenderFpsAt = sessionStartMs;
+      requestAnimationFrame(humanLoop);
+      requestAnimationFrame(renderLoop);
+      setInterval(perfSnapshot, 5000);
+      log('event', 'palette running');
+    }
+    function perfSnapshot() {
+      if (!running) return;
+      log('perf', 'snapshot', {
+        humanFps: Number(humanRecentFps.toFixed(2)),
+        humanP50Ms: humanInferSamples.length
+          ? Number([...humanInferSamples].sort((a,b)=>a-b)[Math.floor(humanInferSamples.length/2)].toFixed(1)) : null,
+        renderFps: Number(renderFps.toFixed(1)),
+        vlEvents: vlEventCount,
+        vlBaseline: vlBaseline != null ? Number(vlBaseline.toFixed(1)) : null,
+        vlDisplayed: vlDisplayedHr != null ? Number(vlDisplayedHr.toFixed(1)) : null,
+        fusedV: Number(lastFused.v.toFixed(2)),
+        fusedA: Number(lastFused.a.toFixed(2)),
+        mode: lastFused.mode,
+      });
+    }
+
+    // ── UI CONTROLS ──────────────────────────────────────────────────
+    const overlay = document.getElementById('overlay');
+    const miniplot = document.getElementById('miniplot');
+    const btnOverlay = document.getElementById('btnOverlay');
+    const btnPlot = document.getElementById('btnPlot');
+    const btnClean = document.getElementById('btnClean');
+    btnOverlay.addEventListener('click', () => { overlay.classList.toggle('hidden'); btnOverlay.classList.toggle('active', !overlay.classList.contains('hidden')); });
+    btnPlot.addEventListener('click', () => { miniplot.classList.toggle('hidden'); btnPlot.classList.toggle('active', !miniplot.classList.contains('hidden')); });
+    btnClean.addEventListener('click', () => {
+      overlay.classList.add('hidden');
+      miniplot.classList.add('hidden');
+      btnOverlay.classList.remove('active');
+      btnPlot.classList.remove('active');
+    });
+
+    // ── LOG DRAWER ───────────────────────────────────────────────────
+    const drawer = document.getElementById('logdrawer');
+    document.getElementById('logToggle').addEventListener('click', () => drawer.classList.toggle('open'));
+    document.getElementById('closeLog').addEventListener('click', () => drawer.classList.remove('open'));
+
+    async function copyLogToClipboard(btn) {
+      const text = LOG.map(e => `[${e.t}] ${e.kind.toUpperCase()} ${e.msg}${e.data ? ' ' + JSON.stringify(e.data) : ''}`).join('\n');
+      let ok = false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); ok = true; }
+      } catch (e) {}
+      if (!ok) {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch (e) {}
+      }
+      const orig = btn.textContent;
+      btn.textContent = ok ? 'Copied ✓' : 'Use Share';
+      setTimeout(() => btn.textContent = orig, 1600);
+    }
+    document.getElementById('copyLog').addEventListener('click', (e) => copyLogToClipboard(e.currentTarget));
+    document.getElementById('shareLogBtn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const text = LOG.map(x => `[${x.t}] ${x.kind.toUpperCase()} ${x.msg}${x.data ? ' ' + JSON.stringify(x.data) : ''}`).join('\n');
+      const summary = `Palette log — humanFps ${humanRecentFps.toFixed(2)} — renderFps ${renderFps.toFixed(1)} — vlEvents ${vlEventCount} — baseline ${vlBaseline?.toFixed(0) ?? 'not-locked'} — fusedV ${lastFused.v?.toFixed(2)} fusedA ${lastFused.a?.toFixed(2)} — mode ${lastFused.mode}\n\n`;
+      const payload = summary + text;
+      if (!navigator.share) { copyLogToClipboard(btn); return; }
+      try {
+        const blob = new Blob([payload], { type: 'text/plain' });
+        const file = new File([blob], `palette-test-log-${iso().replace(/[:.]/g, '-')}.txt`, { type: 'text/plain' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Palette log' });
+          return;
+        }
+      } catch (err) {}
+      try { await navigator.share({ text: payload, title: 'Palette log' }); }
+      catch (err) {}
+    });
+
+    document.getElementById('startBtn').addEventListener('click', start);
+    log('info', 'page ready · tap Begin');
+  </script>
+
+</body>
+</html>
