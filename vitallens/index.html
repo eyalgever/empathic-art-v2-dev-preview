@@ -491,15 +491,39 @@
     let baseline = null;
     const BASELINE_LOCK_MS = 60 * 1000;
 
-    // Smoothing config, tuned from smoke-test data:
-    //  - Raw HR from `pos` shows bimodal jumps (40 ↔ 70 bpm) when the
-    //    buffer re-initialises. A 5s median rejects those single-frame
-    //    excursions while keeping real HR movement visible.
-    //  - HR outside [35, 200] is dropped as non-physiological.
-    const MEDIAN_WINDOW_MS = 5000;
+    /* Smoothing config, tuned from the first full-route iPhone test:
+
+       The pos method produces trimodal raw HR (~42 / ~61 / ~88 bpm)
+       corresponding to sub-harmonic lock, real physiological HR, and
+       2nd-harmonic / motion artifact. On 116s of data only 19% of 5s
+       median samples landed within ±3 bpm of the true baseline — a
+       median is the wrong tool for trimodal noise.
+
+       New strategy:
+         1. 10s window (was 5s) — wider basin gives the correct mode
+            more chances to dominate.
+         2. After baseline lock, drop samples where |hr - baseline| > 20
+            (rejects both the ~42 and ~88 modes).
+         3. Trimmed mean of the surviving samples (drop outer 25% each
+            side, mean the middle 50%) — resistant to bimodality within
+            the survivors in a way median is not.
+         4. Before lock, use interquartile-trimmed median: sort, drop
+            outer 25%, take median of middle half.
+         5. Signal-lock gate: only update the DISPLAYED value when 3
+            consecutive smoothed samples agree within ±3 bpm. Between
+            modes, freeze the last good value and show 'resyncing'. */
+    const MEDIAN_WINDOW_MS = 10000;
+    const OUTLIER_REJECT_BPM = 20;   // reject if |hr - baseline| > 20
+    const LOCK_AGREEMENT_BPM = 3;    // consecutive samples must agree within this
+    const LOCK_CONSECUTIVE_N = 3;    // ...this many times in a row
     const HR_MIN = 35;
     const HR_MAX = 200;
     const MIN_CONF = 0.5;
+
+    // Signal-lock state
+    let lastGoodDisplayedHr = null;
+    let recentSmoothed = [];         // for consecutive-agreement check
+    let signalLocked = false;
 
     // ── LIBRARY LOAD ─────────────────────────────────────────────────
     async function loadLibrary() {
@@ -591,8 +615,15 @@
       overlay.width = video.videoWidth;
       overlay.height = video.videoHeight;
 
-      // Wire event listeners
-      vl.addEventListener('faceDetected', onFaceDetected);
+      /* Wire event listeners.
+
+         Smoke test showed 66 faceDetected events fired reliably. In the
+         first full-route test (same library, same iPhone) we got zero
+         faceDetected events across 116s but 344 vitals events with face
+         data embedded in the payload. Rather than debug the event
+         wiring (which may depend on listener registration order or
+         internal state), we read face info from vitals.face directly —
+         which we know is always populated. */
       vl.addEventListener('vitals', onVitals);
       vl.addEventListener('error', (err) => {
         log('err', 'vitallens error event', { message: err.message || String(err) });
@@ -625,16 +656,29 @@
     }
 
     // ── EVENT HANDLERS ───────────────────────────────────────────────
-    function onFaceDetected(payload) {
+    /* Face info comes from the vitals payload (vitals.face.coordinates
+       is an array of [x1,y1,x2,y2] tuples, one per pipeline frame in
+       the batch; vitals.face.confidence is a parallel array). We use
+       the most recent tuple. */
+    function updateFaceFromVitals(result) {
+      const face = result?.face;
+      if (!face) return;
       faceEventCount++;
-      const c = payload?.coordinates;   // [x1, y1, x2, y2] in video pixels
-      const conf = payload?.confidence;
       document.getElementById('faceEvents').textContent = faceEventCount;
-      document.getElementById('faceState').textContent = conf > 0.7 ? 'yes' : 'weak';
-      document.getElementById('faceConf').textContent = conf != null ? (conf * 100).toFixed(0) + '%' : '—';
-      if (Array.isArray(c) && c.length === 4) {
-        document.getElementById('roi').textContent = `${Math.round(c[2]-c[0])}×${Math.round(c[3]-c[1])}`;
-        drawROI(c);
+
+      // coordinates is either a single [x1,y1,x2,y2] or an array of them
+      let coords = face.coordinates;
+      if (Array.isArray(coords) && Array.isArray(coords[0])) coords = coords[coords.length - 1];
+      let conf = face.confidence;
+      if (Array.isArray(conf)) conf = conf[conf.length - 1];
+
+      if (typeof conf === 'number') {
+        document.getElementById('faceState').textContent = conf > 0.7 ? 'yes' : 'weak';
+        document.getElementById('faceConf').textContent = (conf * 100).toFixed(0) + '%';
+      }
+      if (Array.isArray(coords) && coords.length === 4) {
+        document.getElementById('roi').textContent = `${Math.round(coords[2]-coords[0])}×${Math.round(coords[3]-coords[1])}`;
+        drawROI(coords);
       }
     }
 
@@ -646,6 +690,27 @@
       ctx.strokeStyle = '#d97757';
       ctx.lineWidth = 2;
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    }
+
+    /* Robust smoothing over the last MEDIAN_WINDOW_MS ms of history.
+       Uses the interquartile-trimmed mean when baseline is unknown,
+       or drops samples too far from baseline first when it's known. */
+    function robustSmooth(hist, nowMs, baseline) {
+      const windowVals = hist.filter(x => x.t > nowMs - MEDIAN_WINDOW_MS).map(x => x.hr);
+      if (windowVals.length < 5) return null;
+
+      let filtered = windowVals;
+      if (baseline != null) {
+        filtered = windowVals.filter(v => Math.abs(v - baseline) <= OUTLIER_REJECT_BPM);
+        if (filtered.length < 3) return null;
+      }
+      // Interquartile-trimmed mean: sort, drop outer 25%, mean the middle 50%
+      const sorted = [...filtered].sort((a, b) => a - b);
+      const lo = Math.floor(sorted.length * 0.25);
+      const hi = Math.ceil(sorted.length * 0.75);
+      const middle = sorted.slice(lo, hi);
+      if (middle.length === 0) return null;
+      return middle.reduce((a, b) => a + b, 0) / middle.length;
     }
 
     function onVitals(result) {
@@ -695,51 +760,108 @@
         while (hrHist.length && hrHist[0].t < cutoff) hrHist.shift();
       }
 
-      // Compute smoothed HR (median over last 5s of gated samples)
-      const medWindow = hrHist.filter(x => x.t > now - MEDIAN_WINDOW_MS).map(x => x.hr);
-      let hrSmoothed = null;
-      if (medWindow.length >= 3) {
-        const sorted = [...medWindow].sort((a, b) => a - b);
-        hrSmoothed = sorted[Math.floor(sorted.length / 2)];
+      // Update face info from vitals payload (we don't rely on the
+      // separate faceDetected event, which fired 0 times in testing)
+      updateFaceFromVitals(result);
+
+      // Robust smoothing: 10s window, outlier reject vs baseline,
+      // interquartile-trimmed mean.
+      const hrSmoothed = robustSmooth(hrHist, now, baseline);
+
+      /* Signal-lock gate: only display the smoothed value when the last
+         LOCK_CONSECUTIVE_N smoothed values agree within LOCK_AGREEMENT_BPM.
+         Between locks, freeze on the last good display value. */
+      let displayedHr = null;
+      let displayState = 'idle';
+      if (hrSmoothed != null) {
+        recentSmoothed.push(hrSmoothed);
+        if (recentSmoothed.length > LOCK_CONSECUTIVE_N) recentSmoothed.shift();
+        if (recentSmoothed.length === LOCK_CONSECUTIVE_N) {
+          const spread = Math.max(...recentSmoothed) - Math.min(...recentSmoothed);
+          if (spread <= LOCK_AGREEMENT_BPM) {
+            signalLocked = true;
+            lastGoodDisplayedHr = hrSmoothed;
+            displayedHr = hrSmoothed;
+            displayState = 'locked';
+          } else if (lastGoodDisplayedHr != null) {
+            signalLocked = false;
+            displayedHr = lastGoodDisplayedHr;   // freeze
+            displayState = 'resyncing';
+          } else {
+            displayedHr = hrSmoothed;            // pre-lock, show anyway
+            displayState = 'settling';
+          }
+        } else if (lastGoodDisplayedHr != null) {
+          displayedHr = lastGoodDisplayedHr;
+          displayState = 'resyncing';
+        }
+      } else if (lastGoodDisplayedHr != null) {
+        displayedHr = lastGoodDisplayedHr;
+        displayState = 'resyncing';
       }
-      document.getElementById('hrBig').innerHTML =
-        (hrSmoothed != null ? hrSmoothed.toFixed(0) : '—') + ' <span class="unit">bpm</span>';
+
+      // Update big display
+      const hrBigEl = document.getElementById('hrBig');
+      if (displayedHr != null) {
+        const lockMark = displayState === 'locked' ? '' : ' <span class="unit" style="color:var(--warn)">' + displayState + '</span>';
+        hrBigEl.innerHTML = displayedHr.toFixed(0) + ' <span class="unit">bpm</span>' + lockMark;
+      } else {
+        hrBigEl.innerHTML = '— <span class="unit">bpm</span>';
+      }
 
       // RR: pass through raw (RR isn't yet fully populated in `pos`, but
       // some later methods will emit it; we just show whatever's there).
       document.getElementById('rrBig').innerHTML =
         (rrRaw != null ? rrRaw.toFixed(1) : '—') + ' <span class="unit">/min</span>';
 
-      // Baseline lock at 60s
+      /* Baseline lock at 60s. Use interquartile-trimmed mean, not raw
+         median — protects against the trimodal distribution we saw:
+         if 42 and 88 bpm each account for ~20% and 60-65 accounts for
+         ~30%, the raw median can still land on 61 correctly, but the
+         trimmed mean is more robust when proportions shift. */
       const sessionMs = now - sessionStartMs;
       if (baseline == null && sessionMs >= BASELINE_LOCK_MS && hrHist.length >= 30) {
-        // Baseline = median of full 60s window
-        const all = [...hrHist.map(x => x.hr)].sort((a, b) => a - b);
-        baseline = all[Math.floor(all.length / 2)];
-        log('event', 'baseline locked', { bpm: Number(baseline.toFixed(1)), samples: all.length });
+        const sorted = [...hrHist.map(x => x.hr)].sort((a, b) => a - b);
+        const lo = Math.floor(sorted.length * 0.25);
+        const hi = Math.ceil(sorted.length * 0.75);
+        const middle = sorted.slice(lo, hi);
+        baseline = middle.reduce((a, b) => a + b, 0) / middle.length;
+        log('event', 'baseline locked', {
+          bpm: Number(baseline.toFixed(1)),
+          samples: sorted.length,
+          trimmedFrom: sorted.length,
+          trimmedTo: middle.length,
+        });
         document.getElementById('baseline').textContent = baseline.toFixed(0) + ' bpm';
       } else if (baseline == null) {
         const remaining = Math.max(0, Math.ceil((BASELINE_LOCK_MS - sessionMs) / 1000));
         document.getElementById('baseline').textContent = 'learning… ' + remaining + 's';
       }
 
-      // Delta pill
-      if (baseline != null && hrSmoothed != null) {
-        const d = hrSmoothed - baseline;
+      // Delta pill — use displayed (locked/frozen) value, not raw smoothed
+      if (baseline != null && displayedHr != null) {
+        const d = displayedHr - baseline;
         const pill = document.getElementById('hrDelta');
         pill.textContent = (d >= 0 ? '+' : '') + d.toFixed(0);
         pill.className = 'delta-pill ' + (d > 1 ? 'pos' : d < -1 ? 'neg' : '');
       }
 
-      // Stdev over last 5s (stability meter)
-      if (medWindow.length >= 5) {
-        const mean = medWindow.reduce((a, b) => a + b, 0) / medWindow.length;
-        const variance = medWindow.reduce((a, b) => a + (b - mean) ** 2, 0) / medWindow.length;
+      // Stdev over last 10s window (stability meter). Compute on the
+      // outlier-filtered set if baseline is known, else on the raw window.
+      const rawWin = hrHist.filter(x => x.t > now - MEDIAN_WINDOW_MS).map(x => x.hr);
+      const winForStdev = baseline != null
+        ? rawWin.filter(v => Math.abs(v - baseline) <= OUTLIER_REJECT_BPM)
+        : rawWin;
+      if (winForStdev.length >= 5) {
+        const mean = winForStdev.reduce((a, b) => a + b, 0) / winForStdev.length;
+        const variance = winForStdev.reduce((a, b) => a + (b - mean) ** 2, 0) / winForStdev.length;
         const stdev = Math.sqrt(variance);
         document.getElementById('stdev5').textContent = stdev.toFixed(1);
-        // Stability label from stdev:
-        // <2 rock-solid, <5 good, <10 noisy, >=10 unusable
-        const stab = stdev < 2 ? 'rock-solid' : stdev < 5 ? 'good' : stdev < 10 ? 'noisy' : 'unusable';
+        const stab = signalLocked ? 'locked'
+                    : stdev < 2 ? 'rock-solid'
+                    : stdev < 5 ? 'good'
+                    : stdev < 10 ? 'noisy'
+                    : 'unusable';
         document.getElementById('stability').textContent = stab;
       }
 
@@ -752,6 +874,8 @@
           n: vitalsEventCount,
           hrRaw: hrRaw != null ? Number(hrRaw.toFixed(1)) : null,
           hrSmoothed: hrSmoothed != null ? Number(hrSmoothed.toFixed(1)) : null,
+          hrDisplayed: displayedHr != null ? Number(displayedHr.toFixed(1)) : null,
+          displayState,
           hrConf: hrConf != null ? Number(hrConf.toFixed(2)) : null,
           baseline: baseline != null ? Number(baseline.toFixed(1)) : null,
           rrRaw: rrRaw != null ? Number(rrRaw.toFixed(1)) : null,
@@ -829,8 +953,7 @@
         ctx.fillRect(xOf(p.t) - 0.5, yOf(p.hr) - 0.5, 1, 1);
       }
 
-      // Smoothed line — median over rolling 5s window
-      ctx.strokeStyle = 'var(--hr)'; // won't resolve in canvas, use hex
+      // Smoothed line — robust smoothing (10s trimmed mean, outlier reject)
       ctx.strokeStyle = '#d97575';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -841,10 +964,20 @@
         for (let j = i; j >= 0 && hrHist[j].t >= t - MEDIAN_WINDOW_MS; j--) {
           windowVals.push(hrHist[j].hr);
         }
-        if (windowVals.length < 3) continue;
-        const sorted = [...windowVals].sort((a, b) => a - b);
-        const med = sorted[Math.floor(sorted.length / 2)];
-        const x = xOf(t), y = yOf(med);
+        if (windowVals.length < 5) continue;
+        // Apply outlier reject if baseline known
+        let filtered = windowVals;
+        if (baseline != null) {
+          filtered = windowVals.filter(v => Math.abs(v - baseline) <= OUTLIER_REJECT_BPM);
+          if (filtered.length < 3) continue;
+        }
+        const sorted = [...filtered].sort((a, b) => a - b);
+        const lo = Math.floor(sorted.length * 0.25);
+        const hi = Math.ceil(sorted.length * 0.75);
+        const middle = sorted.slice(lo, hi);
+        if (!middle.length) continue;
+        const smoothed = middle.reduce((a, b) => a + b, 0) / middle.length;
+        const x = xOf(t), y = yOf(smoothed);
         if (first) { ctx.moveTo(x, y); first = false; }
         else ctx.lineTo(x, y);
       }
