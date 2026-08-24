@@ -1315,18 +1315,24 @@
     //  - Session 1 (no history): pure random pick (system chooses for you).
     //  - Session 2+: also pure random until the user taps Continue/Choose/Surprise.
     //    (If they tap Continue, we swap to the last-used style before start.)
+    // iOS Safari 26 has known WebGL2 shader-creation failures with some
+    // v1 styles. Blacklist confirmed-broken ones so we never pick or
+    // fall back to them during a session.
+    const IOS_BROKEN = new Set(['smokering']);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const safeCatalog = isIOS ? catalog.filter(c => !IOS_BROKEN.has(c.id)) : catalog;
+    log('event', 'safe catalog', { n: safeCatalog.length, ids: safeCatalog.map(c => c.id) });
+
     function pickRandomExcluding(excludeIds) {
-      const pool = catalog.filter(c => !excludeIds.has(c.id));
-      const src = pool.length ? pool : catalog;
+      const pool = safeCatalog.filter(c => !excludeIds.has(c.id));
+      const src = pool.length ? pool : safeCatalog;
       return src[Math.floor(Math.random() * src.length)];
     }
-    // First-session default: Chapel (Rothko-referencing chromatic field).
-    // Later sessions and Surprise Me can pick any style.
+    // Every session defaults to Chapel (Rothko-referencing chromatic field).
+    // User can override via Choose or Surprise Me on session 2+.
     const ROTHKO_ID = 'chapel';
-    const chapel = catalog.find(c => c.id === ROTHKO_ID);
-    let StyleCls = (store.sessionCount === 0 && chapel)
-      ? chapel
-      : catalog[Math.floor(Math.random() * catalog.length)];
+    const chapel = safeCatalog.find(c => c.id === ROTHKO_ID);
+    let StyleCls = chapel || safeCatalog[Math.floor(Math.random() * safeCatalog.length)];
     log('event', 'style chosen (initial)', { id: StyleCls.id, name: StyleCls.name });
 
     let style;
@@ -1339,13 +1345,31 @@
       style.setEmotion(0, 0, 0.5, 'neutral');
       style.start();
     }
-    try {
-      instantiateStyle(StyleCls);
-    } catch (e) {
-      log('err', 'style init', { id: StyleCls.id, err: String(e) });
-      alert('Visual style failed to init: ' + StyleCls.id + '\n' + e);
-      throw e;
+    // Try the chosen style; if it fails to init, fall back to Chapel, then
+    // to any working style in the safeCatalog. Never leave the canvas empty.
+    function instantiateWithFallback(cls) {
+      try {
+        instantiateStyle(cls);
+        return cls;
+      } catch (e) {
+        log('err', 'style init failed, trying fallback', { id: cls.id, err: String(e) });
+        IOS_BROKEN.add(cls.id);
+        // Try Chapel first if not already tried
+        if (chapel && cls.id !== chapel.id) {
+          try { instantiateStyle(chapel); return chapel; }
+          catch (e2) { log('err', 'chapel fallback failed', { err: String(e2) }); }
+        }
+        // Try any remaining safe style
+        for (const c of safeCatalog) {
+          if (c.id === cls.id || IOS_BROKEN.has(c.id)) continue;
+          try { instantiateStyle(c); return c; }
+          catch (e3) { log('err', 'fallback failed', { id: c.id, err: String(e3) }); IOS_BROKEN.add(c.id); }
+        }
+        alert('No visual style could initialize on this device.');
+        throw new Error('all styles failed');
+      }
     }
+    StyleCls = instantiateWithFallback(StyleCls);
 
     // Update gate meta with current style pick.
     const gateStyleEl = document.getElementById('gate-style-name');
@@ -1373,13 +1397,13 @@
       if (last && contSubEl) contSubEl.textContent = last.styleName;
 
       function swapAndStart(newStyleCls) {
+        // Use fallback so a broken swap can't leave the canvas empty
         try {
-          StyleCls = newStyleCls;
+          StyleCls = instantiateWithFallback(newStyleCls);
           updateGateStyleName();
-          instantiateStyle(StyleCls);
           log('event', 'style swapped pre-begin', { id: StyleCls.id, name: StyleCls.name });
         } catch (e) {
-          log('err', 'style swap failed', { id: newStyleCls.id, err: String(e) });
+          log('err', 'style swap failed hard', { id: newStyleCls.id, err: String(e) });
         }
         // Trigger the normal Begin flow
         start();
