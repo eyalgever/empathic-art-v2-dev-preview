@@ -149,6 +149,20 @@
       max-width: 46ch;
     }
     .gate-body + .gate-body { margin-top: 12px; }
+    /* Visible debug ribbon on gate (temporary, screenshot-friendly) */
+    .gate-debug {
+      font-family: var(--ea-font-mono);
+      font-size: 11px;
+      color: rgba(255, 200, 100, 0.95);
+      background: rgba(0, 0, 0, 0.55);
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 200, 100, 0.4);
+      border-radius: 4px;
+      max-width: 90vw;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      line-height: 1.35;
+    }
     .gate-body--quiet {
       color: rgba(238, 236, 231, 0.62);
       font-size: 14px;
@@ -845,6 +859,7 @@
       </div>
 
       <div class="gate-hint">Camera stays on this device · no upload</div>
+      <div class="gate-debug" id="gateDebug">init…</div>
 
       <!-- Session 1: single Begin. Session 2+: three chips (Plan B "Love b") -->
       <div class="gate-cta" id="gate-cta-single">
@@ -2349,19 +2364,43 @@
       log('err', 'C4b/C4c wiring failed', { err: String(e) });
     }
 
-    // Attach with both pointerup + click for iOS Safari 26 resilience.
-    // Guard against double-fire with a debounce flag.
+    // Attach with pointerup + click + touchend for iOS Safari 26 resilience.
+    // Also mirror all diagnostic breadcrumbs to a visible on-gate ribbon so
+    // the user can screenshot without opening the log drawer.
+    const __dbg = document.getElementById('gateDebug');
+    function __gdbg(msg) {
+      if (!__dbg) return;
+      const t = new Date().toISOString().slice(11,19);
+      __dbg.textContent = '[' + t + '] ' + msg + '\n' + (__dbg.textContent || '').split('\n').slice(0,4).join('\n');
+    }
     let __beginFired = false;
     function __safeBegin(ev) {
+      __gdbg('tap:' + (ev && ev.type));
       if (__beginFired) return;
       __beginFired = true;
       log('event', 'Begin tapped', { via: ev && ev.type });
-      try { start(); } catch (e) { __beginFired = false; log('err', 'start() threw', { err: String(e) }); alert('Begin failed: ' + e.message); }
+      try {
+        start();
+        __gdbg('start() invoked');
+      } catch (e) {
+        __beginFired = false;
+        log('err', 'start() threw', { err: String(e) });
+        __gdbg('ERR start(): ' + (e && e.message || e));
+        alert('Begin failed: ' + e.message);
+      }
     }
     const __btn = document.getElementById('startBtn');
-    __btn.addEventListener('click', __safeBegin);
-    __btn.addEventListener('pointerup', __safeBegin);
+    if (!__btn) { __gdbg('FATAL: no #startBtn'); }
+    else {
+      __btn.addEventListener('click', __safeBegin);
+      __btn.addEventListener('pointerup', __safeBegin);
+      __btn.addEventListener('touchend', __safeBegin, { passive: true });
+      __gdbg('ready · 3 listeners on #startBtn');
+    }
     log('info', 'page ready · tap Begin');
+    // Also catch any unhandled top-level errors and show them on the ribbon
+    window.addEventListener('error', (e) => { __gdbg('WIN ERR: ' + (e.message || e.error && e.error.message || 'unknown')); });
+    window.addEventListener('unhandledrejection', (e) => { __gdbg('REJ: ' + (e.reason && (e.reason.message || e.reason) || 'unknown')); });
   </script>
 
 </body>
