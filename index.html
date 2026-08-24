@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Empathic Art v2 · Human engine test</title>
+  <meta name="robots" content="noindex, nofollow">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --ink: #EEECE7;
+      --dim: #7a756e;
+      --accent: #d97757;
+      --ok: #7bd48a;
+      --warn: #d9a457;
+      --err: #d97575;
+      --sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: var(--sans); overflow: hidden; }
+
+    /* ── STAGE — the CAMERA CARD.
+       Explicit pixel dimensions rather than aspect-ratio, because the
+       Perplexity iOS app renders this inside a WKWebView that sometimes
+       reflows aspect-ratio containers unexpectedly. Fixed 200x267px
+       always renders identically everywhere. */
+    .stage {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 48px);
+      left: 50%;
+      margin-left: -100px;   /* half of width, absolute centering */
+      width: 200px;
+      height: 267px;         /* 3:4 portrait */
+      background: #000;
+      overflow: hidden;
+      border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(238,236,231,0.10);
+    }
+    #video, #overlay {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* mirror for natural selfie */
+    }
+    #video::-webkit-media-controls,
+    #video::-webkit-media-controls-panel,
+    #video::-webkit-media-controls-play-button,
+    #video::-webkit-media-controls-start-playback-button {
+      display: none !important;
+      -webkit-appearance: none !important;
+    }
+    #overlay { pointer-events: none; }
+
+    /* ── HUD — top-left status ───────────────────────────────────────── */
+    .hud {
+      position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 12px;
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--ink); z-index: 10; max-width: 45vw;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    }
+    .hud .rule { width: 16px; height: 2px; background: var(--accent); margin-bottom: 8px; }
+    .hud .title { margin-bottom: 6px; opacity: 0.9; }
+    .hud .status { color: var(--dim); font-size: 9px; }
+    .hud .status.ok { color: var(--ok); }
+    .hud .status.warn { color: var(--warn); }
+    .hud .status.err { color: var(--err); }
+
+    /* ── Readout panel — sits BELOW the camera card, filling the rest
+       of the viewport down to the controls bar.
+       Card sits at top-offset (48 + safe-inset) with height 267px, so
+       dashboard starts at (48 + safe-inset + 267 + 20 gap) = safe-inset+335. */
+    .readout {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 335px);
+      left: 0; right: 0;
+      bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+      padding: 14px 16px 16px 16px;
+      overflow-y: auto;
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+      z-index: 5; color: var(--ink);
+      background: var(--bg);
+    }
+    .readout .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
+    .readout .grid .col { min-width: 0; }
+    .readout .row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(238,236,231,0.06); font-size: 10px; }
+    .readout .row .k { color: var(--dim); }
+    .readout .row .v { color: var(--ink); font-variant-numeric: tabular-nums; }
+    .readout .section-title { color: var(--accent); margin-top: 12px; margin-bottom: 6px; font-size: 10px; }
+    .readout .section-title:first-child { margin-top: 0; }
+
+    /* ── Emotion bars ────────────────────────────────────────────────── */
+    .emo-bar {
+      display: grid; grid-template-columns: 58px 1fr 32px; gap: 6px; align-items: center;
+      padding: 2px 0;
+      font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .emo-bar .label { color: var(--dim); text-align: right; }
+    .emo-bar .track { height: 3px; background: rgba(238,236,231,0.10); border-radius: 2px; overflow: hidden; }
+    .emo-bar .fill { height: 100%; background: var(--ink); transition: width 120ms linear; }
+    .emo-bar .fill.top { background: var(--accent); }
+    .emo-bar .pct { color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* ── Performance readout — top-right corner, next to HUD ───────── */
+    .perf {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px;
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--dim); z-index: 10;
+      padding: 8px 10px;
+      background: rgba(10,10,10,0.66); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border-radius: 6px;
+      min-width: 130px; text-align: right;
+    }
+    .perf .n { color: var(--ink); font-variant-numeric: tabular-nums; }
+    .perf .n.good { color: var(--ok); }
+    .perf .n.warn { color: var(--warn); }
+    .perf .n.bad { color: var(--err); }
+    .perf .row { padding: 1px 0; white-space: nowrap; display: flex; justify-content: space-between; gap: 8px; }
+    .perf .row .k { color: var(--dim); }
+
+    /* ── Controls bar — pinned to bottom-LEFT and CENTER, out of the way
+       of Safari's PIP pill and system-gesture zone on the bottom-right. */
+    .ctrls {
+      position: fixed;
+      left: 0; right: 0;
+      bottom: env(safe-area-inset-bottom, 0px);
+      display: flex; gap: 8px; z-index: 200;   /* above the .gate splash (z:100) so log is reachable pre-camera */
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) 12px;
+      background: rgba(10,10,10,0.94);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid rgba(238,236,231,0.12);
+      justify-content: flex-start;
+      align-items: center;
+    }
+    .ctrls button {
+      font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--ink); background: rgba(238,236,231,0.05); border: 1px solid rgba(238,236,231,0.28);
+      padding: 10px 14px; cursor: pointer; border-radius: 6px; transition: all 150ms ease;
+      flex: 0 0 auto; min-height: 40px;
+    }
+    .ctrls button:hover, .ctrls button:active { background: rgba(238,236,231,0.15); border-color: var(--ink); }
+    .ctrls button.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+    .ctrls .spacer { flex: 1; }
+    .ctrls .badge {
+      font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--dim); padding: 0 8px;
+    }
+
+    /* ── Log drawer ──────────────────────────────────────────────────── */
+    .logdrawer {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      height: 40vh; max-height: 320px;
+      background: rgba(10,10,10,0.94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid rgba(238,236,231,0.15);
+      z-index: 50; padding: 12px 16px; overflow: hidden;
+      display: flex; flex-direction: column;
+      transform: translateY(100%); transition: transform 240ms ease;
+    }
+    .logdrawer.open { transform: translateY(0); }
+    .logdrawer .head {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+      font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .logdrawer .head .title { color: var(--accent); }
+    .logdrawer .head .actions { display: flex; gap: 8px; }
+    .logdrawer .head button {
+      font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--dim); background: transparent; border: 1px solid rgba(238,236,231,0.2);
+      padding: 4px 10px; cursor: pointer; border-radius: 4px;
+    }
+    .logdrawer .head button:hover { color: var(--ink); border-color: var(--ink); }
+    .logdrawer .body {
+      flex: 1; overflow-y: auto;
+      font-family: var(--mono); font-size: 10px; line-height: 1.5;
+      color: var(--dim);
+    }
+    .logdrawer .body .line { padding: 1px 0; white-space: pre-wrap; word-break: break-all; }
+    .logdrawer .body .line.info  { color: var(--dim); }
+    .logdrawer .body .line.event { color: var(--ink); }
+    .logdrawer .body .line.warn  { color: var(--warn); }
+    .logdrawer .body .line.err   { color: var(--err); }
+    .logdrawer .body .line.perf  { color: #7ba7d9; }
+    .logdrawer .body .t { color: var(--dim); opacity: 0.6; }
+
+    /* ── Start gate ──────────────────────────────────────────────────── */
+    .gate {
+      position: fixed; inset: 0;
+      display: grid; place-items: center;
+      background: var(--bg);
+      z-index: 100;
+      transition: opacity 400ms ease, visibility 400ms ease;
+    }
+    .gate.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .gate-inner { text-align: center; max-width: 520px; padding: 24px; }
+    .gate-mark {
+      font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--accent); margin-bottom: 20px;
+    }
+    .gate h1 {
+      font-family: var(--sans); font-weight: 400;
+      font-size: clamp(1.8rem, 3.6vw, 2.6rem); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 16px;
+    }
+    .gate p { font-family: var(--sans); font-size: 14px; line-height: 1.55; color: var(--dim); margin-bottom: 20px; }
+
+    /* Preset picker */
+    .presets {
+      display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .presets label {
+      font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--dim); border: 1px solid rgba(238,236,231,0.25); padding: 10px 14px;
+      cursor: pointer; border-radius: 6px; transition: all 150ms ease;
+      text-align: left; min-width: 130px;
+    }
+    .presets label:hover { color: var(--ink); border-color: var(--ink); }
+    .presets input { display: none; }
+    .presets input:checked + label { color: var(--bg); background: var(--ink); border-color: var(--ink); }
+    .presets label .desc { display: block; font-size: 8px; color: var(--dim); margin-top: 2px; text-transform: none; letter-spacing: 0; }
+    .presets input:checked + label .desc { color: var(--bg); opacity: 0.7; }
+
+    .gate button.start {
+      font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--ink); background: transparent; border: 1px solid var(--ink);
+      padding: 12px 24px; cursor: pointer; transition: all 200ms ease; border-radius: 0;
+    }
+    .gate button.start:hover { background: var(--ink); color: var(--bg); }
+    .gate .foot { margin-top: 20px; font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.05em; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+
+  <!-- Start gate -->
+  <div class="gate" id="gate">
+    <div class="gate-inner">
+      <div class="gate-mark">Empathic Art · Engine test 01</div>
+      <h1>Human engine — face &amp; emotion.</h1>
+      <p>Development route. Runs Vladimir Mandic's Human library in-browser on your camera stream. Nothing is uploaded — everything stays on this device.</p>
+
+      <div class="presets">
+        <input type="radio" name="preset" id="p-fast" value="fast" checked>
+        <label for="p-fast">Fast<span class="desc">Emotion only · target 30 fps</span></label>
+
+        <input type="radio" name="preset" id="p-balanced" value="balanced">
+        <label for="p-balanced">Balanced<span class="desc">+ face mesh · target 20 fps</span></label>
+
+        <input type="radio" name="preset" id="p-full" value="full">
+        <label for="p-full">Full<span class="desc">+ mesh + age/gender</span></label>
+      </div>
+
+      <button class="start" id="startBtn">Start camera</button>
+      <div class="foot">Dev only · not linked from the app</div>
+    </div>
+  </div>
+
+  <!-- Stage -->
+  <div class="stage">
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="rule"></div>
+    <div class="title">Engine · Human 3.3.5</div>
+    <div class="status" id="status">Idle</div>
+  </div>
+
+  <!-- Perf — glass panel overlaid top-right OVER the video, small -->
+  <div class="perf" id="perfPanel" style="display:none">
+    <div class="row"><span class="k">FPS</span> <span class="n" id="fps">—</span></div>
+    <div class="row"><span class="k">Infer</span> <span class="n" id="infms">— ms</span></div>
+    <div class="row"><span class="k">Back</span> <span class="n" id="backend">—</span></div>
+    <div class="row"><span class="k">Vid</span> <span class="n" id="vidres">—</span></div>
+  </div>
+
+  <!-- Readouts — DASHBOARD below the video, always visible, scrollable -->
+  <div class="readout" id="readout" style="display:none">
+    <div class="grid">
+      <div class="col">
+        <div class="section-title">Face</div>
+        <div class="row"><span class="k">Detected</span><span class="v" id="faceDetected">—</span></div>
+        <div class="row"><span class="k">Score</span><span class="v" id="faceScore">—</span></div>
+        <div class="row"><span class="k">Age</span><span class="v" id="faceAge">—</span></div>
+        <div class="row"><span class="k">Gender</span><span class="v" id="faceGender">—</span></div>
+
+        <div class="section-title">Circumplex</div>
+        <div class="row"><span class="k">Valence</span><span class="v" id="valence">—</span></div>
+        <div class="row"><span class="k">Arousal</span><span class="v" id="arousal">—</span></div>
+      </div>
+      <div class="col">
+        <div class="section-title">Emotion</div>
+        <div id="emotions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls bar — pinned to bottom, left-aligned. LOG button here.
+       Now visible on the splash screen too, so the user can reach the
+       log even if camera-start fails or hangs. -->
+  <div class="ctrls" style="display: flex;">
+    <button id="logToggle">▲ Log</button>
+    <button id="shareLogBtn">Share log</button>
+    <button id="downloadBtn">Save log</button>
+    <div class="spacer"></div>
+    <span class="badge" id="presetBadge">—</span>
+    <span class="badge" id="hostBadge">—</span>
+  </div>
+
+  <!-- Log drawer -->
+  <div class="logdrawer" id="logdrawer">
+    <div class="head">
+      <div class="title">Session log · <span id="logCount">0</span> entries</div>
+      <div class="actions">
+        <button id="clearLog">Clear</button>
+        <button id="copyLog">Copy</button>
+        <button id="closeLog">Close</button>
+      </div>
+    </div>
+    <div class="body" id="logBody"></div>
+  </div>
+
+  <script type="module">
+    // Human 3.3.5 from jsdelivr — docs: https://github.com/vladmandic/human
+    import Human from 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/dist/human.esm.js';
+
+    // ── LOGGER ─────────────────────────────────────────────────────────
+    // Structured, ring-buffered, exportable. Two channels: user-facing
+    // (drawer + console) and a compact perf sampler (every N frames).
+    // ──────────────────────────────────────────────────────────────────
+    const LOG_MAX = 2000;
+    const LOG = [];
+    const logBody = document.getElementById('logBody');
+    const logCountEl = document.getElementById('logCount');
+    const iso = (d = new Date()) => d.toISOString();
+    const tshort = (d = new Date()) => d.toISOString().slice(11, 23);
+
+    function log(kind, msg, data) {
+      const entry = { t: iso(), kind, msg, data: data || null };
+      LOG.push(entry);
+      if (LOG.length > LOG_MAX) LOG.shift();
+      // Also to real console so DevTools/Safari Web Inspector picks it up
+      const consoleMsg = `[${entry.t}] ${kind.toUpperCase()} ${msg}${data ? ' ' + JSON.stringify(data) : ''}`;
+      if (kind === 'err' || kind === 'error') console.error(consoleMsg);
+      else if (kind === 'warn') console.warn(consoleMsg);
+      else console.log(consoleMsg);
+      appendLogLine(entry);
+      logCountEl.textContent = LOG.length;
+    }
+    function appendLogLine(entry) {
+      const div = document.createElement('div');
+      div.className = 'line ' + entry.kind;
+      const short = tshort(new Date(entry.t));
+      const dataStr = entry.data ? ' ' + JSON.stringify(entry.data) : '';
+      div.innerHTML = `<span class="t">${short}</span> ${entry.kind.padEnd(5)} ${escapeHtml(entry.msg)}${escapeHtml(dataStr)}`;
+      logBody.appendChild(div);
+      // Cap DOM to last 300 for perf
+      while (logBody.childElementCount > 300) logBody.removeChild(logBody.firstChild);
+      logBody.scrollTop = logBody.scrollHeight;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Capture browser environment on load
+    function logEnvironment() {
+      const nav = navigator;
+      const ua = nav.userAgent;
+      /* Detect the WebKit runtime host so we know if this is real Safari
+         or an in-app browser (Perplexity's WKWebView, Instagram, LinkedIn,
+         etc). In-app browsers are typically 2-6x slower for WebGL/TFJS. */
+      let host = 'unknown';
+      if (/Perplexity|Ask\//i.test(ua)) host = 'perplexity-inapp';
+      else if (/CriOS/i.test(ua)) host = 'chrome-ios';
+      else if (/FxiOS/i.test(ua)) host = 'firefox-ios';
+      else if (/EdgiOS/i.test(ua)) host = 'edge-ios';
+      else if (/Instagram|FBAN|FBAV|Linked|Twitter|Line|MicroMessenger/i.test(ua)) host = 'social-inapp';
+      else if (/Safari/i.test(ua) && /iPhone|iPad|iPod/i.test(ua)) host = 'safari-ios';
+      else if (/Safari/i.test(ua)) host = 'safari-desktop';
+      const gpuInfo = (() => {
+        try {
+          const gl = document.createElement('canvas').getContext('webgl');
+          if (!gl) return {};
+          const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+          return dbg ? {
+            vendor: gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL),
+            renderer: gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL),
+          } : {};
+        } catch(e) { return {}; }
+      })();
+      const env = {
+        host,
+        userAgent: ua,
+        platform: nav.platform,
+        cpuCores: nav.hardwareConcurrency,
+        deviceMemory: nav.deviceMemory || 'unknown',
+        connection: nav.connection ? nav.connection.effectiveType : 'unknown',
+        pixelRatio: window.devicePixelRatio,
+        screen: `${screen.width}x${screen.height}`,
+        viewport: `${innerWidth}x${innerHeight}`,
+        webgl2: (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch(e) { return false; } })(),
+        webglMaxTex: (() => {
+          try {
+            const gl = document.createElement('canvas').getContext('webgl');
+            return gl ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 0;
+          } catch(e) { return 0; }
+        })(),
+        gpuVendor: gpuInfo.vendor || 'masked',
+        gpuRenderer: gpuInfo.renderer || 'masked',
+      };
+      log('info', 'environment', env);
+      /* Also show it on the page so you don't have to open the log */
+      const badge = document.getElementById('hostBadge');
+      if (badge) badge.textContent = host === 'safari-ios' ? 'Safari' : (host === 'perplexity-inapp' ? 'Perplexity in-app' : host);
+    }
+    logEnvironment();
+    window.addEventListener('error', e => log('err', 'window.onerror', { msg: e.message, src: e.filename, line: e.lineno }));
+    window.addEventListener('unhandledrejection', e => log('err', 'unhandled rejection', { reason: String(e.reason) }));
+
+    // ── LOG DRAWER UI ─────────────────────────────────────────────────
+    const drawer = document.getElementById('logdrawer');
+    document.getElementById('logToggle').addEventListener('click', () => drawer.classList.toggle('open'));
+    document.getElementById('closeLog').addEventListener('click', () => drawer.classList.remove('open'));
+    document.getElementById('clearLog').addEventListener('click', () => {
+      LOG.length = 0; logBody.innerHTML = ''; logCountEl.textContent = 0;
+      log('info', 'log cleared');
+    });
+    /* iOS Safari clipboard: navigator.clipboard.writeText requires a
+       *fresh* user gesture and a secure context. If the page is served
+       over the pplx.app proxy this can silently fail. We use a robust
+       three-strategy fallback so the user always gets a usable copy: */
+    async function copyLogToClipboard(btn) {
+      const text = LOG.map(e => `[${e.t}] ${e.kind.toUpperCase()} ${e.msg}${e.data ? ' ' + JSON.stringify(e.data) : ''}`).join('\n');
+
+      // Strategy 1: modern async clipboard (works in most secure contexts)
+      let ok = false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          ok = true;
+        }
+      } catch (e) {
+        log('warn', 'navigator.clipboard failed, falling back', { msg: e.message });
+      }
+
+      // Strategy 2: execCommand('copy') on a hidden, focused textarea.
+      // This works in older Safari and inside iframes without permissions.
+      if (!ok) {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.top = '0'; ta.style.left = '0';
+          ta.style.opacity = '0';
+          ta.style.pointerEvents = 'none';
+          document.body.appendChild(ta);
+          ta.focus(); ta.select();
+          ta.setSelectionRange(0, text.length);
+          ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) log('info', 'log copied via execCommand fallback');
+        } catch (e) {
+          log('warn', 'execCommand copy failed', { msg: e.message });
+        }
+      }
+
+      // Strategy 3: open a share sheet with the full text so iOS user can
+      // paste it into Messages, Notes, Mail, Perplexity chat, etc.
+      if (!ok && navigator.share) {
+        try {
+          await navigator.share({ text, title: 'Human engine log' });
+          ok = true;
+          log('info', 'log shared via iOS share sheet');
+        } catch (e) {
+          log('warn', 'share sheet cancelled or failed', { msg: e.message });
+        }
+      }
+
+      // Feedback on the button so the user knows what happened.
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = ok ? 'Copied ✓' : 'Failed – use Save log';
+        btn.classList.toggle('on', ok);
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('on'); }, 2400);
+      }
+      log(ok ? 'info' : 'err', ok ? 'log copied to clipboard' : 'copy failed all strategies', { chars: text.length });
+    }
+
+    document.getElementById('copyLog').addEventListener('click', (e) => copyLogToClipboard(e.currentTarget));
+
+    /* Share log via native iOS share sheet — most reliable way to get
+       the full log out of Safari and into Perplexity chat, Messages,
+       Notes, or Mail without hitting clipboard limits. */
+    document.getElementById('shareLogBtn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const text = LOG.map(x => `[${x.t}] ${x.kind.toUpperCase()} ${x.msg}${x.data ? ' ' + JSON.stringify(x.data) : ''}`).join('\n');
+      const summary = currentSummary();
+      const header = `Human engine log — ${summary.preset || '?'} preset — ${summary.durationSec || 0}s — fps ${summary.recentFps || '?'} — infer ${summary.inferMeanMs || '?'}ms mean\n\n`;
+      const payload = header + text;
+
+      if (!navigator.share) {
+        log('warn', 'navigator.share not available on this browser');
+        copyLogToClipboard(btn);
+        return;
+      }
+
+      /* Prefer sharing as a file attachment when possible — iOS Messages
+         and Perplexity handle it as an attachment rather than truncating. */
+      try {
+        const blob = new Blob([payload], { type: 'text/plain' });
+        const file = new File([blob], `human-test-log-${iso().replace(/[:.]/g, '-')}.txt`, { type: 'text/plain' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Human engine log' });
+          log('info', 'log shared as file');
+          return;
+        }
+      } catch (err) {
+        log('warn', 'file share failed, trying text', { msg: err.message });
+      }
+      /* Fallback: share text (may be truncated on very long logs) */
+      try {
+        await navigator.share({ text: payload, title: 'Human engine log' });
+        log('info', 'log shared as text');
+      } catch (err) {
+        log('warn', 'text share cancelled or failed', { msg: err.message });
+      }
+    });
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const payload = {
+        exportedAt: iso(),
+        entries: LOG,
+        summary: currentSummary(),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `human-test-log-${iso().replace(/[:.]/g, '-')}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      log('info', 'log downloaded', { entries: LOG.length });
+    });
+
+    // ── HUMAN CONFIG — three presets ──────────────────────────────────
+    // The v3.3.5 default WebGL backend is called 'humangl' — an internally-
+    // tuned WebGL context Human ships. It's meaningfully faster than plain
+    // 'webgl' on iPhone Safari because it disables extensions Human doesn't
+    // need and pre-compiles shaders. This was my mistake in v1 of the test.
+    const PRESETS = {
+      // Aug 24 Safari-iOS baseline: 14.8 fps first 30s, 5.5 fps after thermal throttle.
+      // Model inference is 179ms p50 (stable) — the throttle is at the frame-scheduler
+      // level, not the model. Lever: run detect() less often, let the visual layer
+      // interpolate. Emotion doesn't change fast enough to need 30 hz sampling.
+      fast: {
+        modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/models/',
+        backend: 'humangl',
+        wasmPath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/dist/',
+        warmup: 'face',
+        cacheSensitivity: 0.7,
+        skipAllowed: true,
+        async: true,
+        filter: { enabled: false },
+        face: {
+          enabled: true,
+          detector: {
+            rotation: false,
+            maxDetected: 1,
+            minConfidence: 0.5,
+            skipFrames: 24,       // was 12 — detect every 24 frames (~1s at 24fps)
+            skipTime: 800,        // was 400 — or every 800ms, whichever is sooner
+          },
+          mesh:        { enabled: false },
+          iris:        { enabled: false },
+          description: { enabled: false },
+          emotion:     { enabled: true, minConfidence: 0.1, skipFrames: 6, skipTime: 200 },  // was 3/100
+          antispoof:   { enabled: false },
+          liveness:    { enabled: false },
+        },
+        body: { enabled: false }, hand: { enabled: false }, object: { enabled: false },
+        gesture: { enabled: false }, segmentation: { enabled: false },
+      },
+      // Same as fast but with the face mesh on — needed later for VitalLens ROI.
+      balanced: {
+        modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/models/',
+        backend: 'humangl',
+        wasmPath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/dist/',
+        warmup: 'face',
+        cacheSensitivity: 0.7,
+        skipAllowed: true,
+        async: true,
+        filter: { enabled: false },
+        face: {
+          enabled: true,
+          detector: { rotation: false, maxDetected: 1, minConfidence: 0.5, skipFrames: 12, skipTime: 400 },
+          mesh:        { enabled: true },   // ON — 468 landmarks for rPPG ROI later
+          iris:        { enabled: false },
+          description: { enabled: false },
+          emotion:     { enabled: true, minConfidence: 0.1, skipFrames: 3, skipTime: 100 },
+          antispoof:   { enabled: false },
+          liveness:    { enabled: false },
+        },
+        body: { enabled: false }, hand: { enabled: false }, object: { enabled: false },
+        gesture: { enabled: false }, segmentation: { enabled: false },
+      },
+      // Everything on — the previous v1 config.
+      full: {
+        modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/models/',
+        backend: 'humangl',
+        wasmPath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/dist/',
+        warmup: 'face',
+        cacheSensitivity: 0.7,
+        async: true,
+        filter: { enabled: false },
+        face: {
+          enabled: true,
+          detector: { rotation: true, maxDetected: 1, minConfidence: 0.4 },
+          mesh:        { enabled: true },
+          iris:        { enabled: false },
+          description: { enabled: true },   // face embedding on
+          emotion:     { enabled: true, minConfidence: 0.1 },
+          antispoof:   { enabled: false },
+          liveness:    { enabled: false },
+        },
+        body: { enabled: false }, hand: { enabled: false }, object: { enabled: false },
+        gesture: { enabled: false }, segmentation: { enabled: false },
+      },
+    };
+
+    // Circumplex mapping (Russell / Posner et al.)
+    const EMO_VA = {
+      happy:    { v:  0.85, a:  0.55 },
+      sad:      { v: -0.75, a: -0.40 },
+      angry:    { v: -0.65, a:  0.75 },
+      fear:     { v: -0.60, a:  0.80 },
+      disgust:  { v: -0.70, a:  0.35 },
+      surprise: { v:  0.35, a:  0.85 },
+      neutral:  { v:  0.00, a:  0.00 },
+    };
+
+    // ── STATE ─────────────────────────────────────────────────────────
+    const statusEl = document.getElementById('status');
+    const setStatus = (msg, cls = '') => { statusEl.textContent = msg; statusEl.className = 'status ' + cls; };
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const overlayCtx = overlay.getContext('2d');
+    const gate = document.getElementById('gate');
+    const readout = document.getElementById('readout');
+
+    let human;
+    let running = false;
+    let frameCount = 0;
+    let lastFpsAt = performance.now();
+    let inferSamples = [];
+    let recentFps = 0;
+    let lastLoggedTopEmotion = null;
+    let sessionStartAt = 0;
+    let framesSinceLastPerfLog = 0;
+
+    function currentSummary() {
+      const inferMean = inferSamples.length
+        ? (inferSamples.reduce((a, b) => a + b, 0) / inferSamples.length).toFixed(1) : null;
+      return {
+        preset: (document.querySelector('input[name=preset]:checked') || {}).value,
+        durationSec: sessionStartAt ? Math.round((performance.now() - sessionStartAt) / 1000) : 0,
+        recentFps: Number(recentFps.toFixed(2)),
+        inferMeanMs: inferMean ? Number(inferMean) : null,
+        inferSamples: inferSamples.length,
+      };
+    }
+
+    async function start() {
+      const preset = document.querySelector('input[name=preset]:checked').value;
+      const cfg = PRESETS[preset];
+      log('event', 'start requested', { preset });
+
+      try {
+        setStatus('Loading Human library…');
+        const t0 = performance.now();
+        human = new Human(cfg);
+        log('info', 'Human instance created', { version: human.version || 'unknown', backend: cfg.backend });
+
+        await human.load();
+        const tLoad = performance.now() - t0;
+        log('event', 'models loaded', { ms: Math.round(tLoad), models: Object.keys(human.models).filter(k => human.models[k]) });
+
+        setStatus('Warming up models…');
+        const tW0 = performance.now();
+        await human.warmup();
+        log('event', 'warmup complete', { ms: Math.round(performance.now() - tW0) });
+        log('info', 'human.tf.getBackend()', { backend: human.tf ? human.tf.getBackend() : 'n/a' });
+        document.getElementById('backend').textContent = human.tf ? human.tf.getBackend() : cfg.backend;
+
+        setStatus('Requesting camera…');
+        log('info', 'getUserMedia request begin', { hasMediaDevices: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) });
+        /* In-app browsers (Perplexity, Instagram, LinkedIn WKWebView etc.)
+           can silently hang on getUserMedia when the host app hasn't
+           forwarded the camera permission. Race the promise against a
+           15-second timeout so a hang becomes a visible, loggable error
+           the user can act on instead of an infinite spinner. */
+        const stream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+              facingMode: 'user',
+              width:  { ideal: 640 },
+              height: { ideal: 480 },
+            },
+          }),
+          new Promise((_, reject) => setTimeout(
+            () => reject(new Error('camera request timed out after 15s — in-app browser may be blocking. Open in Safari.')),
+            15000
+          )),
+        ]);
+        log('event', 'getUserMedia resolved');
+        video.srcObject = stream;
+        await video.play();
+
+        const track = stream.getVideoTracks()[0];
+        const settings = track.getSettings();
+        log('event', 'camera stream started', {
+          w: video.videoWidth, h: video.videoHeight,
+          requested: '640x480 ideal',
+          actual: `${settings.width}x${settings.height}`,
+          frameRate: settings.frameRate,
+          facing: settings.facingMode,
+          deviceId: settings.deviceId ? settings.deviceId.slice(0, 8) + '…' : null,
+        });
+        document.getElementById('vidres').textContent = `${video.videoWidth}×${video.videoHeight}`;
+
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
+
+        gate.classList.add('hidden');
+        readout.style.display = '';
+        document.getElementById('perfPanel').style.display = '';
+        document.getElementById('presetBadge').textContent = preset + ' preset';
+        setStatus('Running · ' + preset, 'ok');
+        sessionStartAt = performance.now();
+        running = true;
+        loop();
+      } catch (err) {
+        log('err', 'start failed', { message: err.message, name: err.name || null, stack: (err.stack || '').split('\n')[0] });
+        setStatus('Error: ' + (err.message || err), 'err');
+        /* Make the log accessible even when start fails — previously the
+           controls bar was only revealed on success, which meant a
+           silent camera hang left the user with no way to reach the log. */
+        document.querySelector('.ctrls').style.display = 'flex';
+      }
+    }
+
+    /* Temporal smoothing state — exponential moving average over the
+       emotion probability vector. This is essential regardless of FPS:
+       without it, Human's per-frame emotion vector jitters between
+       adjacent classes (fear ↔ sad ↔ disgust) because they share
+       facial features, which would make the artwork flicker. */
+    const EMOTION_KEYS = ['happy','sad','angry','fear','disgust','surprise','neutral'];
+    const smoothedEmotion = Object.fromEntries(EMOTION_KEYS.map(k => [k, 0]));
+    /* At the observed 3-5 fps operating point, alpha=0.15 was too responsive:
+       the smoother was firing 2-3x per second and still catching the raw
+       fear<->sad<->angry jitter. Dropping to 0.08 gives a ~2s half-life at
+       5fps — much closer to how humans actually experience emotional shifts.
+       Also bumping min-hold from 500ms to 1200ms so single-frame noise can't
+       cause a labeled transition even if the smoothed vector crosses briefly. */
+    const EMA_ALPHA = 0.08;
+    let smoothedTopEmotion = null;
+    let smoothedTopSince = 0;
+    const TOP_EMOTION_MIN_HOLD_MS = 1200;
+
+    function updateSmoothing(rawEmotions) {
+      if (!rawEmotions || rawEmotions.length === 0) return null;
+      /* rawEmotions is an array of {emotion, score}; convert to a full 7-key
+         vector and blend into the smoothed store. */
+      const frame = Object.fromEntries(EMOTION_KEYS.map(k => [k, 0]));
+      for (const e of rawEmotions) if (frame[e.emotion] !== undefined) frame[e.emotion] = e.score;
+      for (const k of EMOTION_KEYS) {
+        smoothedEmotion[k] = smoothedEmotion[k] * (1 - EMA_ALPHA) + frame[k] * EMA_ALPHA;
+      }
+      /* Pick the top after smoothing */
+      let topK = EMOTION_KEYS[0], topV = smoothedEmotion[topK];
+      for (const k of EMOTION_KEYS) if (smoothedEmotion[k] > topV) { topK = k; topV = smoothedEmotion[k]; }
+      const now = performance.now();
+      if (topK !== smoothedTopEmotion) {
+        if (now - smoothedTopSince >= TOP_EMOTION_MIN_HOLD_MS) {
+          const prev = smoothedTopEmotion;
+          smoothedTopEmotion = topK;
+          smoothedTopSince = now;
+          log('event', 'smoothed emotion transition', { from: prev, to: topK, confidence: Number(topV.toFixed(2)) });
+        }
+      } else {
+        smoothedTopSince = now;
+      }
+      return { top: smoothedTopEmotion || topK, vector: { ...smoothedEmotion } };
+    }
+
+    /* Thermal-aware pacing.
+       iOS throttles the GPU aggressively after ~30s of sustained inference.
+       Rather than fight it, we voluntarily pace: cap the inference frequency
+       based on recent inference cost, so the GPU has time to breathe. The
+       visual layer keeps rendering the last result at 60fps for smoothness.
+
+       Budget rule: we're happy spending at most 60% of wall-clock time
+       inside detect(). If a frame took 180ms, next frame gets a 120ms
+       gap. This flattens the thermal curve and keeps fps stable at ~5-6
+       instead of oscillating between 14 and 3. Steady state is what the
+       Circumplex smoother wants anyway. */
+    /* Aug 24 iteration 2: at 0.60 duty we got a perfectly steady 3.3 fps for
+       121s (no thermal decay from previous 14->5.5 collapse), but 3.3 is too
+       slow. Bumping to 0.85 aims for ~4.8 fps sustained, still with enough
+       breathing room to avoid the throttle cliff. 178ms mean inference *
+       (1-0.85)/0.85 = 31ms gap between frames. */
+    const INFERENCE_DUTY = 0.85;
+    let nextInferenceEarliestAt = 0;
+
+    async function loop() {
+      if (!running) return;
+      const now0 = performance.now();
+      if (now0 < nextInferenceEarliestAt) {
+        requestAnimationFrame(loop);
+        return;
+      }
+      const t0 = performance.now();
+      let result;
+      try {
+        result = await human.detect(video);
+      } catch (err) {
+        log('err', 'detect() threw', { message: err.message });
+        requestAnimationFrame(loop);
+        return;
+      }
+      const infMs = performance.now() - t0;
+      inferSamples.push(infMs);
+      if (inferSamples.length > 60) inferSamples.shift();
+      /* Set the earliest time the NEXT detect() may run, based on this
+         frame's cost and the duty target. */
+      nextInferenceEarliestAt = performance.now() + infMs * (1 - INFERENCE_DUTY) / INFERENCE_DUTY;
+
+      /* Feed the raw vector into the smoother; use the smoothed vector
+         for display and downstream Circumplex mapping. */
+      const face = result.face && result.face[0];
+      const rawEmotions = face && face.emotion;
+      updateSmoothing(rawEmotions);
+
+      drawResult(result);
+      updateReadouts(result, infMs);
+      logEmotionChange(result);
+      frameCount++;
+      framesSinceLastPerfLog++;
+
+      const now = performance.now();
+      if (now - lastFpsAt >= 500) {
+        recentFps = (frameCount * 1000) / (now - lastFpsAt);
+        const fpsEl = document.getElementById('fps');
+        fpsEl.textContent = recentFps.toFixed(1);
+        fpsEl.className = 'n ' + (recentFps >= 24 ? 'good' : recentFps >= 12 ? 'warn' : 'bad');
+        frameCount = 0;
+        lastFpsAt = now;
+      }
+
+      // Perf snapshot every 5 seconds
+      if (framesSinceLastPerfLog >= 150) {
+        const mean = inferSamples.reduce((a, b) => a + b, 0) / inferSamples.length;
+        const sorted = [...inferSamples].sort((a, b) => a - b);
+        const p50 = sorted[Math.floor(sorted.length * 0.50)];
+        const p95 = sorted[Math.floor(sorted.length * 0.95)];
+        log('perf', 'sample', {
+          fps: Number(recentFps.toFixed(2)),
+          inferMs_mean: Number(mean.toFixed(1)),
+          inferMs_p50: Number(p50.toFixed(1)),
+          inferMs_p95: Number(p95.toFixed(1)),
+          samples: inferSamples.length,
+        });
+        framesSinceLastPerfLog = 0;
+      }
+      requestAnimationFrame(loop);
+    }
+
+    function drawResult(result) {
+      overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+      if (!result.face || result.face.length === 0) return;
+      const face = result.face[0];
+      const box = face.box;
+      overlayCtx.strokeStyle = '#d97757';
+      overlayCtx.lineWidth = 2;
+      overlayCtx.strokeRect(box[0], box[1], box[2], box[3]);
+    }
+
+    function updateReadouts(result, infMs) {
+      document.getElementById('infms').textContent = infMs.toFixed(1);
+      const face = result.face && result.face[0];
+      const emotionsEl = document.getElementById('emotions');
+      if (!face) {
+        document.getElementById('faceDetected').textContent = 'No';
+        document.getElementById('faceScore').textContent = '—';
+        document.getElementById('faceAge').textContent = '—';
+        document.getElementById('faceGender').textContent = '—';
+        document.getElementById('valence').textContent = '—';
+        document.getElementById('arousal').textContent = '—';
+        emotionsEl.innerHTML = '';
+        return;
+      }
+      document.getElementById('faceDetected').textContent = 'Yes';
+      document.getElementById('faceScore').textContent = (face.score * 100).toFixed(0) + '%';
+      document.getElementById('faceAge').textContent = face.age ? face.age.toFixed(0) : '—';
+      document.getElementById('faceGender').textContent = face.gender ? face.gender.toUpperCase() : '—';
+
+      const emotions = face.emotion || [];
+      const sorted = [...emotions].sort((a, b) => b.score - a.score);
+      const topLabel = sorted[0] ? sorted[0].emotion : null;
+      emotionsEl.innerHTML = sorted.map(e => `
+        <div class="emo-bar">
+          <div class="label">${e.emotion}</div>
+          <div class="track"><div class="fill ${e.emotion === topLabel ? 'top' : ''}" style="width:${(e.score * 100).toFixed(0)}%"></div></div>
+          <div class="pct">${(e.score * 100).toFixed(0)}%</div>
+        </div>
+      `).join('');
+
+      let v = 0, a = 0, wsum = 0;
+      for (const e of emotions) {
+        const m = EMO_VA[e.emotion];
+        if (!m) continue;
+        v += m.v * e.score; a += m.a * e.score; wsum += e.score;
+      }
+      if (wsum > 0) { v /= wsum; a /= wsum; }
+      document.getElementById('valence').textContent = v.toFixed(2);
+      document.getElementById('arousal').textContent = a.toFixed(2);
+    }
+
+    // Log meaningful emotion transitions, not every frame
+    function logEmotionChange(result) {
+      const face = result.face && result.face[0];
+      if (!face || !face.emotion || face.emotion.length === 0) return;
+      const top = [...face.emotion].sort((a, b) => b.score - a.score)[0];
+      if (!top || top.score < 0.4) return;
+      if (top.emotion !== lastLoggedTopEmotion) {
+        log('event', 'emotion transition', {
+          from: lastLoggedTopEmotion, to: top.emotion, confidence: Number(top.score.toFixed(2)),
+        });
+        lastLoggedTopEmotion = top.emotion;
+      }
+    }
+
+    document.getElementById('startBtn').addEventListener('click', start);
+    log('info', 'page ready · pick preset and start');
+  </script>
+
+</body>
+</html>
