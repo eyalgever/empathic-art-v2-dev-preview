@@ -1,0 +1,988 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Empathic Art v2 · VitalLens engine test</title>
+  <meta name="robots" content="noindex, nofollow">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --ink: #EEECE7;
+      --dim: #7a756e;
+      --accent: #d97757;
+      --ok: #7bd48a;
+      --warn: #d9a457;
+      --err: #d97575;
+      --hr: #d97575;      /* heart-rate red-ish */
+      --rr: #7ba7d9;      /* respiratory blue-ish */
+      --sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--ink); font-family: var(--sans); overflow: hidden; }
+
+    /* ── STAGE — the CAMERA CARD, identical dimensions to human-test.html
+       so both engines feel like the same instrument.                      */
+    .stage {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 48px);
+      left: 50%;
+      margin-left: -100px;
+      width: 200px;
+      height: 267px;
+      background: #000;
+      overflow: hidden;
+      border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(238,236,231,0.10);
+    }
+    #video, #overlay {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+    #video::-webkit-media-controls,
+    #video::-webkit-media-controls-panel,
+    #video::-webkit-media-controls-play-button,
+    #video::-webkit-media-controls-start-playback-button {
+      display: none !important;
+      -webkit-appearance: none !important;
+    }
+    #overlay { pointer-events: none; }
+
+    /* ── HUD — top-left status ───────────────────────────────────────── */
+    .hud {
+      position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 12px;
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--ink); z-index: 10; max-width: 45vw;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    }
+    .hud .rule { width: 16px; height: 2px; background: var(--accent); margin-bottom: 8px; }
+    .hud .title { margin-bottom: 6px; opacity: 0.9; }
+    .hud .status { color: var(--dim); font-size: 9px; }
+    .hud .status.ok { color: var(--ok); }
+    .hud .status.warn { color: var(--warn); }
+    .hud .status.err { color: var(--err); }
+
+    /* ── Perf — top-right glass panel over the video ─────────────────── */
+    .perf {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px;
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--dim); z-index: 10;
+      padding: 8px 10px;
+      background: rgba(10,10,10,0.66); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border-radius: 6px;
+      min-width: 130px; text-align: right;
+    }
+    .perf .n { color: var(--ink); font-variant-numeric: tabular-nums; }
+    .perf .n.good { color: var(--ok); }
+    .perf .n.warn { color: var(--warn); }
+    .perf .n.bad { color: var(--err); }
+    .perf .row { padding: 1px 0; white-space: nowrap; display: flex; justify-content: space-between; gap: 8px; }
+    .perf .row .k { color: var(--dim); }
+
+    /* ── Readout panel below the video card. Same top-offset math as
+       human-test.html: safe-inset + 48 + 267 + 20 = safe-inset + 335. */
+    .readout {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 335px);
+      left: 0; right: 0;
+      bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+      padding: 14px 16px 16px 16px;
+      overflow-y: auto;
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+      z-index: 5; color: var(--ink);
+      background: var(--bg);
+    }
+
+    /* Big HR/RR readout, hero style. Two big numbers side-by-side. */
+    .vitals-hero {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+    }
+    .vitals-hero .cell {
+      background: rgba(238,236,231,0.03);
+      border: 1px solid rgba(238,236,231,0.08);
+      border-radius: 8px;
+      padding: 10px 12px;
+      min-height: 88px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .vitals-hero .cell .lbl { font-family: var(--mono); font-size: 9px; color: var(--dim); letter-spacing: 0.06em; text-transform: uppercase; }
+    .vitals-hero .cell .big {
+      font-family: var(--sans); font-weight: 500; letter-spacing: -0.02em;
+      font-size: 30px; line-height: 1; color: var(--ink);
+      font-variant-numeric: tabular-nums; text-transform: none;
+    }
+    .vitals-hero .cell .big.hr { color: var(--hr); }
+    .vitals-hero .cell .big.rr { color: var(--rr); }
+    .vitals-hero .cell .big .unit { font-size: 11px; color: var(--dim); margin-left: 4px; font-weight: 400; letter-spacing: 0; }
+    .vitals-hero .cell .sub {
+      font-family: var(--mono); font-size: 9px; color: var(--dim); text-transform: uppercase;
+      display: flex; justify-content: space-between; gap: 6px; align-items: baseline;
+    }
+    .vitals-hero .cell .sub .conf.ok { color: var(--ok); }
+    .vitals-hero .cell .sub .conf.warn { color: var(--warn); }
+    .vitals-hero .cell .sub .conf.bad { color: var(--err); }
+
+    /* Sparkline strip */
+    .spark-wrap { margin-bottom: 14px; }
+    .spark-wrap .head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-family: var(--mono); font-size: 9px; color: var(--dim); text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .spark-wrap .head .span { color: var(--dim); }
+    .spark-wrap .head .baseline { color: var(--accent); }
+    canvas.spark {
+      width: 100%; height: 50px;
+      background: rgba(238,236,231,0.03);
+      border-radius: 6px;
+      display: block;
+    }
+
+    /* Sections below hero */
+    .readout .section-title {
+      color: var(--accent);
+      margin-top: 10px; margin-bottom: 6px;
+      font-size: 10px;
+    }
+    .readout .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
+    .readout .grid .col { min-width: 0; }
+    .readout .row {
+      display: flex; justify-content: space-between;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(238,236,231,0.06);
+      font-size: 10px;
+    }
+    .readout .row .k { color: var(--dim); }
+    .readout .row .v { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+    /* Baseline / delta pill */
+    .delta-pill {
+      display: inline-block;
+      font-family: var(--mono); font-size: 9px; letter-spacing: 0.05em; text-transform: uppercase;
+      padding: 1px 6px; border-radius: 3px;
+      background: rgba(238,236,231,0.08);
+      color: var(--dim);
+    }
+    .delta-pill.pos { color: var(--hr); background: rgba(217,117,117,0.10); }
+    .delta-pill.neg { color: var(--rr); background: rgba(123,167,217,0.10); }
+
+    /* ── Controls bar (identical structural pattern to human-test) ── */
+    .ctrls {
+      position: fixed;
+      left: 0; right: 0;
+      bottom: env(safe-area-inset-bottom, 0px);
+      display: flex; gap: 8px; z-index: 200;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) 12px;
+      background: rgba(10,10,10,0.94);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid rgba(238,236,231,0.12);
+      justify-content: flex-start;
+      align-items: center;
+    }
+    .ctrls button {
+      font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--ink); background: rgba(238,236,231,0.05); border: 1px solid rgba(238,236,231,0.28);
+      padding: 10px 14px; cursor: pointer; border-radius: 6px; transition: all 150ms ease;
+      flex: 0 0 auto; min-height: 40px;
+    }
+    .ctrls button:hover, .ctrls button:active { background: rgba(238,236,231,0.15); border-color: var(--ink); }
+    .ctrls button.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+    .ctrls .spacer { flex: 1; }
+    .ctrls .badge {
+      font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--dim); padding: 0 8px;
+    }
+
+    /* ── Log drawer (identical to human-test) ─────────────────────── */
+    .logdrawer {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      height: 40vh; max-height: 320px;
+      background: rgba(10,10,10,0.94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid rgba(238,236,231,0.15);
+      z-index: 50; padding: 12px 16px; overflow: hidden;
+      display: flex; flex-direction: column;
+      transform: translateY(100%); transition: transform 240ms ease;
+    }
+    .logdrawer.open { transform: translateY(0); }
+    .logdrawer .head {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+      font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .logdrawer .head .title { color: var(--accent); }
+    .logdrawer .head .actions { display: flex; gap: 8px; }
+    .logdrawer .head button {
+      font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--dim); background: transparent; border: 1px solid rgba(238,236,231,0.2);
+      padding: 4px 10px; cursor: pointer; border-radius: 4px;
+    }
+    .logdrawer .head button:hover { color: var(--ink); border-color: var(--ink); }
+    .logdrawer .body {
+      flex: 1; overflow-y: auto;
+      font-family: var(--mono); font-size: 10px; line-height: 1.5;
+      color: var(--dim);
+    }
+    .logdrawer .body .line { padding: 1px 0; white-space: pre-wrap; word-break: break-all; }
+    .logdrawer .body .line.info  { color: var(--dim); }
+    .logdrawer .body .line.event { color: var(--ink); }
+    .logdrawer .body .line.warn  { color: var(--warn); }
+    .logdrawer .body .line.err   { color: var(--err); }
+    .logdrawer .body .line.perf  { color: #7ba7d9; }
+    .logdrawer .body .t { color: var(--dim); opacity: 0.6; }
+
+    /* ── Start gate (identical structural pattern to human-test) ── */
+    .gate {
+      position: fixed; inset: 0;
+      display: grid; place-items: center;
+      background: var(--bg);
+      z-index: 100;
+      transition: opacity 400ms ease, visibility 400ms ease;
+    }
+    .gate.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .gate-inner { text-align: center; max-width: 520px; padding: 24px; }
+    .gate-mark {
+      font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--accent); margin-bottom: 20px;
+    }
+    .gate h1 {
+      font-family: var(--sans); font-weight: 400;
+      font-size: clamp(1.8rem, 3.6vw, 2.6rem); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 16px;
+    }
+    .gate p { font-family: var(--sans); font-size: 14px; line-height: 1.55; color: var(--dim); margin-bottom: 20px; }
+
+    /* Method picker (three chips: pos / chrom / g) */
+    .presets {
+      display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .presets label {
+      font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--dim); border: 1px solid rgba(238,236,231,0.25); padding: 10px 14px;
+      cursor: pointer; border-radius: 6px; transition: all 150ms ease;
+      text-align: left; min-width: 130px;
+    }
+    .presets label:hover { color: var(--ink); border-color: var(--ink); }
+    .presets input { display: none; }
+    .presets input:checked + label { color: var(--bg); background: var(--ink); border-color: var(--ink); }
+    .presets label .desc { display: block; font-size: 8px; color: var(--dim); margin-top: 2px; text-transform: none; letter-spacing: 0; }
+    .presets input:checked + label .desc { color: var(--bg); opacity: 0.7; }
+
+    .gate button.start {
+      font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--ink); background: transparent; border: 1px solid var(--ink);
+      padding: 12px 24px; cursor: pointer; transition: all 200ms ease; border-radius: 0;
+    }
+    .gate button.start:hover { background: var(--ink); color: var(--bg); }
+    .gate .foot { margin-top: 20px; font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.05em; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+
+  <!-- Start gate -->
+  <div class="gate" id="gate">
+    <div class="gate-inner">
+      <div class="gate-mark">Empathic Art · Engine test 02</div>
+      <h1>VitalLens engine — heart &amp; breath.</h1>
+      <p>Development route. Runs rouast's VitalLens.js in-browser on your camera stream to estimate heart rate and respiratory rate from face pixels (rPPG). Nothing is uploaded — everything stays on this device.</p>
+
+      <div class="presets">
+        <input type="radio" name="method" id="m-pos" value="pos" checked>
+        <label for="m-pos">POS<span class="desc">Wang 2017 · most cited baseline</span></label>
+
+        <input type="radio" name="method" id="m-chrom" value="chrom">
+        <label for="m-chrom">CHROM<span class="desc">De Haan 2013 · motion-robust</span></label>
+
+        <input type="radio" name="method" id="m-g" value="g">
+        <label for="m-g">G<span class="desc">Green channel · sanity baseline</span></label>
+      </div>
+
+      <button class="start" id="startBtn">Start camera</button>
+      <div class="foot">Dev only · not linked from the app · not medical</div>
+    </div>
+  </div>
+
+  <!-- Stage -->
+  <div class="stage">
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="rule"></div>
+    <div class="title">Engine · VitalLens 0.4.5</div>
+    <div class="status" id="status">Idle</div>
+  </div>
+
+  <!-- Perf top-right -->
+  <div class="perf" id="perfPanel" style="display:none">
+    <div class="row"><span class="k">Pipe fps</span> <span class="n" id="pipeFps">—</span></div>
+    <div class="row"><span class="k">Est</span> <span class="n" id="estMs">— ms</span></div>
+    <div class="row"><span class="k">Method</span> <span class="n" id="methodBadge">—</span></div>
+    <div class="row"><span class="k">Vid</span> <span class="n" id="vidres">—</span></div>
+  </div>
+
+  <!-- Readouts — dashboard below the video -->
+  <div class="readout" id="readout" style="display:none">
+
+    <!-- Big hero: HR + RR ─────────────────────────────────────────── -->
+    <div class="vitals-hero">
+      <div class="cell">
+        <div class="lbl">Heart rate</div>
+        <div class="big hr" id="hrBig">— <span class="unit">bpm</span></div>
+        <div class="sub">
+          <span>raw <span id="hrRaw">—</span></span>
+          <span>Δ <span class="delta-pill" id="hrDelta">—</span></span>
+          <span class="conf" id="hrConf">—</span>
+        </div>
+      </div>
+      <div class="cell">
+        <div class="lbl">Resp rate</div>
+        <div class="big rr" id="rrBig">— <span class="unit">/min</span></div>
+        <div class="sub">
+          <span>raw <span id="rrRaw">—</span></span>
+          <span class="conf" id="rrConf">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sparkline: last 60s of smoothed HR ─────────────────────── -->
+    <div class="spark-wrap">
+      <div class="head">
+        <span>Smoothed HR · last 60s</span>
+        <span class="span" id="sparkSpan">—</span>
+      </div>
+      <canvas class="spark" id="sparkHr" width="600" height="100"></canvas>
+    </div>
+
+    <div class="grid">
+      <div class="col">
+        <div class="section-title">Signal quality</div>
+        <div class="row"><span class="k">Samples</span><span class="v" id="sampleCount">0</span></div>
+        <div class="row"><span class="k">Duration</span><span class="v" id="duration">0 s</span></div>
+        <div class="row"><span class="k">Stdev 5s</span><span class="v" id="stdev5">—</span></div>
+        <div class="row"><span class="k">Stability</span><span class="v" id="stability">—</span></div>
+        <div class="row"><span class="k">Baseline</span><span class="v" id="baseline">learning…</span></div>
+      </div>
+      <div class="col">
+        <div class="section-title">Face &amp; frame</div>
+        <div class="row"><span class="k">Face</span><span class="v" id="faceState">—</span></div>
+        <div class="row"><span class="k">Face conf</span><span class="v" id="faceConf">—</span></div>
+        <div class="row"><span class="k">ROI</span><span class="v" id="roi">—</span></div>
+        <div class="row"><span class="k">Face events</span><span class="v" id="faceEvents">0</span></div>
+        <div class="row"><span class="k">Vitals events</span><span class="v" id="vitalsEvents">0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls bar -->
+  <div class="ctrls">
+    <button id="logToggle">▲ Log</button>
+    <button id="shareLogBtn">Share log</button>
+    <button id="downloadBtn">Save log</button>
+    <div class="spacer"></div>
+    <span class="badge" id="methodChip">—</span>
+    <span class="badge" id="hostBadge">—</span>
+  </div>
+
+  <!-- Log drawer -->
+  <div class="logdrawer" id="logdrawer">
+    <div class="head">
+      <div class="title">Session log · <span id="logCount">0</span> entries</div>
+      <div class="actions">
+        <button id="clearLog">Clear</button>
+        <button id="copyLog">Copy</button>
+        <button id="closeLog">Close</button>
+      </div>
+    </div>
+    <div class="body" id="logBody"></div>
+  </div>
+
+  <script type="module">
+    /*─────────────────────────────────────────────────────────────────────
+      VitalLens engine test route.
+
+      Same shell as human-test.html on purpose — same HUD, same log
+      drawer, same share/save flow, same start-gate. The two routes are
+      designed as a matching pair so they can eventually run side-by-side
+      in the fusion route.
+
+      What this adds beyond the smoke test:
+        1. Confidence-gated moving median (5s window) — kills the 40-bpm
+           re-init spikes we saw in the smoke test's raw output.
+        2. Personal resting-HR baseline — locks after 60s of stable HR.
+        3. HR/RR sparkline with baseline reference line.
+        4. Stability meter (stdev over last 5s of smoothed HR).
+        5. ROI overlay drawn on top of the video (mirrored to match
+           the CSS transform).
+        6. Method picker: pos / chrom / g.
+     ────────────────────────────────────────────────────────────────────*/
+
+    // ── LOGGER ───────────────────────────────────────────────────────
+    const LOG_MAX = 2000;
+    const LOG = [];
+    const logBody = document.getElementById('logBody');
+    const logCountEl = document.getElementById('logCount');
+    const iso = (d = new Date()) => d.toISOString();
+    const tshort = (d = new Date()) => d.toISOString().slice(11, 23);
+
+    function log(kind, msg, data) {
+      const entry = { t: iso(), kind, msg, data: data || null };
+      LOG.push(entry);
+      if (LOG.length > LOG_MAX) LOG.shift();
+      const consoleMsg = `[${entry.t}] ${kind.toUpperCase()} ${msg}${data ? ' ' + JSON.stringify(data) : ''}`;
+      if (kind === 'err' || kind === 'error') console.error(consoleMsg);
+      else if (kind === 'warn') console.warn(consoleMsg);
+      else console.log(consoleMsg);
+      appendLogLine(entry);
+      logCountEl.textContent = LOG.length;
+    }
+    function appendLogLine(entry) {
+      const div = document.createElement('div');
+      div.className = 'line ' + entry.kind;
+      const short = tshort(new Date(entry.t));
+      const dataStr = entry.data ? ' ' + JSON.stringify(entry.data) : '';
+      div.innerHTML = `<span class="t">${short}</span> ${entry.kind.padEnd(5)} ${escapeHtml(entry.msg)}${escapeHtml(dataStr)}`;
+      logBody.appendChild(div);
+      logBody.scrollTop = logBody.scrollHeight;
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+    }
+
+    // Environment probe
+    log('info', 'environment', {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      cpuCores: navigator.hardwareConcurrency,
+      pixelRatio: window.devicePixelRatio,
+      screen: `${screen.width}x${screen.height}`,
+      viewport: `${window.innerWidth}x${window.innerHeight}`,
+      wasm: typeof WebAssembly !== 'undefined',
+      mediaDevices: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+      host: location.host,
+    });
+    document.getElementById('hostBadge').textContent = location.host;
+
+    // ── STATE ────────────────────────────────────────────────────────
+    let vl = null;
+    let running = false;
+    let method = 'pos';
+    let sessionStartMs = 0;
+
+    // Event counters
+    let faceEventCount = 0;
+    let vitalsEventCount = 0;
+
+    // HR history — { t: ms, hr: number, conf: number }
+    // Kept for 60 s of samples; used for median smoothing, stdev, sparkline.
+    const HR_HIST_MAX_MS = 60 * 1000;
+    const hrHist = [];
+
+    // Baseline: the median of the first 60s of *confidence-gated* HR
+    // samples. Locked after 60s and displayed as the "resting" reference.
+    let baseline = null;
+    const BASELINE_LOCK_MS = 60 * 1000;
+
+    // Smoothing config, tuned from smoke-test data:
+    //  - Raw HR from `pos` shows bimodal jumps (40 ↔ 70 bpm) when the
+    //    buffer re-initialises. A 5s median rejects those single-frame
+    //    excursions while keeping real HR movement visible.
+    //  - HR outside [35, 200] is dropped as non-physiological.
+    const MEDIAN_WINDOW_MS = 5000;
+    const HR_MIN = 35;
+    const HR_MAX = 200;
+    const MIN_CONF = 0.5;
+
+    // ── LIBRARY LOAD ─────────────────────────────────────────────────
+    async function loadLibrary() {
+      log('event', 'importing vitallens from jsdelivr');
+      const t0 = performance.now();
+      try {
+        const mod = await import('https://cdn.jsdelivr.net/npm/vitallens@0.4.5/dist/vitallens.browser.js');
+        const dt = performance.now() - t0;
+        log('event', 'vitallens module imported', {
+          ms: Math.round(dt),
+          exports: Object.keys(mod).slice(0, 20),
+        });
+        return mod.VitalLens || mod.default;
+      } catch (err) {
+        log('err', 'import failed', { message: err.message, ms: Math.round(performance.now() - t0) });
+        throw err;
+      }
+    }
+
+    // ── START ────────────────────────────────────────────────────────
+    async function start() {
+      method = document.querySelector('input[name=method]:checked').value;
+      document.getElementById('methodBadge').textContent = method;
+      document.getElementById('methodChip').textContent = 'method:' + method;
+      document.getElementById('status').textContent = 'Loading library…';
+      log('event', 'start requested', { method });
+
+      let VitalLens;
+      try {
+        VitalLens = await loadLibrary();
+        if (!VitalLens) {
+          log('err', 'VitalLens class not found in module');
+          document.getElementById('status').textContent = 'Library missing';
+          document.getElementById('status').className = 'status err';
+          return;
+        }
+      } catch (err) { return; }
+
+      log('event', 'constructing VitalLens instance', { method });
+      try {
+        vl = new VitalLens({ method });
+        log('info', 'VitalLens instance created');
+      } catch (err) {
+        log('err', 'constructor threw', { message: err.message });
+        document.getElementById('status').textContent = 'Constructor failed';
+        document.getElementById('status').className = 'status err';
+        return;
+      }
+
+      // Camera
+      document.getElementById('status').textContent = 'Requesting camera…';
+      let stream;
+      try {
+        stream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('camera timeout 15s')), 15000)),
+        ]);
+      } catch (err) {
+        log('err', 'getUserMedia failed', { message: err.message });
+        document.getElementById('status').textContent = 'Camera denied';
+        document.getElementById('status').className = 'status err';
+        return;
+      }
+
+      const video = document.getElementById('video');
+      video.srcObject = stream;
+      await video.play();
+
+      const settings = stream.getVideoTracks()[0].getSettings();
+      document.getElementById('vidres').textContent = `${settings.width}x${settings.height}`;
+      log('event', 'camera stream started', {
+        w: video.videoWidth, h: video.videoHeight,
+        actual: `${settings.width}x${settings.height}`,
+        frameRate: settings.frameRate,
+      });
+
+      // Reveal UI
+      document.getElementById('gate').classList.add('hidden');
+      document.getElementById('readout').style.display = 'block';
+      document.getElementById('perfPanel').style.display = 'block';
+      document.getElementById('status').textContent = 'Warming up…';
+      document.getElementById('status').className = 'status warn';
+
+      // Overlay canvas sizing
+      const overlay = document.getElementById('overlay');
+      overlay.width = video.videoWidth;
+      overlay.height = video.videoHeight;
+
+      // Wire event listeners
+      vl.addEventListener('faceDetected', onFaceDetected);
+      vl.addEventListener('vitals', onVitals);
+      vl.addEventListener('error', (err) => {
+        log('err', 'vitallens error event', { message: err.message || String(err) });
+      });
+
+      // Attach and start
+      try {
+        await vl.setVideoStream(stream, video);
+        log('event', 'setVideoStream ok');
+      } catch (err) {
+        log('err', 'setVideoStream threw', { message: err.message });
+        return;
+      }
+      try {
+        vl.startVideoStream();
+        running = true;
+        sessionStartMs = performance.now();
+        log('event', 'startVideoStream ok');
+        document.getElementById('status').textContent = 'Running';
+        document.getElementById('status').className = 'status ok';
+      } catch (err) {
+        log('err', 'startVideoStream threw', { message: err.message });
+      }
+
+      // Kick the animation loop that redraws sparkline + updates counters
+      requestAnimationFrame(uiTick);
+
+      // Perf snapshot every 5 s
+      setInterval(perfSnapshot, 5000);
+    }
+
+    // ── EVENT HANDLERS ───────────────────────────────────────────────
+    function onFaceDetected(payload) {
+      faceEventCount++;
+      const c = payload?.coordinates;   // [x1, y1, x2, y2] in video pixels
+      const conf = payload?.confidence;
+      document.getElementById('faceEvents').textContent = faceEventCount;
+      document.getElementById('faceState').textContent = conf > 0.7 ? 'yes' : 'weak';
+      document.getElementById('faceConf').textContent = conf != null ? (conf * 100).toFixed(0) + '%' : '—';
+      if (Array.isArray(c) && c.length === 4) {
+        document.getElementById('roi').textContent = `${Math.round(c[2]-c[0])}×${Math.round(c[3]-c[1])}`;
+        drawROI(c);
+      }
+    }
+
+    function drawROI(coords) {
+      const overlay = document.getElementById('overlay');
+      const ctx = overlay.getContext('2d');
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      const [x1, y1, x2, y2] = coords;
+      ctx.strokeStyle = '#d97757';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    }
+
+    function onVitals(result) {
+      vitalsEventCount++;
+      document.getElementById('vitalsEvents').textContent = vitalsEventCount;
+
+      /* Confirmed via smoke-test data: the actual HR reading lives on
+         result.vitals.heart_rate.{value,confidence}. RR lives on
+         result.vitals.respiratory_rate. Some early events have an
+         empty vitals object — those are fine, we just skip them. */
+      if (vitalsEventCount === 1) {
+        // Log the first event's shape for future reference.
+        log('info', 'first vitals shape', {
+          hasVitals: !!result?.vitals,
+          vitalsKeys: result?.vitals ? Object.keys(result.vitals) : null,
+          hasWaveforms: !!result?.waveforms,
+          waveformKeys: result?.waveforms ? Object.keys(result.waveforms) : null,
+          fps: result?.fps,
+        });
+      }
+
+      const hrObj = result?.vitals?.heart_rate;
+      const rrObj = result?.vitals?.respiratory_rate;
+      const hrRaw = hrObj?.value != null ? Number(hrObj.value) : null;
+      const hrConf = hrObj?.confidence != null ? Number(hrObj.confidence) : null;
+      const rrRaw = rrObj?.value != null ? Number(rrObj.value) : null;
+      const rrConf = rrObj?.confidence != null ? Number(rrObj.confidence) : null;
+      const fps = result?.fps;
+
+      // Raw readout
+      document.getElementById('hrRaw').textContent = hrRaw != null ? hrRaw.toFixed(1) : '—';
+      document.getElementById('rrRaw').textContent = rrRaw != null ? rrRaw.toFixed(1) : '—';
+      document.getElementById('hrConf').textContent = hrConf != null ? (hrConf * 100).toFixed(0) + '%' : '—';
+      document.getElementById('rrConf').textContent = rrConf != null ? (rrConf * 100).toFixed(0) + '%' : '—';
+      // Confidence colour band
+      const hrConfEl = document.getElementById('hrConf');
+      hrConfEl.className = 'conf ' + (hrConf == null ? '' : hrConf > 0.85 ? 'ok' : hrConf > 0.5 ? 'warn' : 'bad');
+
+      if (fps != null) document.getElementById('pipeFps').textContent = fps.toFixed(1);
+
+      // Push into history — gated by confidence AND physiological range
+      const now = performance.now();
+      if (hrRaw != null && hrRaw >= HR_MIN && hrRaw <= HR_MAX && (hrConf == null || hrConf >= MIN_CONF)) {
+        hrHist.push({ t: now, hr: hrRaw, conf: hrConf });
+        // Prune to 60s window
+        const cutoff = now - HR_HIST_MAX_MS;
+        while (hrHist.length && hrHist[0].t < cutoff) hrHist.shift();
+      }
+
+      // Compute smoothed HR (median over last 5s of gated samples)
+      const medWindow = hrHist.filter(x => x.t > now - MEDIAN_WINDOW_MS).map(x => x.hr);
+      let hrSmoothed = null;
+      if (medWindow.length >= 3) {
+        const sorted = [...medWindow].sort((a, b) => a - b);
+        hrSmoothed = sorted[Math.floor(sorted.length / 2)];
+      }
+      document.getElementById('hrBig').innerHTML =
+        (hrSmoothed != null ? hrSmoothed.toFixed(0) : '—') + ' <span class="unit">bpm</span>';
+
+      // RR: pass through raw (RR isn't yet fully populated in `pos`, but
+      // some later methods will emit it; we just show whatever's there).
+      document.getElementById('rrBig').innerHTML =
+        (rrRaw != null ? rrRaw.toFixed(1) : '—') + ' <span class="unit">/min</span>';
+
+      // Baseline lock at 60s
+      const sessionMs = now - sessionStartMs;
+      if (baseline == null && sessionMs >= BASELINE_LOCK_MS && hrHist.length >= 30) {
+        // Baseline = median of full 60s window
+        const all = [...hrHist.map(x => x.hr)].sort((a, b) => a - b);
+        baseline = all[Math.floor(all.length / 2)];
+        log('event', 'baseline locked', { bpm: Number(baseline.toFixed(1)), samples: all.length });
+        document.getElementById('baseline').textContent = baseline.toFixed(0) + ' bpm';
+      } else if (baseline == null) {
+        const remaining = Math.max(0, Math.ceil((BASELINE_LOCK_MS - sessionMs) / 1000));
+        document.getElementById('baseline').textContent = 'learning… ' + remaining + 's';
+      }
+
+      // Delta pill
+      if (baseline != null && hrSmoothed != null) {
+        const d = hrSmoothed - baseline;
+        const pill = document.getElementById('hrDelta');
+        pill.textContent = (d >= 0 ? '+' : '') + d.toFixed(0);
+        pill.className = 'delta-pill ' + (d > 1 ? 'pos' : d < -1 ? 'neg' : '');
+      }
+
+      // Stdev over last 5s (stability meter)
+      if (medWindow.length >= 5) {
+        const mean = medWindow.reduce((a, b) => a + b, 0) / medWindow.length;
+        const variance = medWindow.reduce((a, b) => a + (b - mean) ** 2, 0) / medWindow.length;
+        const stdev = Math.sqrt(variance);
+        document.getElementById('stdev5').textContent = stdev.toFixed(1);
+        // Stability label from stdev:
+        // <2 rock-solid, <5 good, <10 noisy, >=10 unusable
+        const stab = stdev < 2 ? 'rock-solid' : stdev < 5 ? 'good' : stdev < 10 ? 'noisy' : 'unusable';
+        document.getElementById('stability').textContent = stab;
+      }
+
+      document.getElementById('sampleCount').textContent = hrHist.length;
+      document.getElementById('duration').textContent = Math.floor(sessionMs / 1000) + ' s';
+
+      // Perf sample every 5 vitals events
+      if (vitalsEventCount % 5 === 0) {
+        log('perf', 'vitals sample', {
+          n: vitalsEventCount,
+          hrRaw: hrRaw != null ? Number(hrRaw.toFixed(1)) : null,
+          hrSmoothed: hrSmoothed != null ? Number(hrSmoothed.toFixed(1)) : null,
+          hrConf: hrConf != null ? Number(hrConf.toFixed(2)) : null,
+          baseline: baseline != null ? Number(baseline.toFixed(1)) : null,
+          rrRaw: rrRaw != null ? Number(rrRaw.toFixed(1)) : null,
+          fps: fps != null ? Number(fps.toFixed(1)) : null,
+          histCount: hrHist.length,
+        });
+      }
+    }
+
+    // ── UI TICK — redraws sparkline at ~30 fps ───────────────────────
+    function uiTick() {
+      drawSparkline();
+      if (running) requestAnimationFrame(uiTick);
+    }
+
+    function drawSparkline() {
+      const c = document.getElementById('sparkHr');
+      const ctx = c.getContext('2d');
+      // Ensure canvas matches CSS pixel size
+      const cssW = c.clientWidth, cssH = c.clientHeight;
+      if (c.width !== cssW * 2 || c.height !== cssH * 2) {
+        c.width = cssW * 2; c.height = cssH * 2;
+        ctx.scale(2, 2);
+      }
+      ctx.clearRect(0, 0, cssW, cssH);
+
+      if (hrHist.length < 2) {
+        // Ghost line to show "waiting" state
+        ctx.strokeStyle = 'rgba(238,236,231,0.10)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, cssH / 2);
+        ctx.lineTo(cssW, cssH / 2);
+        ctx.stroke();
+        document.getElementById('sparkSpan').textContent = '—';
+        return;
+      }
+
+      // Y-scale: min/max in the visible window, padded, always at least ±10 bpm
+      const values = hrHist.map(x => x.hr);
+      let lo = Math.min(...values), hi = Math.max(...values);
+      const mid = (lo + hi) / 2;
+      const span = Math.max(20, hi - lo + 6);
+      lo = mid - span / 2; hi = mid + span / 2;
+      document.getElementById('sparkSpan').textContent = `${Math.round(lo)}–${Math.round(hi)}`;
+
+      // X-scale: last 60s ending "now"
+      const now = performance.now();
+      const tMin = now - HR_HIST_MAX_MS;
+
+      const xOf = (t) => ((t - tMin) / HR_HIST_MAX_MS) * cssW;
+      const yOf = (v) => cssH - ((v - lo) / (hi - lo)) * cssH;
+
+      // Baseline reference line
+      if (baseline != null) {
+        ctx.strokeStyle = 'rgba(217,119,87,0.5)';
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, yOf(baseline));
+        ctx.lineTo(cssW, yOf(baseline));
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Baseline label at right edge
+        ctx.fillStyle = 'rgba(217,119,87,0.7)';
+        ctx.font = '9px ui-monospace, monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(baseline.toFixed(0), cssW - 3, yOf(baseline) - 3);
+      }
+
+      // Raw scatter — subtle dots
+      ctx.fillStyle = 'rgba(238,236,231,0.15)';
+      for (const p of hrHist) {
+        ctx.fillRect(xOf(p.t) - 0.5, yOf(p.hr) - 0.5, 1, 1);
+      }
+
+      // Smoothed line — median over rolling 5s window
+      ctx.strokeStyle = 'var(--hr)'; // won't resolve in canvas, use hex
+      ctx.strokeStyle = '#d97575';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let first = true;
+      for (let i = 0; i < hrHist.length; i++) {
+        const t = hrHist[i].t;
+        const windowVals = [];
+        for (let j = i; j >= 0 && hrHist[j].t >= t - MEDIAN_WINDOW_MS; j--) {
+          windowVals.push(hrHist[j].hr);
+        }
+        if (windowVals.length < 3) continue;
+        const sorted = [...windowVals].sort((a, b) => a - b);
+        const med = sorted[Math.floor(sorted.length / 2)];
+        const x = xOf(t), y = yOf(med);
+        if (first) { ctx.moveTo(x, y); first = false; }
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // ── PERF SNAPSHOT ────────────────────────────────────────────────
+    function perfSnapshot() {
+      if (!running) return;
+      const values = hrHist.map(x => x.hr);
+      const mean = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+      log('perf', 'snapshot', {
+        vitalsEvents: vitalsEventCount,
+        faceEvents: faceEventCount,
+        histCount: hrHist.length,
+        hrMean: mean != null ? Number(mean.toFixed(1)) : null,
+        baseline: baseline != null ? Number(baseline.toFixed(1)) : null,
+        method,
+      });
+    }
+
+    // ── SUMMARY (for share/download) ─────────────────────────────────
+    function currentSummary() {
+      const values = hrHist.map(x => x.hr);
+      const mean = values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+      const sorted = [...values].sort((a, b) => a - b);
+      const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : null;
+      return {
+        method,
+        durationSec: sessionStartMs ? Math.floor((performance.now() - sessionStartMs) / 1000) : 0,
+        vitalsEvents: vitalsEventCount,
+        faceEvents: faceEventCount,
+        histCount: hrHist.length,
+        hrMean: mean != null ? Number(mean.toFixed(1)) : null,
+        hrMedian: median != null ? Number(median.toFixed(1)) : null,
+        baselineBpm: baseline != null ? Number(baseline.toFixed(1)) : null,
+      };
+    }
+
+    // ── LOG DRAWER UI (same behaviour as human-test.html) ────────────
+    const drawer = document.getElementById('logdrawer');
+    document.getElementById('logToggle').addEventListener('click', () => drawer.classList.toggle('open'));
+    document.getElementById('closeLog').addEventListener('click', () => drawer.classList.remove('open'));
+    document.getElementById('clearLog').addEventListener('click', () => {
+      LOG.length = 0; logBody.innerHTML = ''; logCountEl.textContent = 0;
+      log('info', 'log cleared');
+    });
+
+    async function copyLogToClipboard(btn) {
+      const text = LOG.map(e => `[${e.t}] ${e.kind.toUpperCase()} ${e.msg}${e.data ? ' ' + JSON.stringify(e.data) : ''}`).join('\n');
+      let ok = false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          ok = true;
+        }
+      } catch (e) { log('warn', 'navigator.clipboard failed', { msg: e.message }); }
+      if (!ok) {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.top = '0'; ta.style.left = '0';
+          ta.style.opacity = '0';
+          ta.style.pointerEvents = 'none';
+          document.body.appendChild(ta);
+          ta.focus(); ta.select();
+          ta.setSelectionRange(0, text.length);
+          ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) log('info', 'log copied via execCommand fallback');
+        } catch (e) { log('warn', 'execCommand copy failed', { msg: e.message }); }
+      }
+      if (!ok && navigator.share) {
+        try {
+          await navigator.share({ text, title: 'VitalLens engine log' });
+          ok = true;
+          log('info', 'log shared via iOS share sheet');
+        } catch (e) { log('warn', 'share sheet cancelled', { msg: e.message }); }
+      }
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = ok ? 'Copied ✓' : 'Failed – use Save log';
+        btn.classList.toggle('on', ok);
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('on'); }, 2400);
+      }
+      log(ok ? 'info' : 'err', ok ? 'log copied' : 'copy failed all strategies', { chars: text.length });
+    }
+    document.getElementById('copyLog').addEventListener('click', (e) => copyLogToClipboard(e.currentTarget));
+
+    document.getElementById('shareLogBtn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const text = LOG.map(x => `[${x.t}] ${x.kind.toUpperCase()} ${x.msg}${x.data ? ' ' + JSON.stringify(x.data) : ''}`).join('\n');
+      const summary = currentSummary();
+      const header = `VitalLens engine log — method ${summary.method} — ${summary.durationSec}s — ${summary.vitalsEvents} vitals events — HR mean ${summary.hrMean ?? '?'} — baseline ${summary.baselineBpm ?? 'not-locked'}\n\n`;
+      const payload = header + text;
+
+      if (!navigator.share) {
+        log('warn', 'navigator.share not available');
+        copyLogToClipboard(btn);
+        return;
+      }
+      try {
+        const blob = new Blob([payload], { type: 'text/plain' });
+        const file = new File([blob], `vitallens-test-log-${iso().replace(/[:.]/g, '-')}.txt`, { type: 'text/plain' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'VitalLens engine log' });
+          log('info', 'log shared as file');
+          return;
+        }
+      } catch (err) { log('warn', 'file share failed, trying text', { msg: err.message }); }
+      try {
+        await navigator.share({ text: payload, title: 'VitalLens engine log' });
+        log('info', 'log shared as text');
+      } catch (err) { log('warn', 'text share cancelled', { msg: err.message }); }
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const payload = {
+        exportedAt: iso(),
+        entries: LOG,
+        summary: currentSummary(),
+        hrHistory: hrHist,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vitallens-test-log-${iso().replace(/[:.]/g, '-')}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      log('info', 'log downloaded', { entries: LOG.length });
+    });
+
+    document.getElementById('startBtn').addEventListener('click', start);
+    log('info', 'page ready · pick method and Start camera');
+  </script>
+
+</body>
+</html>
