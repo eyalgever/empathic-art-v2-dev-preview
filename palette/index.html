@@ -43,42 +43,79 @@
     #video::-webkit-media-controls-play-button,
     #video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none; }
 
-    /* ── GATE (pre-start) — dark, live shader behind ─────────────── */
+    /* ── GATE (Open-inspired composition) ─────────────────────────── */
     .gate {
       position: fixed; inset: 0; z-index: 100;
       background: transparent;
-      color: #efece5;
-      display: flex; align-items: center; justify-content: center;
-      padding: max(24px, env(safe-area-inset-top, 24px)) 24px max(24px, env(safe-area-inset-bottom, 24px));
+      color: #eeece7;
+      display: block;
+      overflow: hidden;
     }
+    /* Darken overlay: strong at bottom to make text pop over live shader */
     .gate::before {
       content: "";
       position: absolute; inset: 0;
       background:
-        linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.55) 100%);
+        linear-gradient(to bottom,
+          rgba(0,0,0,0.10) 0%,
+          rgba(0,0,0,0.15) 40%,
+          rgba(0,0,0,0.55) 75%,
+          rgba(0,0,0,0.78) 100%);
       pointer-events: none;
       z-index: 1;
     }
     .gate.hidden { display: none; }
-    .gate-inner {
-      max-width: 520px; width: 100%; text-align: left;
-      position: relative; z-index: 2;
+
+    /* Top wordmark: E m p a t h i c   A r t — tracked with real gaps */
+    .gate-wordmark {
+      position: absolute;
+      top: calc(env(safe-area-inset-top, 0px) + 24px);
+      left: 0; right: 0;
+      z-index: 3;
+      text-align: center;
+      font-family: var(--ea-font-display);
+      font-weight: 400;
+      font-size: clamp(15px, 2.6vw, 20px);
+      color: #eeece7;
+      user-select: none;
     }
-    .gate-mark {
-      font-family: var(--ea-font-mono);
-      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
-      color: rgba(239, 236, 229, 0.72);
-      margin-bottom: 32px;
-      font-weight: 500;
+    .gate-wordmark span {
+      display: inline-block;
     }
+    .gate-wordmark span + span { margin-left: 0.55em; }
+    /* Bigger gap between "Empathic" and "Art" (word break) */
+    .gate-wordmark span.word-gap { margin-left: 1.6em; }
+
+    /* Bottom text block — anchored to lower third, left-aligned */
+    .gate-block {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+      padding: 0 24px;
+      z-index: 3;
+      display: grid;
+      gap: 18px;
+    }
+
+    /* Two-column headline + body layout on wider screens */
+    .gate-headrow {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      align-items: end;
+    }
+    @media (min-width: 720px) {
+      .gate-headrow { grid-template-columns: 1.1fr 1fr; gap: 40px; }
+    }
+
     .gate h1 {
       font-family: var(--ea-font-display);
-      font-size: clamp(44px, 9vw, 72px);
-      line-height: 0.94;
+      font-size: clamp(48px, 12vw, 96px);
+      line-height: 0.92;
       font-weight: 400;
-      letter-spacing: -0.03em;
-      color: var(--gate-fg, #efece5);
-      margin: 0 0 20px;
+      letter-spacing: -0.035em;
+      color: #eeece7;
+      margin: 0;
       text-wrap: balance;
     }
     .gate h1 em {
@@ -86,34 +123,96 @@
       font-weight: 400;
       color: inherit;
     }
-    .gate p {
-      font-family: var(--ea-font-ui);
-      color: rgba(239, 236, 229, 0.82);
-      font-size: 17px; line-height: 1.5;
+    /* Tiny superscript-style year mark next to headline */
+    .gate h1 sup {
+      font-family: var(--ea-font-mono);
+      font-size: 0.16em;
       font-weight: 400;
-      margin: 0 0 36px;
+      letter-spacing: 0.06em;
+      vertical-align: super;
+      color: rgba(238, 236, 231, 0.78);
+      margin-left: 0.25em;
+      top: -0.6em;
+      position: relative;
+    }
+
+    .gate-body {
+      font-family: var(--ea-font-ui);
+      color: rgba(238, 236, 231, 0.86);
+      font-size: 16px; line-height: 1.5;
+      font-weight: 400;
+      margin: 0;
       max-width: 42ch;
     }
+
+    /* Chip row */
+    .gate-chips {
+      display: flex; flex-wrap: wrap;
+      gap: 8px;
+      margin: 4px 0 4px;
+    }
+    .gate-chip {
+      font-family: var(--ea-font-ui);
+      font-size: 13px;
+      font-weight: 400;
+      color: #eeece7;
+      background: transparent;
+      border: 1px solid rgba(238, 236, 231, 0.85);
+      border-radius: 8px;
+      padding: 4px 12px;
+      letter-spacing: 0;
+      line-height: 1.35;
+      white-space: nowrap;
+    }
+
+    /* Primary CTA — cream pill with soft glow */
     .start {
       font-family: var(--ea-font-ui);
-      background: var(--ea-accent);
-      color: var(--ea-surface);
+      background: #eeece7;
+      color: #0a0a0a;
       border: 0; border-radius: 999px;
       padding: 16px 32px;
       font-size: 16px; font-weight: 500;
-      letter-spacing: 0.01em;
+      letter-spacing: 0;
       cursor: pointer;
       -webkit-appearance: none;
-      box-shadow: var(--ea-shadow-cta);
-      transition: background 140ms cubic-bezier(0.22,1,0.36,1), transform 140ms;
+      justify-self: start;
+      box-shadow:
+        0 0 0 1px rgba(238, 236, 231, 0.12),
+        0 6px 28px rgba(238, 236, 231, 0.22),
+        0 0 60px rgba(238, 236, 231, 0.10);
+      transition: transform 140ms cubic-bezier(0.22,1,0.36,1), box-shadow 200ms;
     }
-    .start:active { background: var(--ea-accent-hover); transform: scale(0.98); }
-    .foot {
-      margin-top: 28px;
+    .start:active {
+      transform: scale(0.98);
+      box-shadow:
+        0 0 0 1px rgba(238, 236, 231, 0.2),
+        0 4px 18px rgba(238, 236, 231, 0.28);
+    }
+
+    /* Footer meta band: SESSION 01 · EMPATHIC ART — [STYLE NAME] */
+    .gate-meta {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 16px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(238, 236, 231, 0.14);
       font-family: var(--ea-font-mono);
-      font-size: 11px;
-      color: rgba(239, 236, 229, 0.55);
-      letter-spacing: 0.06em;
+      font-size: 10px;
+      color: rgba(238, 236, 231, 0.62);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+    .gate-meta__right { text-align: right; }
+
+    /* Small camera-permission hint above CTA */
+    .gate-hint {
+      font-family: var(--ea-font-mono);
+      font-size: 10px;
+      color: rgba(238, 236, 231, 0.55);
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      margin: -2px 0 -6px;
     }
 
     /* ── HEADER (v1 style, cream on artwork) ───────────────────────── */
@@ -422,14 +521,35 @@
   <!-- The artwork -->
   <canvas id="art"></canvas>
 
-  <!-- Start gate -->
+  <!-- Start gate (Open-inspired composition) -->
   <div class="gate" id="gate">
-    <div class="gate-inner">
-      <div class="gate-mark">Empathic Art · <span id="gate-style-name">—</span></div>
-      <h1>Feel yourself <em>feeling</em>.</h1>
-      <p>Your face and your pulse become color. Nothing leaves this device.</p>
-      <button class="start" id="startBtn">Begin</button>
-      <div class="foot">Camera stays on this device · no upload</div>
+
+    <!-- Top wordmark: E m p a t h i c   A r t -->
+    <div class="gate-wordmark" aria-label="Empathic Art">
+      <span>E</span><span>m</span><span>p</span><span>a</span><span>t</span><span>h</span><span>i</span><span>c</span><span class="word-gap">A</span><span>r</span><span>t</span>
+    </div>
+
+    <!-- Bottom text block -->
+    <div class="gate-block">
+      <div class="gate-headrow">
+        <h1>Feel yourself <em>feeling</em>.<sup>2026</sup></h1>
+        <p class="gate-body">Your face and your pulse become color, in real time. Nothing leaves this device.</p>
+      </div>
+
+      <div class="gate-chips">
+        <span class="gate-chip">Face becomes color</span>
+        <span class="gate-chip">Pulse becomes rhythm</span>
+        <span class="gate-chip">On-device</span>
+      </div>
+
+      <div class="gate-hint">Camera stays on this device · no upload</div>
+
+      <button class="start" id="startBtn">Begin →</button>
+
+      <div class="gate-meta">
+        <div class="gate-meta__left">Session 01</div>
+        <div class="gate-meta__right">Empathic Art · <span id="gate-style-name">—</span></div>
+      </div>
     </div>
   </div>
 
