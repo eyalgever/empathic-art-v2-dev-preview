@@ -980,6 +980,9 @@
     // consider every load "first"; Checkpoint 4 will unlock Continue /
     // Choose / Surprise Me from per-user session history).
     const { StyleRegistry } = await import('./v1-mirror/src/visuals/index.js');
+    const { SessionStoreV2 } = await import('./session-store-v2.js');
+    const store = new SessionStoreV2();
+    log('event', 'session store loaded', { count: store.sessionCount, last: store.lastSession ? { seq: store.lastSession.seq, styleName: store.lastSession.styleName } : null });
     const canvas = document.getElementById('art');
 
     // Filter to WebGL2-capable styles (iPhone Safari 26 has WebGL2; skip
@@ -1005,6 +1008,13 @@
     // Expose the chosen style name for the gate/header.
     const gateStyleEl = document.getElementById('gate-style-name');
     if (gateStyleEl) gateStyleEl.textContent = StyleCls.name || '';
+
+    // Show real session number in the gate meta (00 pad, next session = count + 1)
+    const gateSessionEl = document.querySelector('.gate-meta__left');
+    if (gateSessionEl) {
+      const nextSeq = store.sessionCount + 1;
+      gateSessionEl.textContent = 'Session ' + String(nextSeq).padStart(2, '0');
+    }
 
     // v1 styles manage their own canvas.width / .height and DPR. We just
     // notify them when the CSS box changes.
@@ -1063,6 +1073,19 @@
       senseState.uI.push(intensity);
       for (const k of ['uV','uA','uP','uI']) {
         if (senseState[k].length > 240) senseState[k].splice(0, senseState[k].length - 240);
+      }
+
+      // Persist sample to SessionStore (throttled internally to 1 Hz)
+      if (running) {
+        // Top emotion string, if we have one
+        let topEmoName = null;
+        if (senseState.emotions && senseState.emotions.length) {
+          let best = -1;
+          for (const e of senseState.emotions) {
+            if (e.score > best) { best = e.score; topEmoName = e.emotion; }
+          }
+        }
+        store.push({ v: smV, a: smA, hr: vlDisplayedHr, emo: topEmoName });
       }
 
       if (sensingOpen) updateSensing();
@@ -1496,6 +1519,13 @@
       document.getElementById('gate').classList.add('hidden');
       document.body.classList.remove('gate-open');
       running = true;
+      // Begin the persisted session recording
+      try {
+        store.begin({ styleId: StyleCls.id, styleName: StyleCls.name });
+        log('event', 'session begin', { styleId: StyleCls.id, seq: store._seq });
+      } catch (e) {
+        log('err', 'session begin failed', { err: String(e) });
+      }
       sessionStartMs = performance.now();
       vlSessionStartMs = sessionStartMs;
       humanLastFpsAt = sessionStartMs;
