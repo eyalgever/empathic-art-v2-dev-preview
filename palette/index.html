@@ -51,16 +51,17 @@
       display: block;
       overflow: hidden;
     }
-    /* Darken overlay: strong at bottom to make text pop over live shader */
+    /* Darken overlay: stronger overall so text is readable over any shader,
+       especially bright ones like Nerves that have white space between forms. */
     .gate::before {
       content: "";
       position: absolute; inset: 0;
       background:
         linear-gradient(to bottom,
-          rgba(0,0,0,0.10) 0%,
-          rgba(0,0,0,0.15) 40%,
-          rgba(0,0,0,0.55) 75%,
-          rgba(0,0,0,0.78) 100%);
+          rgba(0,0,0,0.45) 0%,
+          rgba(0,0,0,0.50) 35%,
+          rgba(0,0,0,0.72) 70%,
+          rgba(0,0,0,0.88) 100%);
       pointer-events: none;
       z-index: 1;
     }
@@ -1022,28 +1023,13 @@
 
 
   <script type="module">
-    // ── EARLIEST DIAGNOSTICS ──────────────────────────────────────────
-    // Register global error handlers BEFORE any imports so we catch
-    // module-load failures (bad imports, MIME errors, WebGL init crashes).
-    (function attachEarlyDiag() {
-      const dbg = document.getElementById('gateDebug');
-      function write(msg) {
-        if (!dbg) return;
-        const t = new Date().toISOString().slice(11,19);
-        const prev = (dbg.textContent || '').split('\n').slice(0,4).join('\n');
-        dbg.textContent = '[' + t + '] ' + msg + '\n' + prev;
-      }
-      window.__gdbgEarly = write;
-      write('module script entered');
-      window.addEventListener('error', (e) => {
-        const src = e.filename ? (' @ ' + e.filename.split('/').pop() + ':' + e.lineno) : '';
-        write('WIN ERR: ' + (e.message || 'unknown') + src);
-      });
-      window.addEventListener('unhandledrejection', (e) => {
-        const r = e.reason;
-        write('REJ: ' + (r && (r.message || String(r)) || 'unknown'));
-      });
-    })();
+    // Global error handlers (invisible, but log to console for debugging)
+    window.addEventListener('error', (e) => {
+      console.error('[gate] window error:', e.message, e.filename, e.lineno);
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('[gate] unhandled rejection:', e.reason);
+    });
 
     /* ────────────────────────────────────────────────────────────────
        ENGINE 4 — PALETTE
@@ -1314,12 +1300,8 @@
     // random for the first-ever session (before we ship SessionStore we
     // consider every load "first"; Checkpoint 4 will unlock Continue /
     // Choose / Surprise Me from per-user session history).
-    if (window.__gdbgEarly) window.__gdbgEarly('importing StyleRegistry…');
     const { StyleRegistry } = await import('./v1-mirror/src/visuals/index.js');
-    if (window.__gdbgEarly) window.__gdbgEarly('StyleRegistry loaded');
-    if (window.__gdbgEarly) window.__gdbgEarly('importing SessionStoreV2…');
     const { SessionStoreV2 } = await import('./session-store-v2.js');
-    if (window.__gdbgEarly) window.__gdbgEarly('SessionStoreV2 loaded');
     const store = new SessionStoreV2();
     log('event', 'session store loaded', { count: store.sessionCount, last: store.lastSession ? { seq: store.lastSession.seq, styleName: store.lastSession.styleName } : null });
     const canvas = document.getElementById('art');
@@ -1338,7 +1320,13 @@
       const src = pool.length ? pool : catalog;
       return src[Math.floor(Math.random() * src.length)];
     }
-    let StyleCls = catalog[Math.floor(Math.random() * catalog.length)];
+    // First-session default: Chapel (Rothko-referencing chromatic field).
+    // Later sessions and Surprise Me can pick any style.
+    const ROTHKO_ID = 'chapel';
+    const chapel = catalog.find(c => c.id === ROTHKO_ID);
+    let StyleCls = (store.sessionCount === 0 && chapel)
+      ? chapel
+      : catalog[Math.floor(Math.random() * catalog.length)];
     log('event', 'style chosen (initial)', { id: StyleCls.id, name: StyleCls.name });
 
     let style;
@@ -1352,12 +1340,9 @@
       style.start();
     }
     try {
-      if (window.__gdbgEarly) window.__gdbgEarly('instantiating style: ' + StyleCls.id);
       instantiateStyle(StyleCls);
-      if (window.__gdbgEarly) window.__gdbgEarly('style running: ' + StyleCls.id);
     } catch (e) {
       log('err', 'style init', { id: StyleCls.id, err: String(e) });
-      if (window.__gdbgEarly) window.__gdbgEarly('ERR style init: ' + StyleCls.id + ' — ' + (e && e.message || e));
       alert('Visual style failed to init: ' + StyleCls.id + '\n' + e);
       throw e;
     }
@@ -2395,42 +2380,22 @@
     }
 
     // Attach with pointerup + click + touchend for iOS Safari 26 resilience.
-    // Also mirror all diagnostic breadcrumbs to a visible on-gate ribbon so
-    // the user can screenshot without opening the log drawer.
-    const __dbg = document.getElementById('gateDebug');
-    function __gdbg(msg) {
-      if (!__dbg) return;
-      const t = new Date().toISOString().slice(11,19);
-      __dbg.textContent = '[' + t + '] ' + msg + '\n' + (__dbg.textContent || '').split('\n').slice(0,4).join('\n');
-    }
+    // Guard against double-fire with a debounce flag.
     let __beginFired = false;
     function __safeBegin(ev) {
-      __gdbg('tap:' + (ev && ev.type));
       if (__beginFired) return;
       __beginFired = true;
       log('event', 'Begin tapped', { via: ev && ev.type });
-      try {
-        start();
-        __gdbg('start() invoked');
-      } catch (e) {
-        __beginFired = false;
-        log('err', 'start() threw', { err: String(e) });
-        __gdbg('ERR start(): ' + (e && e.message || e));
-        alert('Begin failed: ' + e.message);
-      }
+      try { start(); }
+      catch (e) { __beginFired = false; log('err', 'start() threw', { err: String(e) }); alert('Begin failed: ' + e.message); }
     }
     const __btn = document.getElementById('startBtn');
-    if (!__btn) { __gdbg('FATAL: no #startBtn'); }
-    else {
+    if (__btn) {
       __btn.addEventListener('click', __safeBegin);
       __btn.addEventListener('pointerup', __safeBegin);
       __btn.addEventListener('touchend', __safeBegin, { passive: true });
-      __gdbg('ready · 3 listeners on #startBtn');
     }
     log('info', 'page ready · tap Begin');
-    // Also catch any unhandled top-level errors and show them on the ribbon
-    window.addEventListener('error', (e) => { __gdbg('WIN ERR: ' + (e.message || e.error && e.error.message || 'unknown')); });
-    window.addEventListener('unhandledrejection', (e) => { __gdbg('REJ: ' + (e.reason && (e.reason.message || e.reason) || 'unknown')); });
   </script>
 
 </body>
