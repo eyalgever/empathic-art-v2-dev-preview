@@ -1022,6 +1022,29 @@
 
 
   <script type="module">
+    // ── EARLIEST DIAGNOSTICS ──────────────────────────────────────────
+    // Register global error handlers BEFORE any imports so we catch
+    // module-load failures (bad imports, MIME errors, WebGL init crashes).
+    (function attachEarlyDiag() {
+      const dbg = document.getElementById('gateDebug');
+      function write(msg) {
+        if (!dbg) return;
+        const t = new Date().toISOString().slice(11,19);
+        const prev = (dbg.textContent || '').split('\n').slice(0,4).join('\n');
+        dbg.textContent = '[' + t + '] ' + msg + '\n' + prev;
+      }
+      window.__gdbgEarly = write;
+      write('module script entered');
+      window.addEventListener('error', (e) => {
+        const src = e.filename ? (' @ ' + e.filename.split('/').pop() + ':' + e.lineno) : '';
+        write('WIN ERR: ' + (e.message || 'unknown') + src);
+      });
+      window.addEventListener('unhandledrejection', (e) => {
+        const r = e.reason;
+        write('REJ: ' + (r && (r.message || String(r)) || 'unknown'));
+      });
+    })();
+
     /* ────────────────────────────────────────────────────────────────
        ENGINE 4 — PALETTE
 
@@ -1291,8 +1314,12 @@
     // random for the first-ever session (before we ship SessionStore we
     // consider every load "first"; Checkpoint 4 will unlock Continue /
     // Choose / Surprise Me from per-user session history).
+    if (window.__gdbgEarly) window.__gdbgEarly('importing StyleRegistry…');
     const { StyleRegistry } = await import('./v1-mirror/src/visuals/index.js');
+    if (window.__gdbgEarly) window.__gdbgEarly('StyleRegistry loaded');
+    if (window.__gdbgEarly) window.__gdbgEarly('importing SessionStoreV2…');
     const { SessionStoreV2 } = await import('./session-store-v2.js');
+    if (window.__gdbgEarly) window.__gdbgEarly('SessionStoreV2 loaded');
     const store = new SessionStoreV2();
     log('event', 'session store loaded', { count: store.sessionCount, last: store.lastSession ? { seq: store.lastSession.seq, styleName: store.lastSession.styleName } : null });
     const canvas = document.getElementById('art');
@@ -1325,9 +1352,12 @@
       style.start();
     }
     try {
+      if (window.__gdbgEarly) window.__gdbgEarly('instantiating style: ' + StyleCls.id);
       instantiateStyle(StyleCls);
+      if (window.__gdbgEarly) window.__gdbgEarly('style running: ' + StyleCls.id);
     } catch (e) {
       log('err', 'style init', { id: StyleCls.id, err: String(e) });
+      if (window.__gdbgEarly) window.__gdbgEarly('ERR style init: ' + StyleCls.id + ' — ' + (e && e.message || e));
       alert('Visual style failed to init: ' + StyleCls.id + '\n' + e);
       throw e;
     }
