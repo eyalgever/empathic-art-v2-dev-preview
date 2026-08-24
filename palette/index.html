@@ -194,6 +194,89 @@
         0 4px 18px rgba(238, 236, 231, 0.28);
     }
 
+    /* Session 2+ chip row: Continue · Choose · Surprise me */
+    .gate-cta { justify-self: start; }
+    .gate-cta.hidden { display: none; }
+    .gate-cta--multi { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .start--outline {
+      background: transparent;
+      color: #eeece7;
+      box-shadow: 0 0 0 1px rgba(238, 236, 231, 0.55);
+      padding: 14px 22px;
+      font-size: 15px;
+    }
+    .start--outline:hover { box-shadow: 0 0 0 1px rgba(238, 236, 231, 0.85); }
+    .start__sub {
+      font-family: var(--ea-font-mono);
+      font-size: 10px;
+      opacity: 0.7;
+      margin-left: 6px;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    /* Style picker bottom sheet (Choose) */
+    .style-sheet {
+      position: fixed; inset: 0; z-index: 1000;
+      display: none;
+    }
+    .style-sheet.open { display: block; }
+    .style-sheet__scrim {
+      position: absolute; inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+    }
+    .style-sheet__card {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      max-height: 78vh;
+      background: #0a0a0a;
+      border-top: 1px solid rgba(238, 236, 231, 0.15);
+      border-radius: 20px 20px 0 0;
+      padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0));
+      display: flex; flex-direction: column;
+      gap: 12px;
+    }
+    .style-sheet__label {
+      font-family: var(--ea-font-mono); font-size: 10px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(238, 236, 231, 0.55);
+    }
+    .style-sheet__list {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      overflow-y: auto; max-height: 58vh;
+    }
+    .style-sheet__item {
+      display: flex; flex-direction: column; align-items: flex-start;
+      gap: 4px;
+      padding: 12px 14px;
+      background: transparent;
+      color: #eeece7;
+      border: 1px solid rgba(238, 236, 231, 0.20);
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: var(--ea-font-ui);
+      text-align: left;
+    }
+    .style-sheet__item:hover { border-color: rgba(238, 236, 231, 0.50); }
+    .style-sheet__item .name { font-size: 15px; font-weight: 500; }
+    .style-sheet__item .sub  {
+      font-family: var(--ea-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.10em; text-transform: uppercase;
+      opacity: 0.55;
+    }
+    .style-sheet__cancel {
+      align-self: flex-start;
+      background: transparent; color: rgba(238, 236, 231, 0.7);
+      border: 0; padding: 12px 0; cursor: pointer;
+      font-family: var(--ea-font-mono); font-size: 12px;
+      letter-spacing: 0.10em; text-transform: uppercase;
+    }
+    @media (max-width: 480px) {
+      .style-sheet__list { grid-template-columns: 1fr; }
+    }
+
     /* Footer meta band: SESSION 01 · EMPATHIC ART — [STYLE NAME] */
     .gate-meta {
       display: flex; justify-content: space-between; align-items: baseline;
@@ -592,7 +675,15 @@
 
       <div class="gate-hint">Camera stays on this device · no upload</div>
 
-      <button class="start" id="startBtn">Begin →</button>
+      <!-- Session 1: single Begin. Session 2+: three chips (Plan B "Love b") -->
+      <div class="gate-cta" id="gate-cta-single">
+        <button class="start" id="startBtn">Begin →</button>
+      </div>
+      <div class="gate-cta gate-cta--multi hidden" id="gate-cta-multi">
+        <button class="start start--outline" id="startContinue" data-mode="continue">Continue <span class="start__sub" id="continueStyleName">—</span></button>
+        <button class="start start--outline" id="startChoose" data-mode="choose">Choose</button>
+        <button class="start" id="startSurprise" data-mode="surprise">Surprise me →</button>
+      </div>
 
       <div class="gate-meta">
         <div class="gate-meta__left">Session 01</div>
@@ -990,30 +1081,125 @@
     const catalog = StyleRegistry.list({ webgpu: false });
     log('event', 'style catalog', { n: catalog.length, ids: catalog.map(c => c.id) });
 
-    // Random pick. Later: read prefer-continue/last-used from SessionStore.
-    const StyleCls = catalog[Math.floor(Math.random() * catalog.length)];
-    log('event', 'style chosen', { id: StyleCls.id, name: StyleCls.name });
+    // Choose the initial style.
+    //  - Session 1 (no history): pure random pick (system chooses for you).
+    //  - Session 2+: also pure random until the user taps Continue/Choose/Surprise.
+    //    (If they tap Continue, we swap to the last-used style before start.)
+    function pickRandomExcluding(excludeIds) {
+      const pool = catalog.filter(c => !excludeIds.has(c.id));
+      const src = pool.length ? pool : catalog;
+      return src[Math.floor(Math.random() * src.length)];
+    }
+    let StyleCls = catalog[Math.floor(Math.random() * catalog.length)];
+    log('event', 'style chosen (initial)', { id: StyleCls.id, name: StyleCls.name });
 
     let style;
-    try {
-      style = new StyleCls(canvas);
+    function instantiateStyle(cls) {
+      // If a style is already running, tear it down cleanly first.
+      if (style && typeof style.destroy === 'function') {
+        try { style.destroy(); } catch (e) { log('err', 'style destroy', { err: String(e) }); }
+      }
+      style = new cls(canvas);
       style.setEmotion(0, 0, 0.5, 'neutral');
       style.start();
+    }
+    try {
+      instantiateStyle(StyleCls);
     } catch (e) {
       log('err', 'style init', { id: StyleCls.id, err: String(e) });
       alert('Visual style failed to init: ' + StyleCls.id + '\n' + e);
       throw e;
     }
 
-    // Expose the chosen style name for the gate/header.
+    // Update gate meta with current style pick.
     const gateStyleEl = document.getElementById('gate-style-name');
-    if (gateStyleEl) gateStyleEl.textContent = StyleCls.name || '';
+    function updateGateStyleName() {
+      if (gateStyleEl) gateStyleEl.textContent = StyleCls.name || '';
+    }
+    updateGateStyleName();
 
     // Show real session number in the gate meta (00 pad, next session = count + 1)
     const gateSessionEl = document.querySelector('.gate-meta__left');
     if (gateSessionEl) {
       const nextSeq = store.sessionCount + 1;
       gateSessionEl.textContent = 'Session ' + String(nextSeq).padStart(2, '0');
+    }
+
+    // Plan B ("Love b"): session 2+ shows Continue / Choose / Surprise Me.
+    (function setupPlanB() {
+      if (store.sessionCount === 0) return; // Session 1 keeps single Begin
+      document.getElementById('gate-cta-single').classList.add('hidden');
+      document.getElementById('gate-cta-multi').classList.remove('hidden');
+
+      // Wire Continue label to last session's style name
+      const last = store.lastSession;
+      const contSubEl = document.getElementById('continueStyleName');
+      if (last && contSubEl) contSubEl.textContent = last.styleName;
+
+      function swapAndStart(newStyleCls) {
+        try {
+          StyleCls = newStyleCls;
+          updateGateStyleName();
+          instantiateStyle(StyleCls);
+          log('event', 'style swapped pre-begin', { id: StyleCls.id, name: StyleCls.name });
+        } catch (e) {
+          log('err', 'style swap failed', { id: newStyleCls.id, err: String(e) });
+        }
+        // Trigger the normal Begin flow
+        start();
+      }
+
+      document.getElementById('startContinue').addEventListener('click', () => {
+        const last = store.lastSession;
+        if (!last) { swapAndStart(StyleCls); return; }
+        const match = catalog.find(c => c.id === last.styleId);
+        swapAndStart(match || StyleCls);
+      });
+
+      document.getElementById('startSurprise').addEventListener('click', () => {
+        // Avoid the last 3 styles the user saw
+        const recent = new Set(
+          store.history.slice(-3).map(s => s.styleId)
+        );
+        swapAndStart(pickRandomExcluding(recent));
+      });
+
+      document.getElementById('startChoose').addEventListener('click', () => {
+        openStylePicker(swapAndStart);
+      });
+    })();
+
+    // Simple bottom-sheet style picker for "Choose".
+    function openStylePicker(onPick) {
+      let sheet = document.getElementById('stylePickerSheet');
+      if (!sheet) {
+        sheet = document.createElement('div');
+        sheet.id = 'stylePickerSheet';
+        sheet.className = 'style-sheet';
+        sheet.innerHTML = `
+          <div class="style-sheet__scrim"></div>
+          <div class="style-sheet__card">
+            <div class="style-sheet__label">Choose a visual style</div>
+            <div class="style-sheet__list" id="stylePickerList"></div>
+            <button class="style-sheet__cancel" id="stylePickerCancel">Cancel</button>
+          </div>`;
+        document.body.appendChild(sheet);
+      }
+      const list = document.getElementById('stylePickerList');
+      list.innerHTML = '';
+      for (const cls of catalog) {
+        const b = document.createElement('button');
+        b.className = 'style-sheet__item';
+        b.innerHTML = `<span class="name">${cls.name}</span><span class="sub">${cls.subtitle || ''}</span>`;
+        b.addEventListener('click', () => {
+          sheet.classList.remove('open');
+          onPick(cls);
+        });
+        list.appendChild(b);
+      }
+      document.getElementById('stylePickerCancel').onclick = () => sheet.classList.remove('open');
+      sheet.querySelector('.style-sheet__scrim').onclick = () => sheet.classList.remove('open');
+      sheet.classList.add('open');
     }
 
     // v1 styles manage their own canvas.width / .height and DPR. We just
