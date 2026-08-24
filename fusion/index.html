@@ -4,7 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <title>Fusion · Human + VitalLens · Circumplex live</title>
+  <meta name="theme-color" content="#FBF6EC">
+  <title>Empathic Art · Fusion</title>
+
+  <!-- v1 typefaces -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Inter+Tight:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
     :root {
       --bg: #faf9f6;
@@ -36,15 +43,61 @@
     #video::-webkit-media-controls-play-button,
     #video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none; }
 
-    /* ── GATE (pre-start) ──────────────────────────────────────────── */
-    .gate { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    /* ── GATE (pre-start) — v1 cream/ink/Fraunces ───────────── */
+    :root {
+      --ea-surface: #FBF6EC;
+      --ea-ink: #1B1512;
+      --ea-ink-2: #4A3F38;
+      --ea-ink-3: #857868;
+      --ea-accent: #E85A3C;
+      --ea-accent-hover: #D24A2E;
+      --ea-font-display: "Fraunces", "Cormorant Garamond", "Georgia", serif;
+      --ea-font-ui: "Inter Tight", -apple-system, BlinkMacSystemFont, sans-serif;
+      --ea-font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+      --ea-shadow-cta: 0 4px 12px rgba(232, 90, 60, 0.28);
+    }
+    .gate {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--ea-surface); color: var(--ea-ink);
+      display: flex; align-items: center; justify-content: center;
+      padding: max(24px, env(safe-area-inset-top, 24px)) 24px max(24px, env(safe-area-inset-bottom, 24px));
+    }
     .gate.hidden { display: none; }
-    .gate-inner { max-width: 480px; }
-    .gate-mark { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
-    .gate h1 { font-size: 28px; line-height: 1.15; margin: 0 0 12px; font-weight: 500; letter-spacing: -0.02em; }
-    .gate p { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0 0 28px; }
-    .start { background: var(--ink); color: var(--bg); border: 0; border-radius: 999px; padding: 14px 28px; font-size: 15px; font-weight: 500; cursor: pointer; -webkit-appearance: none; }
-    .foot { margin-top: 20px; font-size: 12px; color: var(--muted); }
+    .gate-inner { max-width: 460px; width: 100%; text-align: left; }
+    .gate-mark {
+      font-family: var(--ea-font-mono);
+      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--ea-accent); margin-bottom: 28px;
+    }
+    .gate h1 {
+      font-family: var(--ea-font-display);
+      font-size: clamp(38px, 8vw, 56px);
+      line-height: 1.05; font-weight: 400; letter-spacing: -0.02em;
+      color: var(--ea-ink); margin: 0 0 20px;
+    }
+    .gate h1 em { font-style: italic; font-weight: 300; color: var(--ea-accent); }
+    .gate p {
+      font-family: var(--ea-font-ui);
+      color: var(--ea-ink-2);
+      font-size: 16px; line-height: 1.55; font-weight: 400;
+      margin: 0 0 32px; max-width: 40ch;
+    }
+    .start {
+      font-family: var(--ea-font-ui);
+      background: var(--ea-accent); color: var(--ea-surface);
+      border: 0; border-radius: 999px;
+      padding: 16px 32px; font-size: 16px; font-weight: 500; letter-spacing: 0.01em;
+      cursor: pointer; -webkit-appearance: none;
+      box-shadow: var(--ea-shadow-cta);
+      transition: background 140ms cubic-bezier(0.22,1,0.36,1), transform 140ms;
+    }
+    .start:active { background: var(--ea-accent-hover); transform: scale(0.98); }
+    .foot {
+      margin-top: 28px;
+      font-family: var(--ea-font-mono);
+      font-size: 11px; color: var(--ea-ink-3);
+      letter-spacing: 0.06em;
+    }
 
     /* ── STAGE ─────────────────────────────────────────────────────── */
     .stage { position: fixed; top: 12px; right: 12px; width: 140px; height: 187px; border-radius: 12px; overflow: hidden; background: #000; z-index: 5; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
@@ -128,11 +181,11 @@
   <!-- Start gate -->
   <div class="gate" id="gate">
     <div class="gate-inner">
-      <div class="gate-mark">Empathic Art · Engine test 03 · Fusion</div>
-      <h1>Fusion — Human + VitalLens.</h1>
-      <p>Runs both engines on the same camera stream. Face-based valence/arousal (Human) fuses with heart-rate arousal (VitalLens) to produce a single Circumplex point that drives everything downstream. Nothing is uploaded — everything stays on this device.</p>
-      <button class="start" id="startBtn">Start camera</button>
-      <div class="foot">Dev route · Human 3.3.5 + VitalLens 0.4.5 (pos) · iPhone Safari targeted</div>
+      <div class="gate-mark">Empathic Art · Fusion</div>
+      <h1>What are you <em>feeling</em>?</h1>
+      <p>Your face and your pulse, read from the same camera. Neither leaves this device. Together they place you on a map of feeling and let you watch yourself move across it.</p>
+      <button class="start" id="startBtn">Begin</button>
+      <div class="foot">Camera stays on this device · no upload</div>
     </div>
   </div>
 
