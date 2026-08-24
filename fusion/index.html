@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Fusion · Human + VitalLens · Circumplex live</title>
+  <style>
+    :root {
+      --bg: #faf9f6;
+      --ink: #1f1e1c;
+      --muted: #6b6a67;
+      --line: #e6e3dc;
+      --accent: #d97757;
+      --hr: #d97575;
+      --v: #6b8e6b;
+      --a: #7a6bc4;
+      --good: #4a7a4a;
+      --warn: #b8802a;
+      --err: #b8564a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #14130f; --ink: #efece5; --muted: #8f8c85; --line: #2b2924; }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      background: var(--bg); color: var(--ink);
+      min-height: 100dvh;
+      overflow-x: hidden;
+      padding-bottom: 60px;
+    }
+    #video::-webkit-media-controls,
+    #video::-webkit-media-controls-panel,
+    #video::-webkit-media-controls-play-button,
+    #video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none; }
+
+    /* ── GATE (pre-start) ──────────────────────────────────────────── */
+    .gate { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .gate.hidden { display: none; }
+    .gate-inner { max-width: 480px; }
+    .gate-mark { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+    .gate h1 { font-size: 28px; line-height: 1.15; margin: 0 0 12px; font-weight: 500; letter-spacing: -0.02em; }
+    .gate p { color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0 0 28px; }
+    .start { background: var(--ink); color: var(--bg); border: 0; border-radius: 999px; padding: 14px 28px; font-size: 15px; font-weight: 500; cursor: pointer; -webkit-appearance: none; }
+    .foot { margin-top: 20px; font-size: 12px; color: var(--muted); }
+
+    /* ── STAGE ─────────────────────────────────────────────────────── */
+    .stage { position: fixed; top: 12px; right: 12px; width: 140px; height: 187px; border-radius: 12px; overflow: hidden; background: #000; z-index: 5; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    #overlay { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none; }
+
+    /* ── HUD ───────────────────────────────────────────────────────── */
+    .hud { padding: 16px 20px 0; max-width: 620px; }
+    .rule { height: 1px; background: var(--line); margin: 4px 0 12px; }
+    .title { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+    .status { margin-top: 4px; font-size: 13px; color: var(--muted); }
+    .status.ok { color: var(--good); }
+    .status.warn { color: var(--warn); }
+    .status.err { color: var(--err); }
+
+    /* ── CIRCUMPLEX PLOT ───────────────────────────────────────────── */
+    .plot-wrap { padding: 20px; display: flex; justify-content: center; }
+    .plot-container {
+      position: relative;
+      width: min(320px, 80vw);
+      aspect-ratio: 1;
+    }
+    #circumplex { width: 100%; height: 100%; display: block; }
+    .plot-labels {
+      position: absolute; inset: 0; pointer-events: none;
+      font-size: 11px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    .plot-labels .lbl { position: absolute; }
+    .plot-labels .top { top: -18px; left: 50%; transform: translateX(-50%); color: var(--a); }
+    .plot-labels .bot { bottom: -18px; left: 50%; transform: translateX(-50%); }
+    .plot-labels .lft { left: -8px; top: 50%; transform: translate(-100%, -50%); }
+    .plot-labels .rgt { right: -8px; top: 50%; transform: translate(100%, -50%); color: var(--v); }
+    .quad-label { position: absolute; font-size: 10px; color: var(--muted); opacity: 0.55; font-style: normal; }
+    .qtl { top: 6%; left: 6%; }
+    .qtr { top: 6%; right: 6%; }
+    .qbl { bottom: 6%; left: 6%; }
+    .qbr { bottom: 6%; right: 6%; }
+
+    /* ── TRIPLE READOUT (V, A, HR delta, fused) ────────────────────── */
+    .readout { padding: 0 20px; max-width: 620px; margin: 0 auto; }
+    .r-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .r-card { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in oklab, var(--bg), var(--ink) 3%); }
+    .r-card .k { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+    .r-card .v { font-size: 22px; font-weight: 500; letter-spacing: -0.01em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .r-card .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .r-card.fused { grid-column: span 2; background: color-mix(in oklab, var(--bg), var(--accent) 10%); border-color: color-mix(in oklab, var(--bg), var(--accent) 40%); }
+    .r-card.fused .v { color: var(--accent); }
+
+    /* ── ENGINE PANELS (raw signals side by side) ──────────────────── */
+    .engines { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px; max-width: 620px; margin: 12px auto 0; }
+    .engine { padding: 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; }
+    .engine h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+    .engine .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .engine .row .k { color: var(--muted); }
+    .engine .row .v { font-variant-numeric: tabular-nums; }
+
+    /* ── CONTROLS BAR ──────────────────────────────────────────────── */
+    .ctrls { position: fixed; bottom: 0; left: 0; right: 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0)); background: color-mix(in oklab, var(--bg), var(--ink) 5%); border-top: 1px solid var(--line); display: flex; gap: 8px; align-items: center; z-index: 20; }
+    .ctrls button { background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--ink); cursor: pointer; -webkit-appearance: none; }
+    .ctrls .spacer { flex: 1; }
+    .ctrls .badge { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); }
+
+    /* ── LOG DRAWER ────────────────────────────────────────────────── */
+    .logdrawer { position: fixed; left: 0; right: 0; bottom: 0; height: 60vh; background: var(--bg); border-top: 1px solid var(--line); transform: translateY(100%); transition: transform 0.25s ease; z-index: 30; display: flex; flex-direction: column; }
+    .logdrawer.open { transform: translateY(0); }
+    .logdrawer .head { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+    .logdrawer .head h4 { margin: 0; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+    .logdrawer .head .spacer { flex: 1; }
+    .logdrawer .head button { background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 11px; color: var(--ink); }
+    .logdrawer .body { flex: 1; overflow-y: auto; padding: 8px 14px 14px; font-family: 'SF Mono', ui-monospace, monospace; font-size: 10px; line-height: 1.55; color: var(--ink); }
+    .logdrawer .body .l { padding: 2px 0; border-bottom: 1px solid color-mix(in oklab, var(--bg), var(--ink) 6%); }
+    .logdrawer .body .k-info { color: var(--muted); }
+    .logdrawer .body .k-event { color: var(--good); }
+    .logdrawer .body .k-perf { color: var(--v); }
+    .logdrawer .body .k-warn { color: var(--warn); }
+    .logdrawer .body .k-err { color: var(--err); }
+  </style>
+</head>
+<body>
+
+  <!-- Start gate -->
+  <div class="gate" id="gate">
+    <div class="gate-inner">
+      <div class="gate-mark">Empathic Art · Engine test 03 · Fusion</div>
+      <h1>Fusion — Human + VitalLens.</h1>
+      <p>Runs both engines on the same camera stream. Face-based valence/arousal (Human) fuses with heart-rate arousal (VitalLens) to produce a single Circumplex point that drives everything downstream. Nothing is uploaded — everything stays on this device.</p>
+      <button class="start" id="startBtn">Start camera</button>
+      <div class="foot">Dev route · Human 3.3.5 + VitalLens 0.4.5 (pos) · iPhone Safari targeted</div>
+    </div>
+  </div>
+
+  <!-- Camera preview (tiny, top-right) -->
+  <div class="stage">
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="rule"></div>
+    <div class="title">Fusion — live</div>
+    <div class="status" id="status">Idle</div>
+  </div>
+
+  <!-- Circumplex plot -->
+  <div class="plot-wrap">
+    <div class="plot-container">
+      <canvas id="circumplex" width="600" height="600"></canvas>
+      <div class="plot-labels">
+        <span class="lbl top">arousal</span>
+        <span class="lbl bot">calm</span>
+        <span class="lbl lft">negative</span>
+        <span class="lbl rgt">positive</span>
+        <span class="quad-label qtl">tense</span>
+        <span class="quad-label qtr">excited</span>
+        <span class="quad-label qbl">bored</span>
+        <span class="quad-label qbr">relaxed</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fused + component readout -->
+  <div class="readout">
+    <div class="r-grid">
+      <div class="r-card">
+        <div class="k">Valence · Human</div>
+        <div class="v" id="humanV">—</div>
+        <div class="sub" id="humanEmotion">—</div>
+      </div>
+      <div class="r-card">
+        <div class="k">Arousal · Human</div>
+        <div class="v" id="humanA">—</div>
+        <div class="sub" id="humanFps">— fps</div>
+      </div>
+      <div class="r-card">
+        <div class="k">HR delta · VitalLens</div>
+        <div class="v" id="hrDelta">—</div>
+        <div class="sub" id="hrState">learning baseline…</div>
+      </div>
+      <div class="r-card">
+        <div class="k">HR proxy · normalized</div>
+        <div class="v" id="hrProxy">—</div>
+        <div class="sub">[-1..+1], clipped</div>
+      </div>
+      <div class="r-card fused">
+        <div class="k">Fused Circumplex — feeds downstream visual</div>
+        <div class="v" id="fusedV">V = — · A = —</div>
+        <div class="sub" id="fusedMode">waiting for both engines</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Engine debug panels -->
+  <div class="engines">
+    <div class="engine">
+      <h3>Engine · Human</h3>
+      <div class="row"><span class="k">Face</span><span class="v" id="humanFace">—</span></div>
+      <div class="row"><span class="k">Top emo</span><span class="v" id="humanTop">—</span></div>
+      <div class="row"><span class="k">Frames</span><span class="v" id="humanFrames">0</span></div>
+      <div class="row"><span class="k">Infer p50</span><span class="v" id="humanP50">— ms</span></div>
+    </div>
+    <div class="engine">
+      <h3>Engine · VitalLens</h3>
+      <div class="row"><span class="k">HR raw</span><span class="v" id="vlRaw">—</span></div>
+      <div class="row"><span class="k">HR displayed</span><span class="v" id="vlDisp">—</span></div>
+      <div class="row"><span class="k">Baseline</span><span class="v" id="vlBase">learning…</span></div>
+      <div class="row"><span class="k">Vitals events</span><span class="v" id="vlEvents">0</span></div>
+    </div>
+  </div>
+
+  <!-- Controls bar -->
+  <div class="ctrls">
+    <button id="logToggle">▲ Log</button>
+    <button id="shareLogBtn">Share log</button>
+    <button id="downloadBtn">Save log</button>
+    <div class="spacer"></div>
+    <span class="badge" id="hostBadge">—</span>
+  </div>
+
+  <!-- Log drawer -->
+  <div class="logdrawer" id="logdrawer">
+    <div class="head">
+      <h4>Fusion log · <span id="logCount">0</span></h4>
+      <div class="spacer"></div>
+      <button id="copyLog">Copy</button>
+      <button id="clearLog">Clear</button>
+      <button id="closeLog">Close</button>
+    </div>
+    <div class="body" id="logbody"></div>
+  </div>
+
+  <script type="module">
+    /* ────────────────────────────────────────────────────────────────
+       FUSION ROUTE — Engine 3 (v1)
+
+       Combines the two proven engines into a single Circumplex state:
+         valence = Human.valence                            (VitalLens has no valence)
+         arousal = 0.6 * Human.arousal + 0.4 * hrProxy      (clipped to [-1, +1])
+
+       hrProxy = clip((displayedHr - baseline) / 15, -1, +1)
+         - HR baseline is per-session (locks at 60s)
+         - +15 bpm above baseline → +1.0 arousal contribution (max)
+         - -15 bpm below baseline → -1.0 (would need very calm state)
+
+       If VitalLens baseline hasn't locked yet OR Human has no face,
+       the fusion gracefully degrades (see resolveFusion()).
+       ──────────────────────────────────────────────────────────────── */
+
+    import Human from 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/dist/human.esm.js';
+
+    // ── LOG PLUMBING ─────────────────────────────────────────────────
+    const LOG = [];
+    const logBody = document.getElementById('logbody');
+    const logCountEl = document.getElementById('logCount');
+    function iso() { return new Date().toISOString(); }
+    function log(kind, msg, data) {
+      const e = { t: iso(), kind, msg, data };
+      LOG.push(e);
+      const div = document.createElement('div');
+      div.className = 'l';
+      const timePart = e.t.slice(11, 23);
+      const kindPart = `<span class="k-${kind}">${kind.toUpperCase()}</span>`;
+      const dataPart = data ? ' ' + JSON.stringify(data) : '';
+      div.innerHTML = `${timePart} ${kindPart} ${msg}${dataPart}`;
+      logBody.appendChild(div);
+      logBody.scrollTop = logBody.scrollHeight;
+      logCountEl.textContent = LOG.length;
+    }
+
+    log('info', 'environment', {
+      userAgent: navigator.userAgent,
+      host: location.host,
+      hasWebGL2: !!document.createElement('canvas').getContext('webgl2'),
+    });
+    document.getElementById('hostBadge').textContent = location.host || 'local';
+    log('info', 'page ready · tap Start camera');
+
+    // ── HUMAN CONFIG ─────────────────────────────────────────────────
+    // Ported directly from human-test.html final tuning (Aug 24).
+    // These values gave 4.75 fps, 172ms p50 inference on iPhone Safari.
+    const HUMAN_CONFIG = {
+      backend: 'webgl',
+      modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/models/',
+      wasmPlatformFetch: false,
+      wasmPath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/dist/',
+      debug: false,
+      warmup: 'none',
+      cacheSensitivity: 0.7,
+      face: {
+        enabled: true,
+        detector: { rotation: false, maxDetected: 1, minConfidence: 0.4, return: false },
+        mesh: { enabled: false },
+        iris: { enabled: false },
+        description: { enabled: false },
+        emotion: { enabled: true, minConfidence: 0.1 },
+        antispoof: { enabled: false },
+        liveness: { enabled: false },
+      },
+      body: { enabled: false }, hand: { enabled: false }, object: { enabled: false },
+      gesture: { enabled: false }, segmentation: { enabled: false },
+    };
+
+    const EMO_VA = {
+      happy:    { v:  0.85, a:  0.55 },
+      sad:      { v: -0.75, a: -0.40 },
+      angry:    { v: -0.65, a:  0.75 },
+      fear:     { v: -0.60, a:  0.80 },
+      disgust:  { v: -0.70, a:  0.35 },
+      surprise: { v:  0.35, a:  0.85 },
+      neutral:  { v:  0.00, a:  0.00 },
+    };
+
+    // Smoothing (from human-test)
+    const EMOTION_KEYS = ['happy','sad','angry','fear','disgust','surprise','neutral'];
+    const smoothedEmotion = Object.fromEntries(EMOTION_KEYS.map(k => [k, 0]));
+    const EMA_ALPHA = 0.08;
+    const INFERENCE_DUTY = 0.85;
+
+    // ── VITALLENS CONFIG ─────────────────────────────────────────────
+    // Locked in from Aug 24 A/B: POS is the winner (87% within ±3 bpm).
+    const VL_METHOD = 'pos';
+    const VL_MEDIAN_WINDOW_MS = 10000;
+    const VL_OUTLIER_ABOVE_BPM = 15;
+    const VL_OUTLIER_BELOW_BPM = 8;
+    const VL_LOCK_AGREEMENT_BPM = 3;
+    const VL_LOCK_CONSECUTIVE_N = 3;
+    const VL_HR_MIN = 35;
+    const VL_HR_MAX = 200;
+    const VL_MIN_CONF = 0.6;
+    const VL_BASELINE_LOCK_MS = 60 * 1000;
+
+    // ── STATE ────────────────────────────────────────────────────────
+    let human = null;
+    let vl = null;
+    let running = false;
+    let sessionStartMs = 0;
+
+    // Human state
+    let humanFrameCount = 0;
+    let humanInferSamples = [];
+    let humanRecentFps = 0;
+    let humanLastFpsAt = 0;
+    let humanLastVA = { v: null, a: null, top: null };
+    let humanFaceSeen = false;
+    let nextInferenceEarliestAt = 0;
+
+    // VitalLens state
+    let vlBaseline = null;
+    let vlHrHist = []; // { t, hr }
+    let vlRecentSmoothed = [];
+    let vlSignalLocked = false;
+    let vlLastGoodDisplayedHr = null;
+    let vlDisplayedHr = null;
+    let vlEventCount = 0;
+    let vlFaceEventCount = 0;
+    let vlSessionStartMs = 0;
+
+    // Fusion state
+    let lastFused = { v: null, a: null, mode: 'idle' };
+    const fusedTrail = []; // { t, v, a } for the fading trail on the plot
+
+    // ── VITALLENS INIT ───────────────────────────────────────────────
+    async function loadVitalLens() {
+      log('event', 'importing vitallens');
+      const t0 = performance.now();
+      const mod = await import('https://cdn.jsdelivr.net/npm/vitallens@0.4.5/dist/vitallens.browser.js');
+      log('event', 'vitallens imported', { ms: Math.round(performance.now() - t0) });
+      return mod.VitalLens || mod.default;
+    }
+
+    // Robust smoothing (asymmetric, from Engine 2 v3)
+    function vlRobustSmooth(nowMs) {
+      const windowVals = vlHrHist.filter(x => x.t > nowMs - VL_MEDIAN_WINDOW_MS).map(x => x.hr);
+      if (windowVals.length < 5) return null;
+      let filtered = windowVals;
+      if (vlBaseline != null) {
+        filtered = windowVals.filter(v =>
+          v >= vlBaseline - VL_OUTLIER_BELOW_BPM &&
+          v <= vlBaseline + VL_OUTLIER_ABOVE_BPM
+        );
+        if (filtered.length < 3) return null;
+      }
+      const sorted = [...filtered].sort((a, b) => a - b);
+      const lo = Math.floor(sorted.length * 0.25);
+      const hi = Math.ceil(sorted.length * 0.75);
+      const middle = sorted.slice(lo, hi);
+      if (middle.length === 0) return null;
+      return middle.reduce((a, b) => a + b, 0) / middle.length;
+    }
+
+    function onVitals(result) {
+      vlEventCount++;
+      document.getElementById('vlEvents').textContent = vlEventCount;
+
+      const hr = result?.vitals?.heart_rate;
+      const face = result?.face;
+      const now = performance.now();
+
+      // Face info (from vitals payload, not the separate faceDetected event)
+      if (face) {
+        vlFaceEventCount++;
+        let coords = face.coordinates;
+        if (Array.isArray(coords) && Array.isArray(coords[0])) coords = coords[coords.length - 1];
+        // (We don't draw this on the tiny preview — Human owns the overlay)
+      }
+
+      // Confidence-gated HR intake
+      const hrRaw = hr?.value;
+      const hrConf = hr?.confidence;
+      document.getElementById('vlRaw').textContent = hrRaw != null ? hrRaw.toFixed(1) : '—';
+      if (typeof hrRaw === 'number' && typeof hrConf === 'number'
+          && hrConf >= VL_MIN_CONF && hrRaw >= VL_HR_MIN && hrRaw <= VL_HR_MAX) {
+        vlHrHist.push({ t: now, hr: hrRaw });
+        // Trim to 60s
+        const cutoff = now - 60000;
+        while (vlHrHist.length && vlHrHist[0].t < cutoff) vlHrHist.shift();
+      }
+
+      // Smooth
+      const smoothed = vlRobustSmooth(now);
+
+      // Signal-lock gate
+      let displayed = null;
+      let displayState = 'idle';
+      if (smoothed != null) {
+        vlRecentSmoothed.push(smoothed);
+        if (vlRecentSmoothed.length > VL_LOCK_CONSECUTIVE_N) vlRecentSmoothed.shift();
+        if (vlRecentSmoothed.length === VL_LOCK_CONSECUTIVE_N) {
+          const spread = Math.max(...vlRecentSmoothed) - Math.min(...vlRecentSmoothed);
+          if (spread <= VL_LOCK_AGREEMENT_BPM) {
+            vlSignalLocked = true;
+            vlLastGoodDisplayedHr = smoothed;
+            displayed = smoothed;
+            displayState = 'locked';
+          } else if (vlLastGoodDisplayedHr != null) {
+            vlSignalLocked = false;
+            displayed = vlLastGoodDisplayedHr;
+            displayState = 'resyncing';
+          } else {
+            displayed = smoothed;
+            displayState = 'settling';
+          }
+        } else if (vlLastGoodDisplayedHr != null) {
+          displayed = vlLastGoodDisplayedHr;
+          displayState = 'resyncing';
+        }
+      } else if (vlLastGoodDisplayedHr != null) {
+        displayed = vlLastGoodDisplayedHr;
+        displayState = 'resyncing';
+      }
+
+      vlDisplayedHr = displayed;
+      document.getElementById('vlDisp').textContent = displayed != null ? displayed.toFixed(0) + ' bpm' : '—';
+
+      // Baseline lock at 60s
+      const sessionMs = now - vlSessionStartMs;
+      if (vlBaseline == null && sessionMs >= VL_BASELINE_LOCK_MS && vlHrHist.length >= 30) {
+        const sorted = [...vlHrHist.map(x => x.hr)].sort((a, b) => a - b);
+        const lo = Math.floor(sorted.length * 0.25);
+        const hi = Math.ceil(sorted.length * 0.75);
+        const middle = sorted.slice(lo, hi);
+        vlBaseline = middle.reduce((a, b) => a + b, 0) / middle.length;
+        log('event', 'HR baseline locked', {
+          bpm: Number(vlBaseline.toFixed(1)),
+          samples: sorted.length,
+        });
+        document.getElementById('vlBase').textContent = vlBaseline.toFixed(0) + ' bpm';
+      } else if (vlBaseline == null) {
+        const remaining = Math.max(0, Math.ceil((VL_BASELINE_LOCK_MS - sessionMs) / 1000));
+        document.getElementById('vlBase').textContent = 'learning… ' + remaining + 's';
+      }
+
+      // HR delta pill + proxy calc
+      let hrProxy = null;
+      if (vlBaseline != null && displayed != null) {
+        const delta = displayed - vlBaseline;
+        document.getElementById('hrDelta').textContent = (delta >= 0 ? '+' : '') + delta.toFixed(1) + ' bpm';
+        document.getElementById('hrState').textContent = displayState;
+
+        // Proxy: (displayed - baseline) / 15, clipped to [-1, 1]
+        hrProxy = Math.max(-1, Math.min(1, delta / 15));
+        document.getElementById('hrProxy').textContent = (hrProxy >= 0 ? '+' : '') + hrProxy.toFixed(2);
+      } else {
+        document.getElementById('hrDelta').textContent = '—';
+        document.getElementById('hrProxy').textContent = '—';
+        document.getElementById('hrState').textContent = displayState || 'no signal';
+      }
+
+      // Fuse and update plot / readouts
+      resolveFusion({ hrProxy, displayState });
+
+      // Perf sample every 20 vitals events
+      if (vlEventCount % 20 === 0) {
+        log('perf', 'vitals sample', {
+          n: vlEventCount,
+          hrRaw: hrRaw != null ? Number(hrRaw.toFixed(1)) : null,
+          hrDisplayed: displayed != null ? Number(displayed.toFixed(1)) : null,
+          displayState,
+          baseline: vlBaseline != null ? Number(vlBaseline.toFixed(1)) : null,
+          histCount: vlHrHist.length,
+          hrProxy: hrProxy != null ? Number(hrProxy.toFixed(2)) : null,
+        });
+      }
+    }
+
+    // ── HUMAN LOOP ───────────────────────────────────────────────────
+    function updateHumanSmoothing(rawEmotions) {
+      if (!rawEmotions || rawEmotions.length === 0) return null;
+      const frame = Object.fromEntries(EMOTION_KEYS.map(k => [k, 0]));
+      for (const e of rawEmotions) if (frame[e.emotion] !== undefined) frame[e.emotion] = e.score;
+      for (const k of EMOTION_KEYS) {
+        smoothedEmotion[k] = smoothedEmotion[k] * (1 - EMA_ALPHA) + frame[k] * EMA_ALPHA;
+      }
+      let topK = EMOTION_KEYS[0], topV = smoothedEmotion[topK];
+      for (const k of EMOTION_KEYS) if (smoothedEmotion[k] > topV) { topK = k; topV = smoothedEmotion[k]; }
+      return { top: topK, vector: { ...smoothedEmotion } };
+    }
+
+    function computeVA(smoothedVector) {
+      // Weighted V/A from the SMOOTHED vector (not raw emotions) so it doesn't jitter
+      let v = 0, a = 0, wsum = 0;
+      for (const k of EMOTION_KEYS) {
+        const m = EMO_VA[k];
+        if (!m) continue;
+        const w = smoothedVector[k];
+        v += m.v * w; a += m.a * w; wsum += w;
+      }
+      if (wsum > 0) { v /= wsum; a /= wsum; }
+      return { v, a };
+    }
+
+    async function humanLoop() {
+      if (!running) return;
+      const now0 = performance.now();
+      if (now0 < nextInferenceEarliestAt) {
+        requestAnimationFrame(humanLoop);
+        return;
+      }
+      const t0 = performance.now();
+      let result;
+      try {
+        result = await human.detect(document.getElementById('video'));
+      } catch (err) {
+        log('err', 'human.detect threw', { message: err.message });
+        requestAnimationFrame(humanLoop);
+        return;
+      }
+      const infMs = performance.now() - t0;
+      humanInferSamples.push(infMs);
+      if (humanInferSamples.length > 60) humanInferSamples.shift();
+      nextInferenceEarliestAt = performance.now() + infMs * (1 - INFERENCE_DUTY) / INFERENCE_DUTY;
+
+      const face = result.face && result.face[0];
+      humanFaceSeen = !!face;
+      document.getElementById('humanFace').textContent = face ? 'yes' : '—';
+
+      // Draw ROI on tiny preview
+      const overlay = document.getElementById('overlay');
+      const ctx = overlay.getContext('2d');
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      if (face) {
+        const box = face.box;
+        ctx.strokeStyle = '#d97757';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(box[0], box[1], box[2], box[3]);
+      }
+
+      if (face && face.emotion && face.emotion.length) {
+        updateHumanSmoothing(face.emotion);
+        const { v, a } = computeVA(smoothedEmotion);
+        // Top from smoothed vector
+        let topK = EMOTION_KEYS[0], topV = smoothedEmotion[topK];
+        for (const k of EMOTION_KEYS) if (smoothedEmotion[k] > topV) { topK = k; topV = smoothedEmotion[k]; }
+        humanLastVA = { v, a, top: topK };
+
+        document.getElementById('humanV').textContent = v.toFixed(2);
+        document.getElementById('humanA').textContent = a.toFixed(2);
+        document.getElementById('humanTop').textContent = topK + ' (' + (topV * 100).toFixed(0) + '%)';
+        document.getElementById('humanEmotion').textContent = topK;
+      }
+
+      humanFrameCount++;
+      const now = performance.now();
+      if (now - humanLastFpsAt >= 500) {
+        humanRecentFps = (humanFrameCount * 1000) / (now - humanLastFpsAt);
+        document.getElementById('humanFps').textContent = humanRecentFps.toFixed(1) + ' fps';
+        document.getElementById('humanFrames').textContent = humanFrameCount + (humanFrameCount > 999 ? '' : '');
+        humanFrameCount = 0;
+        humanLastFpsAt = now;
+
+        // p50
+        if (humanInferSamples.length >= 5) {
+          const s = [...humanInferSamples].sort((a, b) => a - b);
+          const p50 = s[Math.floor(s.length * 0.5)];
+          document.getElementById('humanP50').textContent = p50.toFixed(0) + ' ms';
+        }
+      }
+
+      // Fuse on every Human tick — Human is the pacer for fusion
+      resolveFusion({});
+
+      requestAnimationFrame(humanLoop);
+    }
+
+    // ── FUSION ───────────────────────────────────────────────────────
+    /* resolveFusion is called by both engines. It reads the latest
+       Human V/A and the latest VitalLens HR proxy, and produces the
+       fused Circumplex point. Graceful degradation:
+
+         - Both alive:   arousal = 0.6 * humanA + 0.4 * hrProxy
+         - Human only:   arousal = humanA          (baseline not locked yet)
+         - HR only:      SKIP (no valence without face)
+         - Neither:      idle
+    */
+    function resolveFusion({ hrProxy, displayState } = {}) {
+      const hV = humanLastVA.v;
+      const hA = humanLastVA.a;
+      const proxy = (typeof hrProxy === 'number') ? hrProxy
+        : (vlBaseline != null && vlDisplayedHr != null)
+          ? Math.max(-1, Math.min(1, (vlDisplayedHr - vlBaseline) / 15))
+          : null;
+
+      let mode, fusedV, fusedA;
+
+      if (hV != null && hA != null && proxy != null) {
+        // Full fusion
+        fusedV = hV;
+        fusedA = 0.6 * hA + 0.4 * proxy;
+        mode = 'human+hr (full fusion)';
+      } else if (hV != null && hA != null) {
+        // Human only (baseline not locked yet)
+        fusedV = hV;
+        fusedA = hA;
+        mode = 'human only (HR baseline learning)';
+      } else if (proxy != null) {
+        // HR only — no valence, park at V=0
+        fusedV = 0;
+        fusedA = proxy;
+        mode = 'HR only (no face)';
+      } else {
+        fusedV = null;
+        fusedA = null;
+        mode = 'idle';
+      }
+
+      lastFused = { v: fusedV, a: fusedA, mode };
+
+      if (fusedV != null) {
+        document.getElementById('fusedV').textContent =
+          'V = ' + fusedV.toFixed(2) + ' · A = ' + fusedA.toFixed(2);
+        // Add to trail
+        fusedTrail.push({ t: performance.now(), v: fusedV, a: fusedA });
+        // Keep last 8 seconds of trail
+        const cutoff = performance.now() - 8000;
+        while (fusedTrail.length && fusedTrail[0].t < cutoff) fusedTrail.shift();
+      } else {
+        document.getElementById('fusedV').textContent = 'V = — · A = —';
+      }
+      document.getElementById('fusedMode').textContent = mode;
+    }
+
+    // ── CIRCUMPLEX PLOT ──────────────────────────────────────────────
+    const plot = document.getElementById('circumplex');
+    const plotCtx = plot.getContext('2d');
+    const PLOT_SIZE = 600;   // internal resolution (canvas is CSS-scaled)
+
+    function drawPlot() {
+      const ctx = plotCtx;
+      const S = PLOT_SIZE;
+      const cx = S / 2, cy = S / 2, R = S * 0.45;
+
+      // BG
+      ctx.clearRect(0, 0, S, S);
+      // Circle
+      ctx.strokeStyle = 'rgba(107,106,103,0.35)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Cross
+      ctx.strokeStyle = 'rgba(107,106,103,0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
+      ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
+      ctx.stroke();
+
+      // Grid rings at 0.5
+      ctx.strokeStyle = 'rgba(107,106,103,0.1)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Trail (older = more transparent, older = smaller)
+      const now = performance.now();
+      for (let i = 0; i < fusedTrail.length; i++) {
+        const p = fusedTrail[i];
+        const age = (now - p.t) / 8000;   // 0..1
+        const alpha = Math.max(0, 1 - age) * 0.55;
+        const size = 5 + (1 - age) * 6;
+        const x = cx + p.v * R;
+        const y = cy - p.a * R;    // NB: canvas Y is flipped, arousal up is negative Y
+        ctx.fillStyle = `rgba(217,119,87,${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Current point
+      if (lastFused.v != null && lastFused.a != null) {
+        const x = cx + lastFused.v * R;
+        const y = cy - lastFused.a * R;
+        // Outer glow
+        ctx.fillStyle = 'rgba(217,119,87,0.25)';
+        ctx.beginPath();
+        ctx.arc(x, y, 22, 0, Math.PI * 2);
+        ctx.fill();
+        // Solid dot
+        ctx.fillStyle = '#d97757';
+        ctx.beginPath();
+        ctx.arc(x, y, 12, 0, Math.PI * 2);
+        ctx.fill();
+        // Inner
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function plotLoop() {
+      drawPlot();
+      requestAnimationFrame(plotLoop);
+    }
+
+    // ── START ────────────────────────────────────────────────────────
+    async function start() {
+      document.getElementById('status').textContent = 'Loading Human…';
+      document.getElementById('status').className = 'status warn';
+
+      // 1. Camera first (both engines need it)
+      let stream;
+      try {
+        stream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('camera timeout 15s')), 15000)),
+        ]);
+      } catch (err) {
+        log('err', 'getUserMedia failed', { message: err.message });
+        document.getElementById('status').textContent = 'Camera denied';
+        document.getElementById('status').className = 'status err';
+        return;
+      }
+      const video = document.getElementById('video');
+      video.srcObject = stream;
+      await video.play();
+      const settings = stream.getVideoTracks()[0].getSettings();
+      log('event', 'camera ready', {
+        w: video.videoWidth, h: video.videoHeight,
+        actual: `${settings.width}x${settings.height}`,
+      });
+      const overlay = document.getElementById('overlay');
+      overlay.width = video.videoWidth;
+      overlay.height = video.videoHeight;
+
+      // 2. Load Human, init
+      log('event', 'initializing Human');
+      const tH = performance.now();
+      try {
+        human = new Human(HUMAN_CONFIG);
+        await human.load();
+        await human.warmup();
+      } catch (err) {
+        log('err', 'Human init failed', { message: err.message });
+        document.getElementById('status').textContent = 'Human failed';
+        document.getElementById('status').className = 'status err';
+        return;
+      }
+      log('event', 'Human ready', { ms: Math.round(performance.now() - tH) });
+
+      // 3. Load VitalLens, init
+      let VitalLens;
+      try {
+        VitalLens = await loadVitalLens();
+      } catch (err) {
+        log('err', 'VitalLens import failed', { message: err.message });
+        document.getElementById('status').textContent = 'VitalLens failed';
+        document.getElementById('status').className = 'status err';
+        return;
+      }
+      try {
+        vl = new VitalLens({ method: VL_METHOD });
+        vl.addEventListener('vitals', onVitals);
+        vl.addEventListener('error', (err) =>
+          log('err', 'vitallens error event', { message: err.message || String(err) }));
+        await vl.setVideoStream(stream, video);
+        vl.startVideoStream();
+        log('event', 'VitalLens started', { method: VL_METHOD });
+      } catch (err) {
+        log('err', 'VitalLens start failed', { message: err.message });
+        document.getElementById('status').textContent = 'VitalLens failed';
+        document.getElementById('status').className = 'status err';
+        return;
+      }
+
+      // 4. Reveal, kick loops
+      document.getElementById('gate').classList.add('hidden');
+      document.getElementById('status').textContent = 'Running · both engines live';
+      document.getElementById('status').className = 'status ok';
+      running = true;
+      sessionStartMs = performance.now();
+      vlSessionStartMs = sessionStartMs;
+      humanLastFpsAt = sessionStartMs;
+
+      requestAnimationFrame(humanLoop);
+      requestAnimationFrame(plotLoop);
+      setInterval(perfSnapshot, 5000);
+
+      log('event', 'fusion running');
+    }
+
+    // ── PERF SNAPSHOT ────────────────────────────────────────────────
+    function perfSnapshot() {
+      if (!running) return;
+      log('perf', 'snapshot', {
+        humanFps: Number(humanRecentFps.toFixed(2)),
+        humanInferP50Ms: humanInferSamples.length
+          ? Number([...humanInferSamples].sort((a,b)=>a-b)[Math.floor(humanInferSamples.length/2)].toFixed(1))
+          : null,
+        vlEvents: vlEventCount,
+        vlBaseline: vlBaseline != null ? Number(vlBaseline.toFixed(1)) : null,
+        vlDisplayed: vlDisplayedHr != null ? Number(vlDisplayedHr.toFixed(1)) : null,
+        humanV: humanLastVA.v != null ? Number(humanLastVA.v.toFixed(2)) : null,
+        humanA: humanLastVA.a != null ? Number(humanLastVA.a.toFixed(2)) : null,
+        fusedV: lastFused.v != null ? Number(lastFused.v.toFixed(2)) : null,
+        fusedA: lastFused.a != null ? Number(lastFused.a.toFixed(2)) : null,
+        fusionMode: lastFused.mode,
+      });
+    }
+
+    // ── SUMMARY + LOG UI ─────────────────────────────────────────────
+    function currentSummary() {
+      return {
+        durationSec: sessionStartMs ? Math.floor((performance.now() - sessionStartMs) / 1000) : 0,
+        humanFps: Number(humanRecentFps.toFixed(2)),
+        vlEvents: vlEventCount,
+        vlBaseline: vlBaseline != null ? Number(vlBaseline.toFixed(1)) : null,
+        vlDisplayed: vlDisplayedHr != null ? Number(vlDisplayedHr.toFixed(1)) : null,
+        humanV: humanLastVA.v != null ? Number(humanLastVA.v.toFixed(2)) : null,
+        humanA: humanLastVA.a != null ? Number(humanLastVA.a.toFixed(2)) : null,
+        humanTopEmotion: humanLastVA.top,
+        fusedV: lastFused.v != null ? Number(lastFused.v.toFixed(2)) : null,
+        fusedA: lastFused.a != null ? Number(lastFused.a.toFixed(2)) : null,
+        fusionMode: lastFused.mode,
+      };
+    }
+
+    const drawer = document.getElementById('logdrawer');
+    document.getElementById('logToggle').addEventListener('click', () => drawer.classList.toggle('open'));
+    document.getElementById('closeLog').addEventListener('click', () => drawer.classList.remove('open'));
+    document.getElementById('clearLog').addEventListener('click', () => {
+      LOG.length = 0; logBody.innerHTML = ''; logCountEl.textContent = 0;
+      log('info', 'log cleared');
+    });
+
+    async function copyLogToClipboard(btn) {
+      const text = LOG.map(e => `[${e.t}] ${e.kind.toUpperCase()} ${e.msg}${e.data ? ' ' + JSON.stringify(e.data) : ''}`).join('\n');
+      let ok = false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          ok = true;
+        }
+      } catch (e) { log('warn', 'navigator.clipboard failed', { msg: e.message }); }
+      if (!ok) {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.left = '0'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch (e) {}
+      }
+      const orig = btn.textContent;
+      btn.textContent = ok ? 'Copied ✓' : 'Failed – use Save log';
+      setTimeout(() => { btn.textContent = orig; }, 1600);
+    }
+    document.getElementById('copyLog').addEventListener('click', (e) => copyLogToClipboard(e.currentTarget));
+
+    document.getElementById('shareLogBtn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const text = LOG.map(x => `[${x.t}] ${x.kind.toUpperCase()} ${x.msg}${x.data ? ' ' + JSON.stringify(x.data) : ''}`).join('\n');
+      const summary = currentSummary();
+      const header = `Fusion log — ${summary.durationSec}s — humanFps ${summary.humanFps} — vlEvents ${summary.vlEvents} — baseline ${summary.vlBaseline ?? 'not-locked'} — fusedV ${summary.fusedV ?? '?'} fusedA ${summary.fusedA ?? '?'} — mode ${summary.fusionMode}\n\n`;
+      const payload = header + text;
+      if (!navigator.share) { copyLogToClipboard(btn); return; }
+      try {
+        const blob = new Blob([payload], { type: 'text/plain' });
+        const file = new File([blob], `fusion-test-log-${iso().replace(/[:.]/g, '-')}.txt`, { type: 'text/plain' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Fusion log' });
+          return;
+        }
+      } catch (err) {}
+      try { await navigator.share({ text: payload, title: 'Fusion log' }); }
+      catch (err) { log('warn', 'share cancelled', { msg: err.message }); }
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const payload = {
+        exportedAt: iso(),
+        entries: LOG,
+        summary: currentSummary(),
+        hrHistory: vlHrHist,
+        fusedTrail,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fusion-test-log-${iso().replace(/[:.]/g, '-')}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      log('info', 'log downloaded', { entries: LOG.length });
+    });
+
+    document.getElementById('startBtn').addEventListener('click', start);
+  </script>
+
+</body>
+</html>
