@@ -364,6 +364,7 @@
 
     // Fusion state
     let lastFused = { v: null, a: null, mode: 'idle' };
+    let lastFusionMode = 'idle';
     const fusedTrail = []; // { t, v, a } for the fading trail on the plot
 
     // ── VITALLENS INIT ───────────────────────────────────────────────
@@ -651,6 +652,17 @@
       }
 
       lastFused = { v: fusedV, a: fusedA, mode };
+      if (mode !== lastFusionMode) {
+        log('event', 'fusion mode transition', {
+          from: lastFusionMode,
+          to: mode,
+          tSinceStartSec: sessionStartMs ? Number(((performance.now() - sessionStartMs) / 1000).toFixed(1)) : null,
+          humanV: hV != null ? Number(hV.toFixed(2)) : null,
+          humanA: hA != null ? Number(hA.toFixed(2)) : null,
+          hrProxy: proxy != null ? Number(proxy.toFixed(2)) : null,
+        });
+        lastFusionMode = mode;
+      }
 
       if (fusedV != null) {
         document.getElementById('fusedV').textContent =
