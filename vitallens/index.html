@@ -385,6 +385,7 @@
   <!-- Controls bar -->
   <div class="ctrls">
     <button id="logToggle">▲ Log</button>
+    <button id="switchMethodBtn" title="Cycle pos → chrom → g without stopping">Switch method</button>
     <button id="shareLogBtn">Share log</button>
     <button id="downloadBtn">Save log</button>
     <div class="spacer"></div>
@@ -540,8 +541,18 @@
     let recentSmoothed = [];         // for consecutive-agreement check
     let signalLocked = false;
 
+    // A/B state: method phases within one session, so we can compare
+    // pos vs chrom vs g on identical face/lighting/posture.
+    const METHOD_CYCLE = ['pos', 'chrom', 'g'];
+    let currentMethodIdx = 0;
+    const phaseStats = {};
+    let currentPhaseStartMs = null;
+    let cachedVitalLensClass = null;
+
     // ── LIBRARY LOAD ─────────────────────────────────────────────────
+    // Cache the imported class so switchMethod doesn't need to re-import
     async function loadLibrary() {
+      if (cachedVitalLensClass) return cachedVitalLensClass;
       log('event', 'importing vitallens from jsdelivr');
       const t0 = performance.now();
       try {
@@ -551,7 +562,8 @@
           ms: Math.round(dt),
           exports: Object.keys(mod).slice(0, 20),
         });
-        return mod.VitalLens || mod.default;
+        cachedVitalLensClass = mod.VitalLens || mod.default;
+        return cachedVitalLensClass;
       } catch (err) {
         log('err', 'import failed', { message: err.message, ms: Math.round(performance.now() - t0) });
         throw err;
@@ -656,16 +668,99 @@
         vl.startVideoStream();
         running = true;
         sessionStartMs = performance.now();
+        currentPhaseStartMs = sessionStartMs;
+        currentMethodIdx = METHOD_CYCLE.indexOf(method);
+        if (currentMethodIdx < 0) currentMethodIdx = 0;
+        phaseStats[method] = { startMs: sessionStartMs };
         log('event', 'startVideoStream ok');
+        log('event', 'phase started', { method, phaseIdx: currentMethodIdx });
         document.getElementById('status').textContent = 'Running';
         document.getElementById('status').className = 'status ok';
+        beginBackgroundLoops();
       } catch (err) {
         log('err', 'startVideoStream threw', { message: err.message });
       }
+    }
 
+    /* Hot-swap method mid-session: close current VitalLens, build a new
+       one with the next method, reattach the SAME video stream. hrHist
+       and baseline reset (they were tuned to the old method). Each
+       phase gets an explicit boundary marker in the log for offline
+       A/B analysis. */
+    async function switchMethod() {
+      if (!running || !vl) return;
+
+      const oldMethod = method;
+      const t0 = performance.now();
+      const phaseDurationMs = t0 - currentPhaseStartMs;
+      if (phaseStats[oldMethod]) {
+        phaseStats[oldMethod].endMs = t0;
+        phaseStats[oldMethod].durationMs = phaseDurationMs;
+      }
+
+      const nextIdx = (currentMethodIdx + 1) % METHOD_CYCLE.length;
+      const nextMethod = METHOD_CYCLE[nextIdx];
+      log('event', 'switching method', {
+        from: oldMethod,
+        to: nextMethod,
+        phaseDurationMs: Math.round(phaseDurationMs),
+      });
+      document.getElementById('status').textContent = 'Switching to ' + nextMethod + '…';
+      document.getElementById('status').className = 'status warn';
+
+      try {
+        vl.stopVideoStream();
+        vl.close();
+      } catch (err) {
+        log('warn', 'stop/close on old instance threw', { message: err.message });
+      }
+
+      // Reset per-method state
+      baseline = null;
+      hrHist.length = 0;
+      recentSmoothed = [];
+      signalLocked = false;
+      lastGoodDisplayedHr = null;
+      document.getElementById('baseline').textContent = '—';
+      const deltaPill = document.getElementById('hrDelta');
+      deltaPill.textContent = '—';
+      deltaPill.className = 'delta-pill';
+
+      method = nextMethod;
+      currentMethodIdx = nextIdx;
+      document.getElementById('methodBadge').textContent = method;
+      document.getElementById('methodChip').textContent = 'method:' + method;
+
+      try {
+        const VitalLens = cachedVitalLensClass;
+        vl = new VitalLens({ method });
+        vl.addEventListener('vitals', onVitals);
+        vl.addEventListener('error', (err) => log('err', 'vitallens error event', { message: err.message || String(err) }));
+
+        const video = document.getElementById('video');
+        const stream = video.srcObject;
+        await vl.setVideoStream(stream, video);
+        vl.startVideoStream();
+
+        currentPhaseStartMs = performance.now();
+        // Restart the 60s baseline learn timer for the new method
+        sessionStartMs = currentPhaseStartMs;
+        phaseStats[method] = { startMs: currentPhaseStartMs };
+
+        log('event', 'phase started', { method, phaseIdx: nextIdx });
+        document.getElementById('status').textContent = 'Running (' + method + ')';
+        document.getElementById('status').className = 'status ok';
+      } catch (err) {
+        log('err', 'switch method failed', { message: err.message });
+        document.getElementById('status').textContent = 'Switch failed';
+        document.getElementById('status').className = 'status err';
+      }
+    }
+
+    // Called once at end of start(), NOT re-called on switchMethod
+    function beginBackgroundLoops() {
       // Kick the animation loop that redraws sparkline + updates counters
       requestAnimationFrame(uiTick);
-
       // Perf snapshot every 5 s
       setInterval(perfSnapshot, 5000);
     }
@@ -891,9 +986,10 @@
       document.getElementById('sampleCount').textContent = hrHist.length;
       document.getElementById('duration').textContent = Math.floor(sessionMs / 1000) + ' s';
 
-      // Perf sample every 5 vitals events
+      // Perf sample every 5 vitals events (tag every entry with current method so A/B analysis is trivial)
       if (vitalsEventCount % 5 === 0) {
         log('perf', 'vitals sample', {
+          method,
           n: vitalsEventCount,
           hrRaw: hrRaw != null ? Number(hrRaw.toFixed(1)) : null,
           hrSmoothed: hrSmoothed != null ? Number(hrSmoothed.toFixed(1)) : null,
@@ -1033,13 +1129,21 @@
       const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : null;
       return {
         method,
-        durationSec: sessionStartMs ? Math.floor((performance.now() - sessionStartMs) / 1000) : 0,
+        currentPhaseDurationSec: currentPhaseStartMs ? Math.floor((performance.now() - currentPhaseStartMs) / 1000) : 0,
         vitalsEvents: vitalsEventCount,
         faceEvents: faceEventCount,
         histCount: hrHist.length,
         hrMean: mean != null ? Number(mean.toFixed(1)) : null,
         hrMedian: median != null ? Number(median.toFixed(1)) : null,
         baselineBpm: baseline != null ? Number(baseline.toFixed(1)) : null,
+        phaseStats: Object.fromEntries(Object.entries(phaseStats).map(([k, v]) => [
+          k,
+          {
+            startMs: Math.round(v.startMs || 0),
+            endMs: v.endMs != null ? Math.round(v.endMs) : null,
+            durationMs: v.durationMs != null ? Math.round(v.durationMs) : null,
+          },
+        ])),
       };
     }
 
@@ -1099,7 +1203,10 @@
       const btn = e.currentTarget;
       const text = LOG.map(x => `[${x.t}] ${x.kind.toUpperCase()} ${x.msg}${x.data ? ' ' + JSON.stringify(x.data) : ''}`).join('\n');
       const summary = currentSummary();
-      const header = `VitalLens engine log — method ${summary.method} — ${summary.durationSec}s — ${summary.vitalsEvents} vitals events — HR mean ${summary.hrMean ?? '?'} — baseline ${summary.baselineBpm ?? 'not-locked'}\n\n`;
+      const phaseSummary = Object.entries(summary.phaseStats)
+        .map(([m, s]) => `${m}:${Math.round((s.durationMs != null ? s.durationMs : (performance.now() - s.startMs)) / 1000)}s`)
+        .join(' → ');
+      const header = `VitalLens A/B log — current:${summary.method} — phases[${phaseSummary}] — ${summary.vitalsEvents} vitals events — current-phase HR mean ${summary.hrMean ?? '?'} — current baseline ${summary.baselineBpm ?? 'not-locked'}\n\n`;
       const payload = header + text;
 
       if (!navigator.share) {
@@ -1140,6 +1247,7 @@
     });
 
     document.getElementById('startBtn').addEventListener('click', start);
+    document.getElementById('switchMethodBtn').addEventListener('click', switchMethod);
     log('info', 'page ready · pick method and Start camera');
   </script>
 
