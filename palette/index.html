@@ -766,7 +766,12 @@
       width: 100%; height: 100%;
       display: block;
     }
-    .sense-selfview video { object-fit: cover; transform: scaleX(-1); }
+    /* Both video and mesh canvas get the same CSS mirror so their pixels
+       stay locked to each other. The mesh overlay is then drawn in the
+       un-mirrored video coord space (mirror:false below) and the browser
+       applies one selfie-flip to the whole stack. */
+    .sense-selfview video,
+    .sense-selfview canvas { object-fit: cover; transform: scaleX(-1); }
 
     /* Emotion bars */
     .emo-row { display: grid; grid-template-columns: 76px 1fr 44px; align-items: center; gap: 10px; padding: 3px 0; }
@@ -854,59 +859,26 @@
        the full circumplex lives in the Sensing view; a stripped-down one
        on the art felt like a broken control). Kept in DOM so trail
        state keeps ticking. ────────────────────────────────────── */
-    /* Map overlay — fullscreen, semi-transparent, on top of the art.
-       Tap anywhere to hide (pointer-events on when .on). */
+    /* Empathic Lens — the lens over the art. Not a map on top, a lens
+       through. The art remains fully visible; only your position and
+       journey on the emotional field are painted over it. Tap anywhere
+       to lower the lens. */
     .map-overlay {
       position: fixed; inset: 0; z-index: 8;
       pointer-events: none;
       opacity: 0;
       transition: opacity 320ms ease;
-      background: radial-gradient(ellipse at center,
-        rgba(15, 12, 10, 0.20) 0%,
-        rgba(15, 12, 10, 0.45) 60%,
-        rgba(15, 12, 10, 0.62) 100%);
+      /* No dimming veil — the art stays fully visible through the lens. */
+      background: transparent;
     }
     .map-overlay.on { opacity: 1; pointer-events: auto; cursor: pointer; }
-    .map-overlay__wheel {
-      position: absolute;
-      left: 50%; top: 50%; transform: translate(-50%, -50%);
-      width: min(88vw, 88vh, 720px);
-      height: min(88vw, 88vh, 720px);
-      display: block;
-    }
-    /* Feathered self-view: circular window at the wheel centre, radially
-       masked from ~100% opaque at the centre to fully transparent at edge. */
-    .map-overlay__face {
-      position: absolute;
-      left: 50%; top: 50%; transform: translate(-50%, -50%);
-      width: min(46vw, 46vh, 360px);
-      height: min(46vw, 46vh, 360px);
-      border-radius: 50%;
-      overflow: hidden;
-      /* Long, gentle falloff: 100% opaque only at the very centre,
-         then a wide feather all the way out so the face blends into
-         the wheel colours instead of ending in a hard circle. */
-      -webkit-mask-image: radial-gradient(circle at 50% 50%,
-        rgba(0,0,0,1) 0%,
-        rgba(0,0,0,1) 22%,
-        rgba(0,0,0,0.85) 42%,
-        rgba(0,0,0,0.55) 62%,
-        rgba(0,0,0,0.25) 80%,
-        rgba(0,0,0,0) 100%);
-              mask-image: radial-gradient(circle at 50% 50%,
-        rgba(0,0,0,1) 0%,
-        rgba(0,0,0,1) 22%,
-        rgba(0,0,0,0.85) 42%,
-        rgba(0,0,0,0.55) 62%,
-        rgba(0,0,0,0.25) 80%,
-        rgba(0,0,0,0) 100%);
-      pointer-events: none;
-    }
-    .map-overlay__face video {
+    /* Full-frame lens canvas — you dot with pill, chromatic trail,
+       ambient cardinal marks. Draws directly over the art. */
+    .map-overlay__lens {
+      position: absolute; inset: 0;
       width: 100%; height: 100%;
-      object-fit: cover;
-      transform: scaleX(-1);
       display: block;
+      pointer-events: none;
     }
     /* Caption: two lines, small hint + large emotion word. Word colour set
        inline based on the live v1 emotion palette. */
@@ -1303,15 +1275,12 @@
     <canvas id="circumplex" width="240" height="240"></canvas>
   </div>
 
-  <!-- Fullscreen semi-transparent Map overlay on top of the artwork.
-       Toggled by the Map button. Underlying shader keeps painting.
-       Layers, bottom to top: circumplex wheel canvas, feathered self-view
-       (masked to a soft radial), and two lines of type. Tap anywhere to hide. -->
+  <!-- Empathic Lens — the lens over the art. Not a map on top, a lens
+       through. The shader keeps painting behind everything; the lens
+       canvas draws only your dot with pill, chromatic trail, and ambient
+       cardinal marks over the art. Tap anywhere to lower the lens. -->
   <div class="map-overlay" id="mapOverlay" aria-hidden="true">
-    <canvas class="map-overlay__wheel" id="mapCanvas"></canvas>
-    <div class="map-overlay__face">
-      <video id="mapFaceVideo" autoplay muted playsinline></video>
-    </div>
+    <canvas class="map-overlay__lens" id="mapCanvas"></canvas>
     <div class="map-overlay__caption">
       <div class="map-overlay__hint">sensing you now:</div>
       <div class="map-overlay__word" id="mapWord">breathing in</div>
@@ -1320,7 +1289,7 @@
 
   <!-- Controls (hidden while gate is showing) -->
   <div class="ctrls" id="ctrlsBar">
-    <button id="btnPlot" data-ea-tip="map">Map</button>
+    <button id="btnPlot" data-ea-tip="empathic lens over the art">Lens</button>
     <button id="btnClean" data-ea-tip="clean" class="active">Clean</button>
     <div class="spacer"></div>
     <button id="btnEnd" class="btn-end">End</button>
@@ -2235,13 +2204,13 @@
           );
           // Also show the bounding box so face location is obvious.
           drawMeshOverlay(senseCtx, f, vv, vh, w, h, {
-            mirror: true, showBox: true, showMesh: false, showContours: false,
+            mirror: false, showBox: true, showMesh: false, showContours: false,
             showIris: false, showGaze: false, showAxes: false, showRoi: false,
             labelEvery: 0,
           });
         } else if (meshMode !== 'off') {
           drawMeshOverlay(senseCtx, f, vv, vh, w, h, {
-            mirror: true,
+            mirror: false,
             showBox: true,
             showMesh: true,
             showContours: true,
@@ -2431,23 +2400,60 @@
         bigPlotCtx.restore();
       }
 
-      // Emotional trail — each dot coloured by ITS OWN (v,a) via v1 palette.
-      // This is the v1 signature: the trail is a chromatic memory of where
-      // your feeling has been on the wheel, not a monochrome breadcrumb.
-      const now = performance.now();
+      // Emotional trail — persists for the whole session (Turn 136).
+      // Fade with visible tail: newest points are bright, older points fade
+      // toward a soft floor but never fully disappear. "You are here now,
+      // but you can still see the journey." Two-pass render: soft coloured
+      // halo underneath, saturated core on top.
+      const nowT = performance.now();
+      // Time constants tuned for a session that may last many minutes:
+      // — first 8s: bright glow (recent history)
+      // — 8s→90s: fades toward the floor
+      // — 90s+: soft ambient chromatic ghost (never fully gone)
+      const T_FRESH_MS = 8000;   // bright zone
+      const T_LONG_MS  = 90000;  // fade-out ends here at the floor
+      const FLOOR_A    = 0.10;   // faint but present
+      // Pass 1 — soft coloured halos (older points sit further back).
       for (const p of miniTrail) {
-        const age = (now - p.t) / 8000;
-        if (age >= 1) continue;
+        const age = nowT - p.t;
+        const bright = Math.max(0, 1 - age / T_FRESH_MS); // 1→0 over first 8s
+        const long   = Math.max(0, 1 - Math.min(1, (age - T_FRESH_MS) / (T_LONG_MS - T_FRESH_MS)));
+        // Recency = bright zone weight + long-tail weight, floored so nothing dies.
+        const recency = Math.max(FLOOR_A, bright * 1.0 + (1 - bright) * long * 0.4);
         const c = v1EmotionToColor(p.v, p.a, 0.5);
-        const alpha = (1 - age) * 0.75;
-        const size  = 3 + (1 - age) * 5;
-        bigPlotCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},${alpha})`;
+        const haloA = 0.10 + recency * 0.22;
+        const haloR = 6 + recency * 6;
+        bigPlotCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},${haloA})`;
         bigPlotCtx.beginPath();
-        bigPlotCtx.arc(cx + p.v * R, cy - p.a * R, size, 0, Math.PI*2);
+        bigPlotCtx.arc(cx + p.v * R, cy - p.a * R, haloR, 0, Math.PI*2);
         bigPlotCtx.fill();
       }
+      // Pass 2 — saturated cores on top, with a white highlight on the
+      // freshest points so the head of the trail reads clearly.
+      for (const p of miniTrail) {
+        const age = nowT - p.t;
+        const bright = Math.max(0, 1 - age / T_FRESH_MS);
+        const long   = Math.max(0, 1 - Math.min(1, (age - T_FRESH_MS) / (T_LONG_MS - T_FRESH_MS)));
+        const recency = Math.max(FLOOR_A, bright * 1.0 + (1 - bright) * long * 0.4);
+        const c = v1EmotionToColor(p.v, p.a, 0.5);
+        const coreA = 0.35 + recency * 0.50;
+        const coreR = 2 + recency * 3;
+        bigPlotCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},${coreA})`;
+        bigPlotCtx.beginPath();
+        bigPlotCtx.arc(cx + p.v * R, cy - p.a * R, coreR, 0, Math.PI*2);
+        bigPlotCtx.fill();
+        // White highlight on fresh points (< 2s old).
+        if (age < 2000) {
+          const hi = (1 - age / 2000);
+          bigPlotCtx.fillStyle = `rgba(255,255,255,${hi * 0.6})`;
+          bigPlotCtx.beginPath();
+          bigPlotCtx.arc(cx + p.v * R, cy - p.a * R, 1.4, 0, Math.PI*2);
+          bigPlotCtx.fill();
+        }
+      }
 
-      // Current YOU dot — coloured by v1 palette, with matching halo.
+      // Current YOU dot — coloured by v1 palette, with matching halo,
+      // pulsing gently in sync with heart rate when we have one.
       const haveVA = lastFused.v != null;
       const dx = cx + (haveVA ? smV : 0) * R;
       const dy = cy - (haveVA ? smA : 0) * R;
@@ -2458,10 +2464,18 @@
         currentHex  = c.hex;
         currentName = v1EmotionToLabel(smV, smA);
         const {r, g: gg, b} = c;
+        // HR-locked pulse on the dot itself: gentle radius modulation at the
+        // measured heart rate. Falls back to a slow ambient breath when no HR.
+        const nowPulse = performance.now();
+        const hrHz = (typeof vlDisplayedHr === 'number' && vlDisplayedHr > 30)
+          ? (vlDisplayedHr / 60)
+          : 0.25;
+        const pulse = 0.5 + 0.5 * Math.sin(nowPulse * 0.001 * hrHz * 2 * Math.PI);
+        const dotR = 14 + pulse * 3;
         bigPlotCtx.fillStyle = `rgba(${r},${gg},${b},0.20)`;
         bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 34, 0, Math.PI*2); bigPlotCtx.fill();
         bigPlotCtx.fillStyle = c.hex;
-        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 14, 0, Math.PI*2); bigPlotCtx.fill();
+        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, dotR, 0, Math.PI*2); bigPlotCtx.fill();
         bigPlotCtx.strokeStyle = 'rgba(255,255,255,0.85)';
         bigPlotCtx.lineWidth = 2;
         bigPlotCtx.stroke();
@@ -2469,6 +2483,57 @@
         bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.55)';
         bigPlotCtx.lineWidth = 2;
         bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 12, 0, Math.PI*2); bigPlotCtx.stroke();
+      }
+
+      // YOU pill — large rounded pill above the dot with a fine leader line
+      // connecting them. Introduced Turn 136 ("the dot needs to have
+      // attached to it the word 'you'") and enlarged Turn 138 ("the U is
+      // really really small; it needs to be bigger"). The pill sits ABOVE
+      // the dot; if the dot is near the top edge, it flips below.
+      {
+        const pillFont = '600 22px "Space Grotesk", ui-sans-serif, system-ui';
+        bigPlotCtx.font = pillFont;
+        const label = 'you';
+        const tw = bigPlotCtx.measureText(label).width;
+        const padX = 18, padY = 10;
+        const pillW = tw + padX * 2;
+        const pillH = 22 + padY * 2;
+        const gap = 42; // leader line length between dot edge and pill
+        // Flip below the dot when there isn't room above.
+        const flipBelow = dy - gap - pillH < 12;
+        const py = flipBelow ? (dy + gap) : (dy - gap - pillH);
+        const pillX = Math.max(6, Math.min(bigPlotCanvas.width - pillW - 6, dx - pillW/2));
+        // Leader line — from dot toward pill.
+        bigPlotCtx.strokeStyle = 'rgba(255,255,255,0.75)';
+        bigPlotCtx.lineWidth = 1.25;
+        bigPlotCtx.beginPath();
+        bigPlotCtx.moveTo(dx, flipBelow ? (dy + 16) : (dy - 16));
+        bigPlotCtx.lineTo(dx, flipBelow ? py : (py + pillH));
+        bigPlotCtx.stroke();
+        // Pill background — dark ink, coloured border matching current hue.
+        const pillR = pillH / 2;
+        bigPlotCtx.fillStyle = 'rgba(20,18,15,0.88)';
+        bigPlotCtx.strokeStyle = haveVA ? currentHex : 'rgba(238,236,231,0.65)';
+        bigPlotCtx.lineWidth = 1.5;
+        bigPlotCtx.beginPath();
+        if (bigPlotCtx.roundRect) {
+          bigPlotCtx.roundRect(pillX, py, pillW, pillH, pillR);
+        } else {
+          // Fallback for older Safari.
+          bigPlotCtx.moveTo(pillX + pillR, py);
+          bigPlotCtx.lineTo(pillX + pillW - pillR, py);
+          bigPlotCtx.arc(pillX + pillW - pillR, py + pillR, pillR, -Math.PI/2, Math.PI/2);
+          bigPlotCtx.lineTo(pillX + pillR, py + pillH);
+          bigPlotCtx.arc(pillX + pillR, py + pillR, pillR, Math.PI/2, -Math.PI/2);
+          bigPlotCtx.closePath();
+        }
+        bigPlotCtx.fill();
+        bigPlotCtx.stroke();
+        // Pill label — the word "you" itself.
+        bigPlotCtx.fillStyle = '#EEECE7';
+        bigPlotCtx.textAlign = 'center';
+        bigPlotCtx.textBaseline = 'middle';
+        bigPlotCtx.fillText(label, pillX + pillW/2, py + pillH/2 + 1);
       }
 
       // Live emotion name caption under the wheel, big and coloured.
@@ -2681,8 +2746,10 @@
     const miniCtx = miniCanvas.getContext('2d');
     const miniTrail = [];
     // Corner circumplex — Open-style cream hairline.
-    // 30-second trail; current position glows softly.
-    const MINI_TRAIL_MS = 30000;
+    // Trail persists for the whole session (Turn 136), capped at 2000
+    // samples (~200s dense) to bound memory. Big plot's drawBigPlot()
+    // fades old points toward a soft floor so nothing dies.
+    const MINI_TRAIL_MAX = 2000;
     function drawMiniPlot() {
       const S = 240, cx = S/2, cy = S/2, R = S * 0.42;
       miniCtx.clearRect(0, 0, S, S);
@@ -2704,23 +2771,28 @@
       miniCtx.moveTo(cx,cy-R); miniCtx.lineTo(cx,cy+R);
       miniCtx.stroke();
 
-      // Record trail (throttled to ~10 Hz so the tail is dense but bounded)
+      // Record trail (throttled to ~10 Hz so the tail is dense but bounded).
+      // Session-persistent: no time-based cutoff; only cap by count.
       const now = performance.now();
       if (lastFused.v != null && (now - lastTrailPushAt) > 100) {
         miniTrail.push({ t: now, v: lastFused.v, a: lastFused.a });
         lastTrailPushAt = now;
-        const cutoff = now - MINI_TRAIL_MS;
-        while (miniTrail.length && miniTrail[0].t < cutoff) miniTrail.shift();
+        if (miniTrail.length > MINI_TRAIL_MAX) miniTrail.shift();
       }
 
-      // Trail as connected polyline (fades from tail to head)
+      // Mini plot trail rendering — fade with visible tail (matches big plot).
+      // Time constants same as drawBigPlot so both surfaces feel consistent.
+      const T_FRESH = 8000, T_LONG = 90000, FLOOR = 0.08;
+      // Polyline connecting successive points (colour = midpoint emotion).
       if (miniTrail.length > 1) {
         for (let i = 1; i < miniTrail.length; i++) {
           const p0 = miniTrail[i-1], p1 = miniTrail[i];
-          const age = (now - p1.t) / MINI_TRAIL_MS;
-          const alpha = Math.max(0, 1 - age) * 0.55;
-          miniCtx.strokeStyle = `rgba(238,236,231,${alpha})`;
-          miniCtx.lineWidth = 1.5;
+          const age = now - p1.t;
+          const bright = Math.max(0, 1 - age / T_FRESH);
+          const long   = Math.max(0, 1 - Math.min(1, (age - T_FRESH) / (T_LONG - T_FRESH)));
+          const recency = Math.max(FLOOR, bright + (1 - bright) * long * 0.4);
+          miniCtx.strokeStyle = `rgba(238,236,231,${0.15 + recency * 0.45})`;
+          miniCtx.lineWidth = 1.4;
           miniCtx.beginPath();
           miniCtx.moveTo(cx + p0.v * R, cy - p0.a * R);
           miniCtx.lineTo(cx + p1.v * R, cy - p1.a * R);
@@ -2728,11 +2800,14 @@
         }
       }
 
-      // Trail dots
+      // Trail dots — fade with visible tail, never fully die.
       for (const p of miniTrail) {
-        const age = (now - p.t) / MINI_TRAIL_MS;
-        const alpha = Math.max(0, 1 - age) * 0.6;
-        const size = 1.0 + (1 - age) * 1.2;
+        const age = now - p.t;
+        const bright = Math.max(0, 1 - age / T_FRESH);
+        const long   = Math.max(0, 1 - Math.min(1, (age - T_FRESH) / (T_LONG - T_FRESH)));
+        const recency = Math.max(FLOOR, bright + (1 - bright) * long * 0.4);
+        const alpha = 0.15 + recency * 0.55;
+        const size = 1.0 + recency * 1.2;
         miniCtx.fillStyle = `rgba(238,236,231,${alpha})`;
         miniCtx.beginPath();
         miniCtx.arc(cx + p.v * R, cy - p.a * R, size, 0, Math.PI*2);
@@ -2866,7 +2941,8 @@
     const mapCanvasEl = document.getElementById('mapCanvas');
     const mapCtx = mapCanvasEl.getContext('2d');
     const mapWordEl = document.getElementById('mapWord');
-    const mapFaceVideo = document.getElementById('mapFaceVideo');
+    // (mapFaceVideo removed — the empathic lens no longer shows a self-view;
+    //  the art itself is what you look through the lens at.)
     let mapOverlayOpen = false;
     let _mapRaf = null;
 
@@ -2909,185 +2985,180 @@
       return c;
     }
 
+    // Empathic Lens — draws over the full frame, ON the art (no dimming
+    // veil, no diagram disc). What appears:
+    //   • a very soft cardinal-marks vignette at the four edges hinting at
+    //     valence/arousal axes without a wheel;
+    //   • the chromatic session trail scaled across the whole frame,
+    //     coloured per emotion, fading with a visible tail;
+    //   • a big YOU dot with a soft coloured halo, HR-locked breathing;
+    //   • a rounded YOU pill floating above the dot with fine leader line.
+    // The bottom caption `sensing you now:` + emotion word stays in DOM.
     function drawMapWheel() {
       const rect = mapCanvasEl.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const S = Math.max(1, Math.round(rect.width * dpr));
-      if (mapCanvasEl.width !== S || mapCanvasEl.height !== S) {
-        mapCanvasEl.width = S;
-        mapCanvasEl.height = S;
+      const W = Math.max(1, Math.round(rect.width * dpr));
+      const H = Math.max(1, Math.round(rect.height * dpr));
+      if (mapCanvasEl.width !== W || mapCanvasEl.height !== H) {
+        mapCanvasEl.width = W;
+        mapCanvasEl.height = H;
       }
-      // Smaller disc than before so all 19 emotion labels + axis names
-      // fit OUTSIDE the colour field, matching the reference circumplex.
-      const cx = S/2, cy = S/2, R = S * 0.36;
-      mapCtx.clearRect(0, 0, S, S);
+      mapCtx.clearRect(0, 0, W, H);
 
-      // 1) Painterly disc — sample v1 emotionToColor across the WHOLE disc
-      // (not just the rim). Each pixel angle + normalised radius gives
-      // a v/a coordinate, which we look up in the palette. Because
-      // emotionToColor blends by angular distance to nearest anchor,
-      // the field is seamless. Radius damps openness toward the centre
-      // so the middle reads softer (like image 3).
-      // Draw at a lower resolution then upscale for painterly softness.
-      const LOW = 96;
-      const off = document.createElement('canvas');
-      off.width = off.height = LOW;
-      const octx = off.getContext('2d');
-      const img = octx.createImageData(LOW, LOW);
-      const cxL = LOW / 2, cyL = LOW / 2, RL = LOW / 2;
-      for (let py = 0; py < LOW; py++) {
-        for (let px = 0; px < LOW; px++) {
-          const dx = (px - cxL) / RL;
-          const dy = (cyL - py) / RL; // arousal up = +
-          const rr = Math.hypot(dx, dy);
-          const idx = (py * LOW + px) * 4;
-          if (rr > 1.02) { img.data[idx+3] = 0; continue; }
-          // Radius-damped openness: rim saturated, centre softer.
-          const openness = 0.35 + 0.45 * rr;
-          const c = v1EmotionToColor(dx, dy, openness);
-          img.data[idx]   = c.r;
-          img.data[idx+1] = c.g;
-          img.data[idx+2] = c.b;
-          img.data[idx+3] = 255;
-        }
-      }
-      octx.putImageData(img, 0, 0);
-      // Upscale + slight blur for the watercolour bleed.
+      const cx = W / 2, cy = H / 2;
+      // Field radius: how far v=±1 / a=±1 sits from the centre. Slightly
+      // inset so the pill doesn't ride the safe-area edge.
+      const R = Math.min(W, H) * 0.40;
+
+      // 1) Ambient cardinal marks — four short faded arcs at 3/9/12/6 o'clock
+      //    around the frame, hinting at valence/arousal without drawing a wheel.
+      //    Each arc is coloured by the emotion palette at its cardinal.
+      const arcInset = Math.min(W, H) * 0.06;
+      const RM = Math.min(W, H) * 0.48 - arcInset;
+      const marks = [
+        { angle: 0,           v:  1, a:  0, label: 'open'      },
+        { angle: Math.PI,     v: -1, a:  0, label: 'close'     },
+        { angle: -Math.PI/2,  v:  0, a:  1, label: 'activated' },
+        { angle:  Math.PI/2,  v:  0, a: -1, label: 'still'     }
+      ];
       mapCtx.save();
-      mapCtx.beginPath(); mapCtx.arc(cx, cy, R, 0, Math.PI*2); mapCtx.clip();
-      mapCtx.filter = 'blur(' + (4 * dpr) + 'px)';
-      mapCtx.imageSmoothingEnabled = true;
-      mapCtx.imageSmoothingQuality = 'high';
-      mapCtx.globalAlpha = 0.92;
-      mapCtx.drawImage(off, cx - R, cy - R, R * 2, R * 2);
-      mapCtx.globalAlpha = 1;
-      mapCtx.filter = 'none';
-
-      // 2) Painterly noise/cloud overlay for the hand-painted feel.
-      if (!_mapNoise || _mapNoiseFor !== S) {
-        _mapNoise = _buildNoiseTexture(Math.max(256, Math.round(R * 1.4)));
-        _mapNoiseFor = S;
-      }
-      mapCtx.globalCompositeOperation = 'overlay';
-      mapCtx.globalAlpha = 0.55;
-      mapCtx.drawImage(_mapNoise, cx - R, cy - R, R * 2, R * 2);
-      mapCtx.globalAlpha = 1;
-      mapCtx.globalCompositeOperation = 'source-over';
-      mapCtx.restore();
-
-      // 3) Central face fade — gentle roll-off so the face blends in.
-      const fade = mapCtx.createRadialGradient(cx, cy, 0, cx, cy, R);
-      fade.addColorStop(0.00, 'rgba(15,12,10,0.60)');
-      fade.addColorStop(0.30, 'rgba(15,12,10,0.32)');
-      fade.addColorStop(0.60, 'rgba(15,12,10,0.08)');
-      fade.addColorStop(1.00, 'rgba(15,12,10,0.00)');
-      mapCtx.fillStyle = fade;
-      mapCtx.beginPath(); mapCtx.arc(cx, cy, R, 0, Math.PI*2); mapCtx.fill();
-
-      // 4) Crosshair axes — valence horizontal, arousal vertical.
-      // A subtle line that extends slightly past the disc so it reads
-      // as an axis, not a wheel spoke.
-      const axisOver = 16 * dpr;
-      mapCtx.strokeStyle = 'rgba(238,236,231,0.35)';
-      mapCtx.lineWidth = 1 * dpr;
-      mapCtx.beginPath();
-      mapCtx.moveTo(cx - R - axisOver, cy); mapCtx.lineTo(cx + R + axisOver, cy);
-      mapCtx.moveTo(cx, cy - R - axisOver); mapCtx.lineTo(cx, cy + R + axisOver);
-      mapCtx.stroke();
-
-      // 5) Hairline disc outline.
-      mapCtx.strokeStyle = 'rgba(238,236,231,0.30)';
-      mapCtx.lineWidth = 1 * dpr;
-      mapCtx.beginPath(); mapCtx.arc(cx, cy, R, 0, Math.PI*2); mapCtx.stroke();
-
-      // 6) Axis labels — VALENCE (close ← → open), AROUSAL (up / down).
-      // Mono, small, low-emphasis — they are guides, not the show.
-      mapCtx.font = `500 ${10 * dpr}px "JetBrains Mono", ui-monospace, monospace`;
-      mapCtx.fillStyle = 'rgba(238,236,231,0.62)';
-      // Valence ends
-      mapCtx.textAlign = 'right'; mapCtx.textBaseline = 'middle';
-      mapCtx.fillText('close ←', cx - R - 4 * dpr, cy - 12 * dpr);
-      mapCtx.textAlign = 'left';
-      mapCtx.fillText('→ open', cx + R + 4 * dpr, cy - 12 * dpr);
-      // valence axis title, tiny
-      mapCtx.textAlign = 'center';
-      mapCtx.fillStyle = 'rgba(238,236,231,0.46)';
-      mapCtx.font = `500 ${9 * dpr}px "JetBrains Mono", ui-monospace, monospace`;
-      mapCtx.fillText('valence', cx, cy - R - axisOver - 4 * dpr - 2 * dpr);
-      // Arousal ends
-      mapCtx.font = `500 ${10 * dpr}px "JetBrains Mono", ui-monospace, monospace`;
-      mapCtx.fillStyle = 'rgba(238,236,231,0.62)';
-      mapCtx.textBaseline = 'bottom';
-      mapCtx.fillText('activated ↑', cx + 12 * dpr, cy - R - 4 * dpr);
-      mapCtx.textBaseline = 'top';
-      mapCtx.fillText('↓ still',   cx + 12 * dpr, cy + R + 4 * dpr);
-      // arousal axis title, tiny — skip to avoid clutter on iPhone widths.
-
-      // 7) Emotion labels OUTSIDE the disc — all 19 v1 anchors, each
-      // with a small dot on the rim at its (cos, sin) position and
-      // the label placed just outside pointing outward. Reference:
-      // the classic Russell/Yik-style circumplex.
-      const anchorDotR = 3.5 * dpr;
-      const anchors = V1_EMOTIONS.slice();
-      // Font & shadow for the labels.
-      mapCtx.font = `600 ${11 * dpr}px "Space Grotesk", ui-sans-serif, system-ui`;
-      mapCtx.textBaseline = 'middle';
-      for (const e of anchors) {
-        const rad = (e.angle * Math.PI) / 180;
-        const ax = cx + Math.cos(rad) * R;
-        const ay = cy - Math.sin(rad) * R;
-        // Anchor dot on the rim.
-        mapCtx.fillStyle = e.hex;
+      for (const m of marks) {
+        const c = v1EmotionToColor(m.v, m.a, 0.6);
+        mapCtx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.35)`;
+        mapCtx.lineWidth = 2 * dpr;
         mapCtx.beginPath();
-        mapCtx.arc(ax, ay, anchorDotR, 0, Math.PI*2);
-        mapCtx.fill();
-        mapCtx.strokeStyle = 'rgba(255,255,255,0.85)';
-        mapCtx.lineWidth = 1 * dpr;
+        mapCtx.arc(cx, cy, RM, m.angle - 0.10, m.angle + 0.10);
         mapCtx.stroke();
-        // Label just outside the rim, aligned by which side we're on.
-        const LR = R + 12 * dpr;
-        const lx = cx + Math.cos(rad) * LR;
-        const ly = cy - Math.sin(rad) * LR;
-        const isRight = Math.cos(rad) > 0.08;
-        const isLeft  = Math.cos(rad) < -0.08;
-        mapCtx.textAlign = isRight ? 'left' : isLeft ? 'right' : 'center';
+        // Tiny mono cardinal label just inside the arc.
+        mapCtx.font = `500 ${9 * dpr}px "JetBrains Mono", ui-monospace, monospace`;
+        mapCtx.fillStyle = 'rgba(238,236,231,0.55)';
+        mapCtx.textAlign = 'center';
+        mapCtx.textBaseline = 'middle';
+        const lx = cx + Math.cos(m.angle) * (RM - 18 * dpr);
+        const ly = cy + Math.sin(m.angle) * (RM - 18 * dpr);
         mapCtx.save();
-        mapCtx.shadowColor = 'rgba(0,0,0,0.70)';
-        mapCtx.shadowBlur = 5 * dpr;
-        mapCtx.fillStyle = liftForLegibility(e.hex);
-        mapCtx.fillText(e.name.toLowerCase(), lx, ly);
+        mapCtx.shadowColor = 'rgba(0,0,0,0.65)';
+        mapCtx.shadowBlur = 4 * dpr;
+        mapCtx.fillText(m.label, lx, ly);
         mapCtx.restore();
       }
+      mapCtx.restore();
 
-      // 8) Emotional trail — chromatic breadcrumb inside the disc.
+      // 2) Chromatic session trail across the whole frame. Same recency curve
+      //    as drawBigPlot so the lens and the big circumplex agree.
       const nowT = performance.now();
+      const T_FRESH_MS = 8000;
+      const T_LONG_MS  = 90000;
+      const FLOOR_A    = 0.10;
+      const trailScale = R; // v/a in [-1,1] mapped to ±R around centre
+      // Pass 1 — soft halos.
       for (const p of miniTrail) {
-        const age = (nowT - p.t) / 8000;
-        if (age >= 1) continue;
+        const age = nowT - p.t;
+        const bright = Math.max(0, 1 - age / T_FRESH_MS);
+        const long   = Math.max(0, 1 - Math.min(1, (age - T_FRESH_MS) / (T_LONG_MS - T_FRESH_MS)));
+        const recency = Math.max(FLOOR_A, bright + (1 - bright) * long * 0.4);
         const c = v1EmotionToColor(p.v, p.a, 0.5);
-        const alpha = (1 - age) * 0.85;
-        const size  = (2 + (1 - age) * 4) * dpr;
-        mapCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},${alpha})`;
+        const haloA = 0.08 + recency * 0.22;
+        const haloR = (8 + recency * 10) * dpr;
+        mapCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},${haloA})`;
         mapCtx.beginPath();
-        mapCtx.arc(cx + p.v * R * 0.86, cy - p.a * R * 0.86, size, 0, Math.PI*2);
+        mapCtx.arc(cx + p.v * trailScale, cy - p.a * trailScale, haloR, 0, Math.PI*2);
         mapCtx.fill();
       }
+      // Pass 2 — saturated cores with a highlight on fresh points.
+      for (const p of miniTrail) {
+        const age = nowT - p.t;
+        const bright = Math.max(0, 1 - age / T_FRESH_MS);
+        const long   = Math.max(0, 1 - Math.min(1, (age - T_FRESH_MS) / (T_LONG_MS - T_FRESH_MS)));
+        const recency = Math.max(FLOOR_A, bright + (1 - bright) * long * 0.4);
+        const c = v1EmotionToColor(p.v, p.a, 0.5);
+        const coreA = 0.30 + recency * 0.55;
+        const coreR = (2.4 + recency * 3.6) * dpr;
+        mapCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},${coreA})`;
+        mapCtx.beginPath();
+        mapCtx.arc(cx + p.v * trailScale, cy - p.a * trailScale, coreR, 0, Math.PI*2);
+        mapCtx.fill();
+        if (age < 2000) {
+          const hi = (1 - age / 2000);
+          mapCtx.fillStyle = `rgba(255,255,255,${hi * 0.6})`;
+          mapCtx.beginPath();
+          mapCtx.arc(cx + p.v * trailScale, cy - p.a * trailScale, 1.6 * dpr, 0, Math.PI*2);
+          mapCtx.fill();
+        }
+      }
 
-      // 9) YOU dot — painted last, always on top. Origin fallback so
-      // it's visible before the first fusion tick lands.
+      // 3) YOU dot — HR-locked breathing, over the art.
       const haveVA = lastFused.v != null;
       const dv = haveVA ? smV : 0;
       const da = haveVA ? smA : 0;
-      const ddx = cx + dv * R * 0.86;
-      const ddy = cy - da * R * 0.86;
+      const ddx = cx + dv * trailScale;
+      const ddy = cy - da * trailScale;
       const cd = v1EmotionToColor(dv, da, 0.5);
+      // HR-locked pulse (falls back to slow ambient breath).
+      const hrHz = (typeof vlDisplayedHr === 'number' && vlDisplayedHr > 20 && vlDisplayedHr < 220)
+                    ? vlDisplayedHr / 60
+                    : 0.25;
+      const pulse = 0.5 + 0.5 * Math.sin(nowT * 0.001 * 2 * Math.PI * hrHz);
+      const dotR  = (10 + pulse * 3) * dpr;
+      // Halo.
       mapCtx.fillStyle = `rgba(${cd.r},${cd.g},${cd.b},${haveVA ? 0.30 : 0.16})`;
-      mapCtx.beginPath(); mapCtx.arc(ddx, ddy, 22 * dpr, 0, Math.PI*2); mapCtx.fill();
+      mapCtx.beginPath(); mapCtx.arc(ddx, ddy, dotR * 2.4, 0, Math.PI*2); mapCtx.fill();
+      // Core.
       mapCtx.fillStyle = haveVA ? cd.hex : 'rgba(238,236,231,0.90)';
-      mapCtx.beginPath(); mapCtx.arc(ddx, ddy, 9 * dpr, 0, Math.PI*2); mapCtx.fill();
+      mapCtx.beginPath(); mapCtx.arc(ddx, ddy, dotR, 0, Math.PI*2); mapCtx.fill();
       mapCtx.strokeStyle = 'rgba(255,255,255,0.95)';
       mapCtx.lineWidth = 2 * dpr;
       mapCtx.stroke();
+
+      // 4) YOU pill — rounded pill above (or below) the dot with a fine
+      //    leader line. Big enough to read at arm's length.
+      const pillTxt = 'you';
+      mapCtx.font = `600 ${20 * dpr}px "Space Grotesk", ui-sans-serif, system-ui`;
+      mapCtx.textBaseline = 'middle';
+      const padX = 14 * dpr, padY = 8 * dpr;
+      const tw = mapCtx.measureText(pillTxt).width;
+      const pillW = tw + padX * 2;
+      const pillH = 20 * dpr + padY * 2;
+      // Prefer above; flip below if too close to top.
+      const gap = 26 * dpr;
+      const above = ddy - (dotR + gap + pillH) > 8 * dpr;
+      const py = above ? (ddy - dotR - gap - pillH / 2) : (ddy + dotR + gap + pillH / 2);
+      const px = Math.max(pillW / 2 + 8 * dpr, Math.min(W - pillW / 2 - 8 * dpr, ddx));
+      // Leader line.
+      mapCtx.strokeStyle = 'rgba(255,255,255,0.55)';
+      mapCtx.lineWidth = 1 * dpr;
+      mapCtx.beginPath();
+      mapCtx.moveTo(ddx, above ? (ddy - dotR - 2 * dpr) : (ddy + dotR + 2 * dpr));
+      mapCtx.lineTo(px, above ? (py + pillH / 2) : (py - pillH / 2));
+      mapCtx.stroke();
+      // Pill fill + coloured border.
+      const pillLeft = px - pillW / 2, pillTop = py - pillH / 2;
+      mapCtx.fillStyle = 'rgba(15,12,10,0.85)';
+      mapCtx.strokeStyle = haveVA ? cd.hex : 'rgba(238,236,231,0.85)';
+      mapCtx.lineWidth = 1.5 * dpr;
+      mapCtx.beginPath();
+      if (typeof mapCtx.roundRect === 'function') {
+        mapCtx.roundRect(pillLeft, pillTop, pillW, pillH, pillH / 2);
+      } else {
+        // Fallback rounded rect for older Safari.
+        const rr = pillH / 2;
+        mapCtx.moveTo(pillLeft + rr, pillTop);
+        mapCtx.lineTo(pillLeft + pillW - rr, pillTop);
+        mapCtx.arcTo(pillLeft + pillW, pillTop, pillLeft + pillW, pillTop + rr, rr);
+        mapCtx.lineTo(pillLeft + pillW, pillTop + pillH - rr);
+        mapCtx.arcTo(pillLeft + pillW, pillTop + pillH, pillLeft + pillW - rr, pillTop + pillH, rr);
+        mapCtx.lineTo(pillLeft + rr, pillTop + pillH);
+        mapCtx.arcTo(pillLeft, pillTop + pillH, pillLeft, pillTop + pillH - rr, rr);
+        mapCtx.lineTo(pillLeft, pillTop + rr);
+        mapCtx.arcTo(pillLeft, pillTop, pillLeft + rr, pillTop, rr);
+        mapCtx.closePath();
+      }
+      mapCtx.fill();
+      mapCtx.stroke();
+      // Pill label.
+      mapCtx.fillStyle = 'rgba(238,236,231,0.96)';
+      mapCtx.textAlign = 'center';
+      mapCtx.fillText(pillTxt, px, py + 1 * dpr);
     }
 
     function updateMapCaption() {
@@ -3113,15 +3184,11 @@
       document.body.classList.toggle('map-open', mapOverlayOpen);
       btnPlot.classList.toggle('active', mapOverlayOpen);
       if (mapOverlayOpen) {
-        if (mediaStream && mapFaceVideo.srcObject !== mediaStream) {
-          mapFaceVideo.srcObject = mediaStream;
-          try { await mapFaceVideo.play(); } catch (_) { /* iOS autoplay quirk */ }
-        }
         if (!_mapRaf) _mapRaf = requestAnimationFrame(mapLoop);
-        log('event', 'map overlay open');
+        log('event', 'lens open');
       } else {
         if (_mapRaf) { cancelAnimationFrame(_mapRaf); _mapRaf = null; }
-        log('event', 'map overlay close');
+        log('event', 'lens close');
       }
     }
 
