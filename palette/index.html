@@ -640,6 +640,39 @@
     .sense-selfview__chip.ok  { border-color: rgba(120, 220, 120, 0.55); color: rgba(210, 245, 210, 0.98); }
     .sense-selfview__chip.warn { border-color: rgba(232, 180, 90, 0.55); color: rgba(250, 220, 170, 0.98); }
 
+    /* Body-framing hint: appears when MoveNet has not seen shoulders. */
+    .body-hint {
+      position: absolute;
+      left: 8px; right: 8px; bottom: 8px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(20, 16, 14, 0.72);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1px solid rgba(232, 180, 90, 0.35);
+      color: rgba(250, 235, 210, 0.94);
+      font-family: var(--ea-font-mono);
+      font-size: 11px; line-height: 1.35;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 220ms ease;
+      z-index: 3;
+    }
+    .body-hint.on { opacity: 1; }
+    .body-hint__dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(232, 180, 90, 0.95);
+      box-shadow: 0 0 8px rgba(232, 180, 90, 0.7);
+      flex: 0 0 auto;
+      animation: bodyHintPulse 1.6s ease-in-out infinite;
+    }
+    @keyframes bodyHintPulse {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50%      { opacity: 1;    transform: scale(1.15); }
+    }
+    .body-hint__msg { flex: 1; }
+
     /* Stats grid below self-view: signal quality + head pose */
     .sense-stats-grid {
       display: grid;
@@ -1176,12 +1209,17 @@
             <button type="button" data-mesh-mode="off">Off</button>
             <button type="button" data-mesh-mode="mesh" class="on">Mesh</button>
             <button type="button" data-mesh-mode="labels">Labels</button>
+            <button type="button" data-mesh-mode="pulse" title="Facial perfusion pulsing at your heart rate">Pulse</button>
           </span>
         </div>
         <div class="sense-selfview">
           <video id="senseVideo" autoplay muted playsinline></video>
           <canvas id="senseOverlay" width="320" height="240"></canvas>
           <div class="sense-selfview__chips" id="faceChips"></div>
+          <div class="body-hint" id="bodyHint" aria-hidden="true">
+            <span class="body-hint__dot"></span>
+            <span class="body-hint__msg">Step back so your shoulders fit — body sensing needs the full torso in frame.</span>
+          </div>
         </div>
         <div class="sense-stats-grid" id="senseStatsGrid"></div>
       </section>
@@ -1694,16 +1732,30 @@
     // ── FUSION ───────────────────────────────────────────────────────
     function resolveFusion() {
       const hV = humanLastVA.v, hA = humanLastVA.a;
-      const proxy = (vlBaseline != null && vlDisplayedHr != null)
-        ? Math.max(-1, Math.min(1, (vlDisplayedHr - vlBaseline) / 15))
+      // HR proxy is now stronger and slightly bidirectional:
+      //   * Arousal: elevated HR above baseline pushes arousal up (as before,
+      //     but now with weight 0.5 instead of 0.4 so heartbeat is visibly
+      //     driving the trail).
+      //   * Valence: sustained HR above baseline biases valence slightly
+      //     negative (stress/anxiety), sustained HR below baseline slightly
+      //     positive (calm). Weight is small (0.15) so it never overrides
+      //     the face expression — it just nudges.
+      const proxyA = (vlBaseline != null && vlDisplayedHr != null)
+        ? Math.max(-1, Math.min(1, (vlDisplayedHr - vlBaseline) / 12))
         : null;
+      const proxyV = (vlBaseline != null && vlDisplayedHr != null)
+        ? Math.max(-0.35, Math.min(0.35, -(vlDisplayedHr - vlBaseline) / 25))
+        : null;
+      const proxy = proxyA; // legacy alias for downstream logging
       let mode, fusedV, fusedA;
-      if (hV != null && hA != null && proxy != null) {
-        fusedV = hV; fusedA = 0.6 * hA + 0.4 * proxy; mode = 'human+hr';
+      if (hV != null && hA != null && proxyA != null) {
+        fusedV = 0.85 * hV + 0.15 * proxyV;
+        fusedA = 0.5 * hA + 0.5 * proxyA;
+        mode = 'human+hr';
       } else if (hV != null && hA != null) {
         fusedV = hV; fusedA = hA; mode = 'human only';
-      } else if (proxy != null) {
-        fusedV = 0; fusedA = proxy; mode = 'hr only';
+      } else if (proxyA != null) {
+        fusedV = proxyV; fusedA = proxyA; mode = 'hr only';
       } else {
         fusedV = 0; fusedA = 0; mode = 'idle';
       }
@@ -1742,6 +1794,10 @@
     // TRI468 triangulation, drawn in the vitalsign.ai visual language.
     const { drawMeshOverlay, drawBodySkeleton, computePostureTilt } =
       await import('./v2-ports/face/mesh-overlay.js');
+    // rPPG-driven facial perfusion overlay (Pulse mode).
+    // Reuses senseState.ppg (rolling PPG waveform samples from VitalLens).
+    const { drawPulseOverlay, computePpgPhase } =
+      await import('./v2-ports/face/pulse-overlay.js');
     setTooltipDebug((action, extra) => log('event', `tooltip ${action}`, extra || {}));
     installTooltips();
     log('event', 'tooltips installed');
@@ -2119,25 +2175,66 @@
           if (interp && interp.body && interp.body[0]) body = interp.body[0];
         } catch (e) { /* fall back to last face */ }
       }
-      // Draw body first so face mesh sits on top.
+      // Draw body first so face mesh/pulse sits on top.
       senseCtx.clearRect(0, 0, w, h);
+      // Body skeleton stays visible in mesh/labels/pulse (only 'off' hides it).
       if (body && body.keypoints && meshMode !== 'off') {
         drawBodySkeleton(senseCtx, body.keypoints, vv, vh, w, h, { mirror: true });
       }
       if (f) {
-        const showMesh = meshMode !== 'off';
-        drawMeshOverlay(senseCtx, f, vv, vh, w, h, {
-          mirror: true,
-          showBox: true,
-          showMesh: showMesh,
-          showContours: showMesh,
-          showIris: showMesh,
-          showGaze: showMesh,
-          showAxes: showMesh,
-          showRoi: false,
-          // Labels every 10th vertex (~47 visible) when in labels mode
-          labelEvery: meshMode === 'labels' ? 10 : 0,
-        });
+        if (meshMode === 'pulse') {
+          // Facial perfusion: warm glow on cheeks/forehead/lips/temples,
+          // brightness modulated by real HR + PPG phase.
+          const ppgPhase = computePpgPhase(senseState.ppg);
+          drawPulseOverlay(
+            senseCtx, f, vlDisplayedHr, ppgPhase, vv, vh, w, h,
+            { mirror: true, alpha: 0.60, warmth: 1.05, showLegend: false }
+          );
+          // Also show the bounding box so face location is obvious.
+          drawMeshOverlay(senseCtx, f, vv, vh, w, h, {
+            mirror: true, showBox: true, showMesh: false, showContours: false,
+            showIris: false, showGaze: false, showAxes: false, showRoi: false,
+            labelEvery: 0,
+          });
+        } else if (meshMode !== 'off') {
+          drawMeshOverlay(senseCtx, f, vv, vh, w, h, {
+            mirror: true,
+            showBox: true,
+            showMesh: true,
+            showContours: true,
+            showIris: true,
+            showGaze: true,
+            showAxes: true,
+            showRoi: false,
+            // Labels every 10th vertex (~47 visible) when in labels mode
+            labelEvery: meshMode === 'labels' ? 10 : 0,
+          });
+        }
+      }
+      // Framing hint: if body is enabled by profile but no keypoints have
+      // arrived after ~2s, prompt the user to step back so shoulders fit.
+      renderBodyHint(body);
+    }
+
+    // Body-tracking status: green when keypoints stream, amber when the
+    // model is loaded but hasn't seen shoulders yet.
+    let _bodyStatusFirstSeen = 0;
+    let _bodyStatusLastHit = 0;
+    function renderBodyHint(body) {
+      const now = performance.now();
+      const hint = document.getElementById('bodyHint');
+      if (!hint) return;
+      const active = !!sensingOpen;
+      if (!_bodyStatusFirstSeen) _bodyStatusFirstSeen = now;
+      const gotKeypoints = !!(body && body.keypoints && body.keypoints.length >= 5);
+      if (gotKeypoints) _bodyStatusLastHit = now;
+      // Show hint only in Sensing view, when we haven't seen a body for 2s.
+      const stale = (now - _bodyStatusLastHit) > 2000;
+      const settling = (now - _bodyStatusFirstSeen) < 2500;
+      if (active && stale && !settling) {
+        hint.classList.add('on');
+      } else {
+        hint.classList.remove('on');
       }
     }
 
