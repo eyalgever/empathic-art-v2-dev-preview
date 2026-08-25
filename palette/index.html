@@ -591,10 +591,10 @@
       margin-bottom: 10px;
     }
 
-    /* Self-view panel — MUCH bigger (was 200px) */
+    /* Self-view panel — sized to fit the camera stream (portrait on iPhone) */
     .sense-selfview {
       position: relative;
-      width: 100%; max-width: 480px; aspect-ratio: 4/3;
+      width: 100%; max-width: 320px; aspect-ratio: 3/4;
       border-radius: 8px;
       overflow: hidden;
       background: #000;
@@ -687,15 +687,11 @@
     .feeling.expanded .feeling__stats { display: flex; }
     .feeling__stats .k { color: rgba(251, 246, 236, 0.55); text-transform: uppercase; letter-spacing: 0.1em; margin-right: 4px; }
 
-    /* ── CIRCUMPLEX MINI (top-right, larger for legibility) ────── */
-    .miniplot {
-      position: fixed;
-      top: calc(env(safe-area-inset-top, 0px) + 72px);
-      right: 16px;
-      width: 180px; height: 180px;
-      z-index: 10;
-      pointer-events: none;
-    }
+    /* ── CIRCUMPLEX MINI ── hidden from the artwork view (user request:
+       the full circumplex lives in the Sensing view; a stripped-down one
+       on the art felt like a broken control). Kept in DOM so trail
+       state keeps ticking. ────────────────────────────────────── */
+    .miniplot { display: none; }
     .miniplot canvas { width: 100%; height: 100%; display: block; }
     .miniplot.hidden { display: none; }
 
@@ -878,14 +874,14 @@
     </div>
   </div>
 
-  <!-- Header (v1 style, cream on artwork) -->
+  <!-- Header — dark theme; title changes: FEELINGS on artwork, SENSING on sensing view -->
   <header class="ea-header ea-header--sensing hidden" id="header">
-    <button class="ea-header__back" aria-label="Back" onclick="history.length > 1 ? history.back() : location.href='../'">
+    <button class="ea-header__back" id="headerBack" aria-label="Back">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
         <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
-    <div class="ea-header__brand">Empathic Art</div>
+    <div class="ea-header__brand" id="headerBrand">Feelings</div>
     <button class="ea-header__sense-btn" id="senseBtn" aria-pressed="false">Sensing</button>
     <div class="ea-header__time" id="headerTime">—</div>
   </header>
@@ -1616,12 +1612,18 @@
     }
 
     function drawSenseOverlay() {
+      // Match overlay canvas size to the video's native resolution so
+      // Human's mesh/box coords land pixel-perfect regardless of CSS scaling.
+      const vv = senseVideo.videoWidth || 640, vh = senseVideo.videoHeight || 480;
+      if (senseOverlay.width !== vv || senseOverlay.height !== vh) {
+        senseOverlay.width = vv;
+        senseOverlay.height = vh;
+      }
       const w = senseOverlay.width, h = senseOverlay.height;
       senseCtx.clearRect(0, 0, w, h);
       const f = senseState.face;
       if (!f) return;
       // face.box is [x, y, w, h] in source video coords; senseVideo mirrors X (scaleX(-1))
-      const vv = senseVideo.videoWidth || 640, vh = senseVideo.videoHeight || 480;
       const box = f.box; // [x,y,w,h]
       if (box && box.length === 4) {
         // Mirror X to match the flipped video display
@@ -1650,22 +1652,57 @@
       }
     }
 
+    // Russell circumplex emotion tags — (angle in radians, label)
+    // 0 rad = +V (right); PI/2 = +A (up)
+    const CIRCUMPLEX_TAGS = [
+      { a:   0,             label: 'happy' },
+      { a:   Math.PI * 0.25, label: 'excited' },
+      { a:   Math.PI * 0.5,  label: 'alert' },
+      { a:   Math.PI * 0.75, label: 'tense' },
+      { a:   Math.PI,        label: 'sad' },
+      { a:  -Math.PI * 0.75, label: 'depressed' },
+      { a:  -Math.PI * 0.5,  label: 'tired' },
+      { a:  -Math.PI * 0.25, label: 'calm' },
+    ];
+
     function drawBigPlot() {
-      const S = 440, cx = S/2, cy = S/2, R = S * 0.42;
+      const S = 440, cx = S/2, cy = S/2, R = S * 0.40;
       bigPlotCtx.clearRect(0, 0, S, S);
-      // Cream backdrop for the circle
-      bigPlotCtx.fillStyle = 'rgba(245,238,223,0.5)';
+      // Dark backdrop for the circle (very subtle so quadrant tints show)
+      bigPlotCtx.fillStyle = 'rgba(238, 236, 231, 0.03)';
       bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.fill();
-      // Ink hairline circle + cross
-      bigPlotCtx.strokeStyle = 'rgba(27,21,18,0.30)';
+      // Faint quadrant tints (Russell: TL=distress, TR=excitement, BL=depression, BR=serenity)
+      bigPlotCtx.save();
+      bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.clip();
+      const tints = [
+        { x: cx,    y: 0,     w: R,   h: R,   c: 'rgba(232,90,60,0.05)'  }, // TR excited/happy
+        { x: 0,     y: 0,     w: cx,  h: R,   c: 'rgba(139,160,208,0.06)' }, // TL tense
+        { x: 0,     y: cy,    w: cx,  h: R,   c: 'rgba(90,90,120,0.06)'   }, // BL depressed
+        { x: cx,    y: cy,    w: R,   h: R,   c: 'rgba(180,150,110,0.05)' }, // BR calm
+      ];
+      for (const t of tints) { bigPlotCtx.fillStyle = t.c; bigPlotCtx.fillRect(t.x, t.y, t.w, t.h); }
+      bigPlotCtx.restore();
+      // Cream hairline circle + cross (was ink)
+      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.35)';
       bigPlotCtx.lineWidth = 1.5;
       bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.stroke();
-      bigPlotCtx.strokeStyle = 'rgba(27,21,18,0.12)';
+      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.12)';
       bigPlotCtx.lineWidth = 1;
       bigPlotCtx.beginPath();
       bigPlotCtx.moveTo(cx-R,cy); bigPlotCtx.lineTo(cx+R,cy);
       bigPlotCtx.moveTo(cx,cy-R); bigPlotCtx.lineTo(cx,cy+R);
       bigPlotCtx.stroke();
+      // Emotion tags around the ring
+      bigPlotCtx.fillStyle = 'rgba(238,236,231,0.55)';
+      bigPlotCtx.font = '10.5px "JetBrains Mono", ui-monospace, monospace';
+      bigPlotCtx.textAlign = 'center';
+      bigPlotCtx.textBaseline = 'middle';
+      const LR = R + 22;
+      for (const t of CIRCUMPLEX_TAGS) {
+        const tx = cx + Math.cos(t.a) * LR;
+        const ty = cy - Math.sin(t.a) * LR;
+        bigPlotCtx.fillText(t.label, tx, ty);
+      }
       // Trail
       const now = performance.now();
       for (const p of miniTrail) {
@@ -1756,7 +1793,7 @@
         const buf = uniData[k];
         const last = buf.length ? buf[buf.length - 1] : null;
         row.querySelector('.uni-row__v').textContent = last != null ? last.toFixed(2) : '—';
-        drawSparkline(row.querySelector('canvas'), buf, { range: uniRange[k], zero: uniZero[k], color: '#1B1512' });
+        drawSparkline(row.querySelector('canvas'), buf, { range: uniRange[k], zero: uniZero[k], color: 'rgba(238,236,231,0.72)' });
       }
       // 6) Perf
       const p50 = humanInferSamples.length
@@ -1767,16 +1804,40 @@
         `render ${renderFps.toFixed(0)} fps · vitals ${vlEventCount} events`;
     }
 
-    // Toggle sensing view
+    // Toggle sensing view — with rAF refresh loop while open so all
+    // panels (face overlay, emotion bars, HR, circumplex, uniforms, perf)
+    // update continuously.
+    let _sensingRaf = null;
+    function _sensingTick() {
+      if (!sensingOpen) { _sensingRaf = null; return; }
+      updateSensing();
+      _sensingRaf = requestAnimationFrame(_sensingTick);
+    }
     function setSensing(open) {
       sensingOpen = !!open;
       sensingEl.classList.toggle('open', sensingOpen);
       sensingEl.setAttribute('aria-hidden', String(!sensingOpen));
       senseBtn.classList.toggle('active', sensingOpen);
+      if (sensingOpen && !_sensingRaf) _sensingRaf = requestAnimationFrame(_sensingTick);
+      if (!sensingOpen && _sensingRaf) { cancelAnimationFrame(_sensingRaf); _sensingRaf = null; }
       senseBtn.setAttribute('aria-pressed', String(sensingOpen));
+      // Update header title
+      const brand = document.getElementById('headerBrand');
+      if (brand) brand.textContent = sensingOpen ? 'Sensing' : 'Feelings';
       if (sensingOpen) updateSensing();
     }
     senseBtn.addEventListener('click', () => setSensing(!sensingOpen));
+
+    // Back button behavior:
+    //  - If sensing is open: close sensing, return to the artwork.
+    //  - Else: no-op (we stay in the piece; browser back would leak to library).
+    const _headerBack = document.getElementById('headerBack');
+    if (_headerBack) {
+      _headerBack.addEventListener('click', () => {
+        if (sensingOpen) setSensing(false);
+        // else: intentionally do nothing so users don't fall out of the piece.
+      });
+    }
 
     // Triple-tap the feeling word to also toggle sensing (easter egg for the piece)
     (function () {
