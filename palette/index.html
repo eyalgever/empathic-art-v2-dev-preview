@@ -293,6 +293,71 @@
       .style-sheet__list { grid-template-columns: 1fr; }
     }
 
+    /* Thumbnail-grid picker — replaces the text list for "Choose".
+       Each tile is a colour swatch (v1 emotion palette at the style's
+       signature (v,a)) with the name + subtitle underneath. Two columns
+       on phone, three on tablet, four on desktop. */
+    .style-sheet__card--grid {
+      max-height: 82vh;
+      overflow-y: auto;
+    }
+    .style-sheet__grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 14px 0 8px;
+    }
+    @media (min-width: 640px) {
+      .style-sheet__grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    }
+    @media (min-width: 960px) {
+      .style-sheet__grid { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    }
+    .style-tile {
+      background: transparent;
+      border: 1px solid rgba(238, 236, 231, 0.12);
+      border-radius: 14px;
+      padding: 0;
+      overflow: hidden;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 200ms ease, transform 200ms ease;
+      color: rgba(238, 236, 231, 0.94);
+      text-align: left;
+    }
+    .style-tile:hover, .style-tile:focus-visible {
+      border-color: rgba(238, 236, 231, 0.42);
+      transform: translateY(-1px);
+      outline: none;
+    }
+    .style-tile__swatch {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      display: block;
+      height: auto;
+    }
+    .style-tile__meta {
+      padding: 10px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .style-tile__name {
+      font-family: var(--ea-font-display);
+      font-weight: 500;
+      font-size: 15px;
+      letter-spacing: -0.005em;
+      color: rgba(238, 236, 231, 0.96);
+    }
+    .style-tile__sub {
+      font-family: var(--ea-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: lowercase;
+      color: rgba(238, 236, 231, 0.58);
+    }
+
     /* End button in controls bar */
     .btn-end {
       color: rgba(238, 236, 231, 0.85);
@@ -948,10 +1013,15 @@
        inline based on the live v1 emotion palette. */
     .map-overlay__caption {
       position: absolute;
-      left: 50%; bottom: calc(env(safe-area-inset-bottom, 0) + 32px);
+      left: 50%;
+      /* Sit clear of the controls bar and iOS home indicator. */
+      bottom: calc(env(safe-area-inset-bottom, 0) + 120px);
       transform: translateX(-50%);
       text-align: center;
       pointer-events: none;
+      width: 100%;
+      padding: 0 16px;
+      box-sizing: border-box;
     }
     .map-overlay__hint {
       font-family: var(--ea-font-mono);
@@ -1982,11 +2052,47 @@
       gateSessionEl.textContent = 'Session ' + String(nextSeq).padStart(2, '0');
     }
 
-    // Plan B ("Love b"): session 2+ shows Continue / Choose / Surprise Me.
+    // Session 2+ flow.
+    //  - The opening "welcome" copy only makes sense on the very first
+    //    session. After that, the piece already knows you: the gate
+    //    becomes a brief recognition beat (wordmark + session number +
+    //    last-used style) then auto-continues into the art.
+    //  - The user can still switch style by tapping the wordmark before
+    //    the recognition beat times out. Tap surfaces the Continue /
+    //    Choose / Surprise Me pills. Otherwise we start with the last style.
     (function setupPlanB() {
       if (store.sessionCount === 0) return; // Session 1 keeps single Begin
+
+      // Hide the manifesto-style intro block. It only speaks on session 1.
+      const introBlock = document.querySelector('.gate-block .gate-headrow');
+      const introBody  = document.querySelectorAll('.gate-block .gate-body');
+      const introHint  = document.querySelector('.gate-hint');
+      if (introBlock) introBlock.style.display = 'none';
+      introBody.forEach(el => (el.style.display = 'none'));
+      if (introHint) introHint.style.display = 'none';
+
       document.getElementById('gate-cta-single').classList.add('hidden');
       document.getElementById('gate-cta-multi').classList.remove('hidden');
+
+      // Auto-continue: wait 1.4s. If the user hasn't interacted, start
+      // with the last-used style. Any tap on the gate cancels the timer.
+      let autoTimer = null;
+      function cancelAuto() {
+        if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+      }
+      const gateEl = document.getElementById('gate');
+      if (gateEl) {
+        // Any interaction on the gate cancels the auto-continue — the
+        // user is telling us they want to choose.
+        ['pointerdown','click','keydown'].forEach(ev => {
+          gateEl.addEventListener(ev, cancelAuto, { capture: true });
+        });
+      }
+      autoTimer = setTimeout(() => {
+        const last = store.lastSession;
+        const match = last ? catalog.find(c => c.id === last.styleId) : null;
+        swapAndStart(match || StyleCls);
+      }, 1400);
 
       // Wire Continue label to last session's style name
       const last = store.lastSession;
@@ -2026,7 +2132,67 @@
       });
     })();
 
-    // Simple bottom-sheet style picker for "Choose".
+    // Signature emotion vector per style. Used to paint the picker
+    // swatch — each style has an emotional "home" it renders best from.
+    // (v = valence -1..1, a = arousal -1..1)
+    const STYLE_SIGNATURE = {
+      aperture:  { v:  0.35, a:  0.10 }, // open / focused
+      aurora:    { v:  0.50, a:  0.55 }, // uplifted / activated
+      chapel:    { v:  0.15, a: -0.35 }, // Rothko field / still-warm
+      curl:      { v:  0.10, a:  0.60 }, // vortex / activated
+      current:   { v:  0.20, a:  0.20 }, // flow / open-mid
+      drift:     { v:  0.30, a: -0.50 }, // becalmed / open-still
+      ember:     { v:  0.55, a: -0.10 }, // warm / present
+      filament:  { v:  0.00, a:  0.70 }, // wire / high-arousal
+      fluid:     { v: -0.15, a: -0.20 }, // Turner storm / cool
+      halo:      { v:  0.45, a: -0.15 }, // gentle / affirming
+      nerves:    { v: -0.30, a:  0.65 }, // anxious / activated
+      physarum:  { v: -0.10, a:  0.40 }, // colony / restless
+      skyspace:  { v:  0.10, a: -0.65 }, // Turrell / very still
+      smokering: { v: -0.05, a:  0.30 }, // cool / breath
+      threshold: { v:  0.05, a: -0.10 }, // liminal / neutral
+    };
+
+    // Draw a Rothko-style stacked palette swatch for one style into a canvas.
+    // Uses the style's signature emotion to pull a five-stop chord from the
+    // v1 emotion palette, then paints horizontal bands (back → whisper →
+    // mid → hot → front) so each swatch reads as a small chromatic zone.
+    function paintStyleSwatch(cvs, styleId) {
+      const sig = STYLE_SIGNATURE[styleId] || { v: 0.1, a: 0.0 };
+      const ctx = cvs.getContext('2d');
+      const w = cvs.width, h = cvs.height;
+      // Sample five points slightly offset from the signature so we get
+      // a chord — back (deep), whisper (analogous), mid, hot (toward
+      // neighbour), front (lifted).
+      const stops = [
+        { v: sig.v * 0.85, a: sig.a * 0.85, L: 0.22 },
+        { v: sig.v * 0.60 + 0.10, a: sig.a * 0.60 - 0.10, L: 0.38 },
+        { v: sig.v,               a: sig.a,               L: 0.55 },
+        { v: sig.v * 0.80 + 0.15, a: sig.a * 1.05 + 0.05, L: 0.68 },
+        { v: sig.v * 0.65,        a: sig.a * 0.65,        L: 0.80 },
+      ];
+      // Vertical gradient of the five stops so it reads as one field
+      // rather than five discrete bands (Rothko-lineage).
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      const positions = [0.00, 0.28, 0.52, 0.76, 1.00];
+      for (let i = 0; i < stops.length; i++) {
+        const s = stops[i];
+        const c = v1EmotionToColor(s.v, s.a, s.L);
+        grad.addColorStop(positions[i], `rgb(${c.r},${c.g},${c.b})`);
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+      // Subtle inner vignette to make the tile feel like a card, not a wash.
+      const vg = ctx.createRadialGradient(w / 2, h * 0.55, w * 0.20, w / 2, h / 2, w * 0.75);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.35)');
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // Thumbnail-grid style picker for "Choose". Each tile is a live
+    // v1-palette swatch painted at the style's signature emotion,
+    // with the style name and subtitle underneath.
     function openStylePicker(onPick) {
       let sheet = document.getElementById('stylePickerSheet');
       if (!sheet) {
@@ -2035,24 +2201,39 @@
         sheet.className = 'style-sheet';
         sheet.innerHTML = `
           <div class="style-sheet__scrim"></div>
-          <div class="style-sheet__card">
+          <div class="style-sheet__card style-sheet__card--grid">
             <div class="style-sheet__label">Choose a visual style</div>
-            <div class="style-sheet__list" id="stylePickerList"></div>
+            <div class="style-sheet__grid" id="stylePickerGrid"></div>
             <button class="style-sheet__cancel" id="stylePickerCancel">Cancel</button>
           </div>`;
         document.body.appendChild(sheet);
       }
-      const list = document.getElementById('stylePickerList');
-      list.innerHTML = '';
+      const grid = document.getElementById('stylePickerGrid');
+      grid.innerHTML = '';
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       for (const cls of catalog) {
-        const b = document.createElement('button');
-        b.className = 'style-sheet__item';
-        b.innerHTML = `<span class="name">${cls.name}</span><span class="sub">${cls.subtitle || ''}</span>`;
-        b.addEventListener('click', () => {
+        const tile = document.createElement('button');
+        tile.className = 'style-tile';
+        // Compose the tile: swatch canvas + name + subtitle.
+        const swatch = document.createElement('canvas');
+        swatch.className = 'style-tile__swatch';
+        // Physical size scales with DPR for sharp thumbnails on iOS.
+        swatch.width  = Math.round(160 * dpr);
+        swatch.height = Math.round(120 * dpr);
+        tile.appendChild(swatch);
+        const meta = document.createElement('div');
+        meta.className = 'style-tile__meta';
+        meta.innerHTML = `
+          <span class="style-tile__name">${cls.name}</span>
+          <span class="style-tile__sub">${cls.subtitle || ''}</span>`;
+        tile.appendChild(meta);
+        tile.addEventListener('click', () => {
           sheet.classList.remove('open');
           onPick(cls);
         });
-        list.appendChild(b);
+        grid.appendChild(tile);
+        // Paint the swatch after append so layout is correct.
+        paintStyleSwatch(swatch, cls.id);
       }
       document.getElementById('stylePickerCancel').onclick = () => sheet.classList.remove('open');
       sheet.querySelector('.style-sheet__scrim').onclick = () => sheet.classList.remove('open');
@@ -3136,23 +3317,49 @@
       mapCtx.save();
       for (const m of marks) {
         const c = v1EmotionToColor(m.v, m.a, 0.6);
-        mapCtx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.35)`;
+        // Short cardinal arc coloured by that quadrant's palette.
+        mapCtx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.55)`;
         mapCtx.lineWidth = 2 * dpr;
         mapCtx.beginPath();
         mapCtx.arc(cx, cy, RM, m.angle - 0.10, m.angle + 0.10);
         mapCtx.stroke();
-        // Tiny mono cardinal label just inside the arc.
-        mapCtx.font = `500 ${9 * dpr}px "JetBrains Mono", ui-monospace, monospace`;
-        mapCtx.fillStyle = 'rgba(238,236,231,0.55)';
+        // Cardinal label rendered as a rounded dark chip so it always
+        // reads clearly over warm or dark backgrounds. Same visual language
+        // as the "you" pill so the four marks feel like ambient siblings.
+        const labelTxt = m.label;
+        mapCtx.font = `500 ${12 * dpr}px "JetBrains Mono", ui-monospace, monospace`;
         mapCtx.textAlign = 'center';
         mapCtx.textBaseline = 'middle';
-        const lx = cx + Math.cos(m.angle) * (RM - 18 * dpr);
-        const ly = cy + Math.sin(m.angle) * (RM - 18 * dpr);
-        mapCtx.save();
-        mapCtx.shadowColor = 'rgba(0,0,0,0.65)';
-        mapCtx.shadowBlur = 4 * dpr;
-        mapCtx.fillText(m.label, lx, ly);
-        mapCtx.restore();
+        const metrics = mapCtx.measureText(labelTxt);
+        const chipPadX = 10 * dpr;
+        const chipPadY = 6  * dpr;
+        const chipW = Math.max(metrics.width + chipPadX * 2, 44 * dpr);
+        const chipH = 22 * dpr;
+        const lx = cx + Math.cos(m.angle) * (RM - 22 * dpr);
+        const ly = cy + Math.sin(m.angle) * (RM - 22 * dpr);
+        // Chip fill: near-black ink with a hint of the cardinal colour on the border.
+        const chipL = lx - chipW / 2;
+        const chipT = ly - chipH / 2;
+        const rr = 11 * dpr;
+        mapCtx.beginPath();
+        mapCtx.moveTo(chipL + rr, chipT);
+        mapCtx.lineTo(chipL + chipW - rr, chipT);
+        mapCtx.arcTo(chipL + chipW, chipT, chipL + chipW, chipT + rr, rr);
+        mapCtx.lineTo(chipL + chipW, chipT + chipH - rr);
+        mapCtx.arcTo(chipL + chipW, chipT + chipH, chipL + chipW - rr, chipT + chipH, rr);
+        mapCtx.lineTo(chipL + rr, chipT + chipH);
+        mapCtx.arcTo(chipL, chipT + chipH, chipL, chipT + chipH - rr, rr);
+        mapCtx.lineTo(chipL, chipT + rr);
+        mapCtx.arcTo(chipL, chipT, chipL + rr, chipT, rr);
+        mapCtx.closePath();
+        mapCtx.fillStyle   = 'rgba(15,12,10,0.72)';
+        mapCtx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.75)`;
+        mapCtx.lineWidth   = 1 * dpr;
+        mapCtx.fill();
+        mapCtx.stroke();
+        // Chip label — cream on ink, sharp.
+        mapCtx.fillStyle = 'rgba(238,236,231,0.94)';
+        mapCtx.fillText(labelTxt, lx, ly + 1 * dpr);
       }
       mapCtx.restore();
 
