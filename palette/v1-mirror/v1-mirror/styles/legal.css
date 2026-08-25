@@ -1,0 +1,419 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   LEGAL NOTICE
+   ───────────────────────────────────────────────────────────────────────
+   Corner mark ("© Eyal Gever 2026 · Legal") + full-screen modal.
+
+   Visibility rules:
+     - Hidden by default on the landing screen (data-screen="before")
+       because Boundless sees that view first and the mark would clutter
+       the intro moment. The mark appears on every other screen.
+     - Hidden inside the iPhone/Watch device frames only in "device"
+       simulation mode? No — user requested the mark on EVERY screen
+       (across all views), so we anchor it to the body/viewport, not to
+       .ea-app. The mark sits below the device frames on desktop preview.
+
+   Positioning:
+     - Fixed to viewport, bottom-right on desktop, bottom-center on iPhone,
+       bottom-right narrow on Watch. Above modal backdrop only when modal
+       is closed; z-index 8 (below chips, above canvas).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─────────── Corner mark ─────────── */
+.ea-legal-mark {
+  position: fixed;
+  right: 16px;
+  /* Cycle 11 (Eyal Gever, 2026-07-13): raise the mark slightly and
+     make its backdrop fully opaque so scrolled gallery-card headers
+     (e.g. "08 JUL 2026") cannot bleed through it. Combined with the
+     s-16 bottom padding reserve on .ea-screen--after this keeps the
+     mark visually anchored below the last visible card at initial
+     scrollTop=0 and never crashes into a card's date label. */
+  bottom: 14px;
+  z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.68);
+  color: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 999px;
+  font-family: var(--ea-font-sans, system-ui, -apple-system, sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity 260ms ease, transform 260ms ease,
+              background-color 200ms ease, color 200ms ease;
+  opacity: 0.62;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ea-legal-mark:hover,
+.ea-legal-mark:focus-visible {
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(0, 0, 0, 0.62);
+  outline: none;
+}
+
+.ea-legal-mark:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+
+.ea-legal-mark__link {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(255, 255, 255, 0.45);
+}
+
+.ea-legal-mark__sep {
+  opacity: 0.5;
+  font-weight: 400;
+}
+
+/* The copyright + Legal mark appears on every screen (Before, Countdown,
+   Session, After, Summary, Timeline, Gallery) EXCEPT the `active` screen
+   where the viewer picks Muse + music. That screen is a plain settings
+   surface with no original artwork — no circumplex, no fluid, no
+   generative visuals — so it carries no authorship claim.
+
+   Every other screen presents Eyal's original artwork (emotion
+   circumplex, fluid palette, generative visuals, gallery layout) and
+   the copyright + Legal link must be visible on them all.
+   (Cycle 10, Eyal Gever, 2026-07-13) */
+body[data-screen="active"] .ea-legal-mark {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+}
+
+/* Session-screen composition (Eyal Gever, 2026-07):
+   the mark re-centers under the Stop pill so the whole bottom band
+   reads as one composed column instead of three colliding corners.
+   Gap above it is set by the Stop pill's bottom offset; gap below it
+   is set by the view switcher's bottom offset. Both use symmetric
+   8pt-rhythm tokens (see layout.css and views.css).
+
+   Selectors combine [data-screen="session"] with each [data-view=...]
+   so this rule wins over the per-view corner overrides further down
+   the file (source-order specificity). */
+body[data-screen="session"] .ea-legal-mark,
+body[data-screen="session"][data-view="iphone"] .ea-legal-mark,
+body[data-screen="session"][data-view="watch"] .ea-legal-mark,
+body[data-screen="session"][data-view="desktop"] .ea-legal-mark {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 48px);
+  transition: opacity 900ms ease 300ms, transform 900ms ease 300ms;
+}
+/* Hover / focus recomposes translateX so the mark doesn't jump. */
+body[data-screen="session"] .ea-legal-mark:hover,
+body[data-screen="session"] .ea-legal-mark:focus-visible {
+  transform: translateX(-50%);
+}
+
+/* On Zen mode we still want it visible but even more discreet, so it
+   never breaks the museum atmosphere. */
+body[data-zen="on"] .ea-legal-mark {
+  opacity: 0.35;
+}
+body[data-zen="on"] .ea-legal-mark:hover,
+body[data-zen="on"] .ea-legal-mark:focus-visible {
+  opacity: 1;
+}
+
+/* Hide while dim-on-stillness so the artwork breathes uninterrupted. */
+body[data-dim="true"] .ea-legal-mark {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Watch view: smaller, tucked into corner. */
+body[data-view="watch"] .ea-legal-mark {
+  right: 12px;
+  bottom: 10px;
+  padding: 4px 9px;
+  font-size: 10px;
+  gap: 4px;
+}
+
+/* iPhone view: keep default but nudge above bottom safe area. */
+body[data-view="iphone"] .ea-legal-mark {
+  right: 14px;
+  bottom: max(14px, env(safe-area-inset-bottom, 14px));
+}
+
+/* Desktop / PC: slightly larger for readability at long viewing distance. */
+body[data-view="desktop"] .ea-legal-mark {
+  font-size: 12px;
+  padding: 7px 14px;
+  right: 20px;
+  bottom: 16px;
+}
+
+/* When legal modal is open, hide the mark itself (it's below the backdrop
+   anyway, but this prevents any focus-ring bleed). */
+body[data-legal-open="true"] .ea-legal-mark {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ─────────── Modal backdrop ─────────── */
+.ea-legal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(6, 6, 8, 0.78);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 4vw, 40px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+
+.ea-legal-backdrop[aria-hidden="false"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ─────────── Modal frame ─────────── */
+.ea-legal-modal {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: min(88vh, 900px);
+  background: #FBF6EC;
+  color: #1a1613;
+  border-radius: 14px;
+  box-shadow:
+    0 30px 90px -20px rgba(0, 0, 0, 0.55),
+    0 10px 32px -8px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(10px) scale(0.985);
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  outline: none;
+}
+
+.ea-legal-backdrop[aria-hidden="false"] .ea-legal-modal {
+  transform: translateY(0) scale(1);
+}
+
+.ea-legal-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.04);
+  color: #1a1613;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+.ea-legal-modal__close:hover,
+.ea-legal-modal__close:focus-visible {
+  background: rgba(0, 0, 0, 0.10);
+  outline: none;
+}
+.ea-legal-modal__close:focus-visible {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+
+.ea-legal-modal__scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: clamp(28px, 5vw, 56px) clamp(22px, 5vw, 56px)
+           clamp(28px, 5vw, 56px);
+}
+
+.ea-legal-modal__body {
+  font-family: var(--ea-font-sans, "Inter", system-ui, -apple-system,
+    sans-serif);
+  font-size: 15px;
+  line-height: 1.62;
+  color: #1a1613;
+}
+
+/* ─────────── Legal document typography ─────────── */
+.ea-legal__doc {
+  max-width: 62ch;
+  margin: 0 auto;
+}
+
+.ea-legal__hero {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+.ea-legal__title {
+  font-family: var(--ea-font-serif, "Cormorant Garamond", "Playfair Display",
+    Georgia, serif);
+  font-weight: 500;
+  font-style: italic;
+  font-size: clamp(30px, 4vw, 42px);
+  line-height: 1.1;
+  margin: 0 0 6px;
+  color: #1a1613;
+  letter-spacing: -0.01em;
+}
+
+.ea-legal__eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(26, 22, 19, 0.62);
+  margin: 4px 0 12px;
+}
+
+.ea-legal__c {
+  font-family: var(--ea-font-serif, "Cormorant Garamond", Georgia, serif);
+  font-style: italic;
+  font-size: 17px;
+  color: #1a1613;
+  margin: 0;
+}
+
+.ea-legal__section {
+  margin: 26px 0;
+}
+.ea-legal__section:first-of-type {
+  margin-top: 0;
+}
+
+.ea-legal__section h2 {
+  font-family: var(--ea-font-serif, "Cormorant Garamond", Georgia, serif);
+  font-weight: 600;
+  font-size: clamp(19px, 2.2vw, 23px);
+  line-height: 1.25;
+  margin: 0 0 12px;
+  color: #1a1613;
+  letter-spacing: -0.005em;
+}
+
+.ea-legal__section p,
+.ea-legal__section li {
+  margin: 0 0 10px;
+  color: #221d19;
+}
+
+.ea-legal__section ul,
+.ea-legal__section ol {
+  padding-left: 22px;
+  margin: 8px 0 14px;
+}
+
+.ea-legal__section li {
+  margin-bottom: 8px;
+}
+
+.ea-legal__section strong {
+  color: #0e0b09;
+  font-weight: 600;
+}
+
+.ea-legal__section a {
+  color: #6b3a1e;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ea-legal__credit {
+  margin: 14px 0 18px;
+  padding: 16px 20px;
+  background: rgba(26, 22, 19, 0.04);
+  border-left: 3px solid rgba(107, 58, 30, 0.55);
+  border-radius: 4px;
+  font-family: var(--ea-font-serif, "Cormorant Garamond", Georgia, serif);
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.5;
+  color: #0e0b09;
+}
+
+.ea-legal__section--contact {
+  margin-top: 34px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(0, 0, 0, 0.10);
+}
+.ea-legal__section--contact p {
+  font-size: 15px;
+}
+
+.ea-legal__foot {
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.10);
+}
+.ea-legal__foot p {
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(26, 22, 19, 0.62);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ─────────── Small screens ─────────── */
+@media (max-width: 500px) {
+  .ea-legal-backdrop {
+    padding: 0;
+  }
+  .ea-legal-modal {
+    width: 100%;
+    max-height: 100vh;
+    max-height: 100dvh;
+    height: 100%;
+    border-radius: 0;
+  }
+  .ea-legal-modal__scroll {
+    padding: 60px 20px 24px;
+  }
+  .ea-legal-modal__body {
+    font-size: 14.5px;
+  }
+}
+
+/* ─── Legal mark position on narrow device frames ───────────────────────
+   The view switcher lives at bottom-right on all views, since it is the
+   persistent demo control. The legal mark yields to it: on desktop there
+   is room for both at the right edge, but on the iPhone/Watch frames the
+   viewport is too narrow, so the legal mark moves to bottom-left instead.
+
+   Excluded on the session screen — there the mark re-centers under the
+   Stop pill (see the session-composition block above) so the bottom band
+   reads as one composed column.
+   ───────────────────────────────────────────────────────────────────── */
+/* Also excluded on the summary (session-complete) screen: the summary
+   card ends near bottom-left of the viewport, so parking the mark on
+   the left overlapped it. Falling back to the default right-anchored
+   placement keeps the mark visible without colliding with the card. */
+body[data-view="iphone"]:not([data-screen="session"]):not([data-screen="summary"]) .ea-legal-mark,
+body[data-view="watch"]:not([data-screen="session"]):not([data-screen="summary"])  .ea-legal-mark {
+  /* Non-session iPhone/Watch views: park the mark at bottom-left so it
+     shares the bottom band with the view switcher (bottom-right) without
+     colliding. Text is compact enough to leave ~40px gap between them. */
+  right: auto !important;
+  left: calc(env(safe-area-inset-left, 0px) + 12px) !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+  font-size: 10px;   /* trim slightly so it doesn't crowd the switcher */
+  padding: 4px 8px;
+}

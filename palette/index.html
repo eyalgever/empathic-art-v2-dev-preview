@@ -37,6 +37,19 @@
 
     /* Video is offscreen 1x1 - engines need it in DOM, viewer doesn't need to see themselves */
     .stage { position: fixed; top: -100px; left: -100px; width: 2px; height: 2px; overflow: hidden; opacity: 0; pointer-events: none; z-index: -1; }
+    /* Discreet in-piece style-change button. Sits in the top-right corner
+       while the artwork is running; hidden while the gate is up. */
+    .in-piece-style { position: fixed; top: 14px; right: 14px; z-index: 40;
+      width: 40px; height: 40px; border-radius: 999px;
+      background: rgba(20,17,15,0.35); border: 1px solid rgba(238,236,231,0.20);
+      color: rgba(238,236,231,0.82); font-family: var(--ea-font-mono);
+      display: grid; place-items: center; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.2s ease, border-color 0.2s ease;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .in-piece-style.hidden { display: none; }
+    .in-piece-style:hover { background: rgba(20,17,15,0.55); border-color: rgba(238,236,231,0.35); }
+    .in-piece-style__glyph { font-size: 14px; letter-spacing: 0.08em; line-height: 1; }
     #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
     #video::-webkit-media-controls,
     #video::-webkit-media-controls-panel,
@@ -1398,6 +1411,11 @@
     <video id="video" autoplay muted playsinline></video>
   </div>
 
+  <!-- Discreet corner control: opens the style picker from inside the piece. -->
+  <button id="inPieceStyleBtn" class="in-piece-style hidden" aria-label="Change visual style" title="Change style">
+    <span class="in-piece-style__glyph">•••</span>
+  </button>
+
   <!-- Feeling word (bottom-center) - tap to expand stats -->
   <div class="feeling hidden" id="feeling">
     <span class="feeling__word" id="feelingWord" data-ea-tip="emotion-map">breathing in</span>
@@ -1559,18 +1577,24 @@
       filter: { enabled: false },
       face: {
         enabled: true,
-        detector: { rotation: true, maxDetected: 1, minConfidence: 0.4, return: false, skipFrames: 15, skipTime: 250 },
+        // Rotation ON is expensive; detector at 15-frame skip still felt
+        // stale in Eyal's session (humanFps <1). Drop rotation and bump
+        // detector cadence — iPhone lock is usually held once seen.
+        detector: { rotation: false, maxDetected: 1, minConfidence: 0.4, return: false, skipFrames: 10, skipTime: 200 },
         mesh: { enabled: true },
         iris: { enabled: true },
-        // description is small and gives us age/gender chips — skip heavily
-        description: { enabled: true, skipFrames: 120, skipTime: 2000 },
-        emotion: { enabled: true, minConfidence: 0.1, skipFrames: 30, skipTime: 300 },
-        // antispoof + liveness are 20-30ms each on iPhone — skip very heavily
-        antispoof: { enabled: true, skipFrames: 240, skipTime: 4000 },
-        liveness: { enabled: true, skipFrames: 240, skipTime: 4000 },
+        // Description (age/gender), antispoof, and liveness are ~50ms each
+        // on iPhone and their chips are noise for this piece. Off.
+        description: { enabled: false },
+        emotion: { enabled: true, minConfidence: 0.1, skipFrames: 20, skipTime: 200 },
+        antispoof: { enabled: false },
+        liveness: { enabled: false },
       },
-      // MoveNet lightning body model, aggressive skipping keeps it cheap
-      body: { enabled: true, modelPath: 'movenet-lightning.json', maxDetected: 1, skipFrames: 60, skipTime: 800 },
+      // MoveNet lightning body model. On iPhone with Human + VitalLens both
+      // running on the same WebGL context, body inference regularly stalled
+      // the whole pipeline. Disabled here — body pose is not required for
+      // the empathic reading (face + rPPG + optional Muse carry it).
+      body: { enabled: false },
       hand: { enabled: false }, object: { enabled: false },
       gesture: { enabled: false }, segmentation: { enabled: false },
     };
@@ -2053,46 +2077,26 @@
     }
 
     // Session 2+ flow.
-    //  - The opening "welcome" copy only makes sense on the very first
-    //    session. After that, the piece already knows you: the gate
-    //    becomes a brief recognition beat (wordmark + session number +
-    //    last-used style) then auto-continues into the art.
-    //  - The user can still switch style by tapping the wordmark before
-    //    the recognition beat times out. Tap surfaces the Continue /
-    //    Choose / Surprise Me pills. Otherwise we start with the last style.
+    //  - The opening gate is a first-session ceremony. On every session
+    //    after that the piece skips it entirely: no wordmark flash, no
+    //    recognition beat — the last-used style resumes immediately.
+    //  - If the user wants to switch style, they use the Choose / Surprise
+    //    controls that live inside the running piece (settings menu).
     (function setupPlanB() {
       if (store.sessionCount === 0) return; // Session 1 keeps single Begin
 
-      // Hide the manifesto-style intro block. It only speaks on session 1.
-      const introBlock = document.querySelector('.gate-block .gate-headrow');
-      const introBody  = document.querySelectorAll('.gate-block .gate-body');
-      const introHint  = document.querySelector('.gate-hint');
-      if (introBlock) introBlock.style.display = 'none';
-      introBody.forEach(el => (el.style.display = 'none'));
-      if (introHint) introHint.style.display = 'none';
-
-      document.getElementById('gate-cta-single').classList.add('hidden');
-      document.getElementById('gate-cta-multi').classList.remove('hidden');
-
-      // Auto-continue: wait 1.4s. If the user hasn't interacted, start
-      // with the last-used style. Any tap on the gate cancels the timer.
-      let autoTimer = null;
-      function cancelAuto() {
-        if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
-      }
+      // Skip the gate entirely on repeat visits.
       const gateEl = document.getElementById('gate');
-      if (gateEl) {
-        // Any interaction on the gate cancels the auto-continue — the
-        // user is telling us they want to choose.
-        ['pointerdown','click','keydown'].forEach(ev => {
-          gateEl.addEventListener(ev, cancelAuto, { capture: true });
-        });
-      }
-      autoTimer = setTimeout(() => {
+      if (gateEl) gateEl.style.display = 'none';
+
+      // Kick off the last-used style on the next frame so DOM has time
+      // to settle. If we don't have a last session for some reason, fall
+      // through to the default StyleCls.
+      requestAnimationFrame(() => {
         const last = store.lastSession;
         const match = last ? catalog.find(c => c.id === last.styleId) : null;
         swapAndStart(match || StyleCls);
-      }, 1400);
+      });
 
       // Wire Continue label to last session's style name
       const last = store.lastSession;
@@ -2153,7 +2157,64 @@
       threshold: { v:  0.05, a: -0.10 }, // liminal / neutral
     };
 
+    // ── Real-artwork thumbnails ──────────────────────────────────────
+    // The style picker prefers actual captured frames from each shader
+    // over the palette-derived swatches. Cache lives in localStorage so
+    // repeat visits show a real thumbnail even before the shader is running.
+    const THUMB_STORE_KEY = 'ea:styleThumbs:v1';
+    const THUMB_W = 320, THUMB_H = 240;
+    function loadThumbCache() {
+      try {
+        const raw = localStorage.getItem(THUMB_STORE_KEY);
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) { return {}; }
+    }
+    function saveThumbCache(cache) {
+      try { localStorage.setItem(THUMB_STORE_KEY, JSON.stringify(cache)); }
+      catch (e) { /* quota etc — non-fatal */ }
+    }
+    let thumbCache = loadThumbCache();
+    // Capture the currently-running style's canvas into the cache. Called
+    // ~2 s after a style starts so the shader has settled + reached its
+    // signature colour. Downscales to THUMB_W×THUMB_H and stores as JPEG.
+    function captureStyleThumb(styleId) {
+      if (!canvas || !styleId) return;
+      try {
+        const w = canvas.width, h = canvas.height;
+        if (!w || !h) return;
+        const tmp = document.createElement('canvas');
+        tmp.width = THUMB_W; tmp.height = THUMB_H;
+        const tctx = tmp.getContext('2d');
+        // Center-crop the source canvas to 4:3 before downscaling.
+        const srcAsp = w / h, dstAsp = THUMB_W / THUMB_H;
+        let sx, sy, sw, sh;
+        if (srcAsp > dstAsp) { sh = h; sw = h * dstAsp; sx = (w - sw) / 2; sy = 0; }
+        else                 { sw = w; sh = w / dstAsp; sx = 0; sy = (h - sh) / 2; }
+        tctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, THUMB_W, THUMB_H);
+        const url = tmp.toDataURL('image/jpeg', 0.72);
+        thumbCache[styleId] = url;
+        saveThumbCache(thumbCache);
+        log('event', 'style thumb captured', { id: styleId, bytes: url.length });
+      } catch (e) {
+        log('err', 'style thumb capture failed', { id: styleId, err: String(e) });
+      }
+    }
+    // Draw a captured thumbnail (if any) onto a picker swatch canvas.
+    function paintCachedThumb(cvs, styleId) {
+      const url = thumbCache[styleId];
+      if (!url) return false;
+      const img = new Image();
+      img.onload = () => {
+        const ctx = cvs.getContext('2d');
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+        ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+      };
+      img.src = url;
+      return true;
+    }
+
     // Draw a Rothko-style stacked palette swatch for one style into a canvas.
+    // Fallback for styles the user has not yet run (no cached thumbnail).
     // Uses the style's signature emotion to pull a five-stop chord from the
     // v1 emotion palette, then paints horizontal bands (back → whisper →
     // mid → hot → front) so each swatch reads as a small chromatic zone.
@@ -2232,8 +2293,11 @@
           onPick(cls);
         });
         grid.appendChild(tile);
-        // Paint the swatch after append so layout is correct.
-        paintStyleSwatch(swatch, cls.id);
+        // Prefer a real captured thumbnail; fall back to a palette swatch
+        // for styles the user has not run yet.
+        if (!paintCachedThumb(swatch, cls.id)) {
+          paintStyleSwatch(swatch, cls.id);
+        }
       }
       document.getElementById('stylePickerCancel').onclick = () => sheet.classList.remove('open');
       sheet.querySelector('.style-sheet__scrim').onclick = () => sheet.classList.remove('open');
@@ -2428,6 +2492,11 @@
         for (const b of wrap.querySelectorAll('button')) {
           b.classList.toggle('on', b.dataset.meshMode === meshMode);
         }
+        // Wipe the overlay canvas immediately so switching to OFF or
+        // between modes never shows a stale mesh from the previous mode.
+        if (senseCtx && senseOverlay) {
+          senseCtx.clearRect(0, 0, senseOverlay.width || 640, senseOverlay.height || 480);
+        }
         syncPulseCaption();
         log('event', 'mesh mode', { mode: meshMode });
       });
@@ -2550,16 +2619,9 @@
     function fmt(v, d = 0) { return (v == null || !isFinite(v)) ? '—' : v.toFixed(d); }
     function renderSenseStats() {
       const f = senseState.face;
-      // Face chips overlay
-      const chips = [];
-      if (f) {
-        if (typeof f.age === 'number' && isFinite(f.age)) chips.push({ t: `AGE ${f.age.toFixed(0)}`, cls: '' });
-        if (f.gender) chips.push({ t: `${f.gender.toUpperCase()} ${f.genderScore ? Math.round(f.genderScore*100)+'%' : ''}`.trim(), cls: '' });
-        if (typeof f.distance === 'number' && isFinite(f.distance)) chips.push({ t: `${f.distance.toFixed(0)} CM`, cls: '' });
-        if (typeof f.real === 'number') chips.push({ t: `REAL ${(f.real*100).toFixed(0)}%`, cls: f.real > 0.75 ? 'ok' : 'warn' });
-        if (typeof f.live === 'number') chips.push({ t: `LIVE ${(f.live*100).toFixed(0)}%`, cls: f.live > 0.75 ? 'ok' : 'warn' });
-      }
-      faceChipsEl.innerHTML = chips.map(c => `<span class="sense-selfview__chip ${c.cls}">${c.t}</span>`).join('');
+      // Face chips overlay — age/gender/real/live were Human classifier
+      // debug chips. Off for the empathic-art piece; not part of the reading.
+      faceChipsEl.innerHTML = '';
       // Stats grid: signal quality + head pose + fps
       const cells = [];
       // Signal quality: faceScore, meshScore
@@ -2698,9 +2760,9 @@
       // — first 8s: bright glow (recent history)
       // — 8s→90s: fades toward the floor
       // — 90s+: soft ambient chromatic ghost (never fully gone)
-      const T_FRESH_MS = 8000;   // bright zone
-      const T_LONG_MS  = 90000;  // fade-out ends here at the floor
-      const FLOOR_A    = 0.10;   // faint but present
+      const T_FRESH_MS = 6000;   // bright zone (recent 6 s)
+      const T_LONG_MS  = 40000;  // fully fades out by 40 s
+      const FLOOR_A    = 0.0;    // ancient points disappear (no permanent floor)
       // Pass 1 — soft coloured halos (older points sit further back).
       for (const p of miniTrail) {
         const age = nowT - p.t;
@@ -3042,7 +3104,10 @@
     // Trail persists for the whole session (Turn 136), capped at 2000
     // samples (~200s dense) to bound memory. Big plot's drawBigPlot()
     // fades old points toward a soft floor so nothing dies.
-    const MINI_TRAIL_MAX = 2000;
+    // Trail cap tuned so a long session doesn't turn the plot into a
+    // saturated blob. 400 samples at 10 Hz = 40 s of history; older
+    // moments fade off entirely rather than piling up at the floor.
+    const MINI_TRAIL_MAX = 400;
     function drawMiniPlot() {
       const S = 240, cx = S/2, cy = S/2, R = S * 0.42;
       miniCtx.clearRect(0, 0, S, S);
@@ -3075,7 +3140,7 @@
 
       // Mini plot trail rendering — fade with visible tail (matches big plot).
       // Time constants same as drawBigPlot so both surfaces feel consistent.
-      const T_FRESH = 8000, T_LONG = 90000, FLOOR = 0.08;
+      const T_FRESH = 6000, T_LONG = 40000, FLOOR = 0.0;
       // Polyline connecting successive points (colour = midpoint emotion).
       if (miniTrail.length > 1) {
         for (let i = 1; i < miniTrail.length; i++) {
@@ -3183,11 +3248,34 @@
 
       document.getElementById('gate').classList.add('hidden');
       document.body.classList.remove('gate-open');
+      // Reveal the discreet corner style-change control now that the piece
+      // is live. Opens the same picker used from the (skipped) gate flow.
+      const inPieceBtn = document.getElementById('inPieceStyleBtn');
+      if (inPieceBtn) {
+        inPieceBtn.classList.remove('hidden');
+        inPieceBtn.onclick = () => {
+          openStylePicker((newCls) => {
+            try {
+              StyleCls = instantiateWithFallback(newCls) || StyleCls;
+              log('event', 'style swapped in-piece', { id: StyleCls.id, name: StyleCls.name });
+              // Update the session store so "Continue" resumes with this style next time.
+              try { store.update && store.update({ styleId: StyleCls.id, styleName: StyleCls.name }); } catch (e) {}
+              // Refresh the thumbnail for the newly selected style.
+              setTimeout(() => captureStyleThumb(StyleCls.id), 2500);
+            } catch (e) {
+              log('err', 'in-piece style swap failed', { err: String(e) });
+            }
+          });
+        };
+      }
       running = true;
       // Begin the persisted session recording
       try {
         store.begin({ styleId: StyleCls.id, styleName: StyleCls.name });
         log('event', 'session begin', { styleId: StyleCls.id, seq: store._seq });
+        // Capture a real thumbnail 2.5 s after start so the shader has
+        // settled onto its signature colour. Overwrites any cached tile.
+        setTimeout(() => captureStyleThumb(StyleCls.id), 2500);
       } catch (e) {
         log('err', 'session begin failed', { err: String(e) });
       }

@@ -1,0 +1,92 @@
+/* =============================================================
+   Empathic Art v2 — design tokens (matched to v1)
+   Source of truth: empathic-art.pplx.app/styles/tokens.css
+   Any v2 route can @import this file.
+   ============================================================= */
+
+:root {
+  /* Surface */
+  --ea-surface:      #FBF6EC;
+  --ea-surface-2:    #F5EEDF;
+  --ea-surface-3:    #EEE4D0;
+  --ea-ink:          #1B1512;
+  --ea-ink-2:        #4A3F38;
+  --ea-ink-3:        #857868;
+  --ea-line:         rgba(27, 21, 18, 0.10);
+  --ea-line-strong:  rgba(27, 21, 18, 0.22);
+  --ea-cream:        #FBF6EC;
+
+  /* Accent (Empathic red-orange) */
+  --ea-accent:       #E85A3C;
+  --ea-accent-hover: #D24A2E;
+  --ea-accent-soft:  #F4C4B8;
+  --ea-accent-tint:  rgba(232, 90, 60, 0.08);
+
+  /* Emotion quadrant anchors (V x A) */
+  --ea-emo-energized: #E85A3C;
+  --ea-emo-positive:  #E8A93C;
+  --ea-emo-tired:     #6B7BA8;
+  --ea-emo-negative:  #8C5A9E;
+
+  /* Recording */
+  --ea-rec:      #D42C1F;
+  --ea-rec-dim:  rgba(212, 44, 31, 0.15);
+
+  /* Type */
+  --ea-font-display: "Fraunces", "Cormorant Garamond", "Georgia", serif;
+  --ea-font-ui:      "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ea-font-body:    "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ea-font-mono:    "JetBrains Mono", "SF Mono", Menlo, monospace;
+  --ea-font-numeric: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+                     "Helvetica Neue", "Segoe UI", "Roboto", system-ui, sans-serif;
+  --ea-font-feeling: "Fraunces", "Cormorant Garamond", "Iowan Old Style", "Georgia", serif;
+
+  --ea-t-display: clamp(48px, 12vw, 128px);
+  --ea-t-title:   clamp(28px, 5vw, 40px);
+  --ea-t-h2:      22px;
+  --ea-t-h3:      18px;
+  --ea-t-body:    16px;
+  --ea-t-small:   14px;
+  --ea-t-mono:    12px;
+
+  --ea-leading-tight:  1.1;
+  --ea-leading-normal: 1.45;
+  --ea-leading-loose:  1.65;
+
+  --ea-w-light:   300;
+  --ea-w-regular: 400;
+  --ea-w-medium:  500;
+  --ea-w-semi:    600;
+  --ea-w-bold:    700;
+
+  /* 8pt spacing */
+  --ea-s-1:  4px;
+  --ea-s-2:  8px;
+  --ea-s-3:  12px;
+  --ea-s-4:  16px;
+  --ea-s-5:  20px;
+  --ea-s-6:  24px;
+  --ea-s-8:  32px;
+  --ea-s-10: 40px;
+  --ea-s-12: 48px;
+  --ea-s-16: 64px;
+
+  --ea-r-sm: 8px;
+  --ea-r-md: 14px;
+  --ea-r-lg: 20px;
+  --ea-r-xl: 28px;
+  --ea-r-pill: 999px;
+
+  --ea-shadow-1: 0 1px 2px rgba(27, 21, 18, 0.04), 0 2px 8px rgba(27, 21, 18, 0.03);
+  --ea-shadow-2: 0 2px 6px rgba(27, 21, 18, 0.06), 0 8px 24px rgba(27, 21, 18, 0.05);
+  --ea-shadow-cta: 0 4px 12px rgba(232, 90, 60, 0.28);
+
+  --ea-ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+  --ea-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --ea-dur-fast:   140ms;
+  --ea-dur-med:    260ms;
+  --ea-dur-slow:   520ms;
+
+  --ea-safe-top:    env(safe-area-inset-top, 0px);
+  --ea-safe-bottom: env(safe-area-inset-bottom, 0px);
+}

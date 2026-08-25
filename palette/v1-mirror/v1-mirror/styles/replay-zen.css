@@ -1,0 +1,166 @@
+/* Replay Zen mode
+ *
+ * The Replay screen has three zen states, written to <body> as
+ *   data-replay-zen="info"    (default, everything visible)
+ *   data-replay-zen="ambient" (art only, plus a tiny hint)
+ *   data-replay-zen="map"     (Emotion Map panel is open)
+ *
+ * The persistent emotion word (#summary-reveal) never fades; it
+ * is part of the art. The scrub track keeps its own visibility
+ * because scrubbing IS a form of engagement with the art.
+ * ────────────────────────────────────────────────────────────── */
+
+/* Elements that ambient-fade away when the user is not touching.
+ * We reuse the same transition curve as immersive-hidden so the
+ * fade feels of a piece with the live session. */
+body[data-replay-zen="ambient"] .ea-header,
+body[data-replay-zen="ambient"] .ea-legal-footer,
+body[data-replay-zen="ambient"] #ea-legal-mark,
+body[data-replay-zen="ambient"] .ea-viewswitch,
+body[data-replay-zen="ambient"] .ea-summary__topbar,
+body[data-replay-zen="ambient"] .ea-immersive-btn--summary,
+body[data-replay-zen="ambient"] .ea-summary__head,
+body[data-replay-zen="ambient"] .ea-summary__panel,
+body[data-replay-zen="ambient"] .ea-summary__voicelist,
+body[data-replay-zen="ambient"] .ea-summary__share,
+body[data-replay-zen="ambient"] .ea-summary__actions,
+body[data-replay-zen="ambient"] .ea-toast {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 900ms cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Everything comes back with a slightly quicker curve so the
+ * user gets immediate feedback on their tap. */
+body[data-replay-zen="info"] .ea-header,
+body[data-replay-zen="info"] .ea-summary__topbar,
+body[data-replay-zen="info"] .ea-summary__head,
+body[data-replay-zen="info"] .ea-summary__panel,
+body[data-replay-zen="info"] .ea-summary__voicelist,
+body[data-replay-zen="info"] .ea-summary__share,
+body[data-replay-zen="info"] .ea-summary__actions,
+body[data-replay-zen="info"] .ea-immersive-btn--summary {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 320ms ease;
+}
+
+/* In ambient, the summary canvas expands to fill the whole viewport
+ * so the art has the entire frame. .ea-app is a two-row grid with a
+ * fixed header row — collapse that first row so the canvas row grows
+ * to fill the whole viewport. */
+body[data-replay-zen="ambient"] .ea-app {
+  grid-template-rows: 0 1fr !important;
+}
+body[data-replay-zen="ambient"] .ea-header {
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Info-with-map state: everything visible AND the map panel
+ * open. Same as info visually, but the ambient timer is paused
+ * (the JS side owns that behaviour). */
+body[data-replay-zen="map"] .ea-header,
+body[data-replay-zen="map"] .ea-summary__topbar,
+body[data-replay-zen="map"] .ea-summary__head,
+body[data-replay-zen="map"] .ea-summary__panel,
+body[data-replay-zen="map"] .ea-summary__voicelist,
+body[data-replay-zen="map"] .ea-summary__share,
+body[data-replay-zen="map"] .ea-summary__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ─── Ambient hint ──────────────────────────────────────────── */
+.ea-replay-zen__hint {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  font-family: var(--ea-font-sans, "General Sans", system-ui, sans-serif);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-cream, #F4EBD8);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 900ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  user-select: none;
+}
+.ea-replay-zen__hint--ambient {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 26px);
+}
+.ea-replay-zen__hint--info {
+  /* v1.5.2-alpha5: the info-state hint is intentionally suppressed.
+   * The Emotion Map pill is already visible with its own label, so a
+   * separate hint pointing at a labeled button is redundant and only
+   * creates layout collisions. The vocabulary "i" glyph in the meta
+   * line handles all interaction discovery in info state. */
+  display: none;
+}
+
+/* Show the ambient hint only in ambient state, with a slow
+ * pulse to help the eye find it the first time. */
+body[data-replay-zen="ambient"] .ea-replay-zen__hint--ambient {
+  opacity: 0.48;
+  animation: ea-replay-zen-pulse 4s ease-in-out infinite;
+}
+
+/* Info hint shows once per info entry — the JS re-triggers the
+ * pulse animation when the user taps twice. Only shown when the
+ * Emotion Map panel is CLOSED (otherwise it would point at
+ * something already engaged). */
+body[data-replay-zen="info"].ea-summary-panel-hidden .ea-replay-zen__hint--info {
+  opacity: 0.42;
+}
+body[data-replay-zen="info"].ea-summary-panel-hidden .ea-replay-zen__hint--info.ea-replay-zen__hint--pulse {
+  animation: ea-replay-zen-pulse 1.6s ease-in-out 2;
+}
+
+@keyframes ea-replay-zen-pulse {
+  0%, 100% { opacity: 0.28; }
+  50%      { opacity: 0.68; }
+}
+
+/* ─── Narrative re-emergence ────────────────────────────────
+ * Every ~25s the narrative caption alone drifts back in for
+ * a beat, even while ambient. The rest of the chrome stays
+ * hidden. Only the narrative span (which lives inside the
+ * meta paragraph) is unhidden. */
+body[data-replay-zen="ambient"][data-replay-zen-narrative="peek"]
+  .ea-summary__head {
+  opacity: 1 !important;
+  pointer-events: none !important; /* still non-interactive */
+  transition: opacity 1400ms cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+/* Meta line stays dim during the peek — it's the narrative
+ * caption below the meta that we want to feature. */
+body[data-replay-zen="ambient"][data-replay-zen-narrative="peek"]
+  .ea-session-meta__line {
+  opacity: 0.35;
+  transition: opacity 1200ms ease;
+}
+body[data-replay-zen="ambient"][data-replay-zen-narrative="peek"]
+  .ea-session-narrative {
+  opacity: 0.92;
+  transition: opacity 1200ms ease;
+}
+
+/* ─── Reduced motion respect ───────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  body[data-replay-zen="ambient"] .ea-header,
+  body[data-replay-zen="ambient"] .ea-summary__topbar,
+  body[data-replay-zen="ambient"] .ea-summary__head,
+  body[data-replay-zen="ambient"] .ea-summary__panel,
+  body[data-replay-zen="ambient"] .ea-summary__voicelist,
+  body[data-replay-zen="ambient"] .ea-summary__share,
+  body[data-replay-zen="ambient"] .ea-summary__actions {
+    transition: opacity 240ms ease !important;
+  }
+  .ea-replay-zen__hint {
+    animation: none !important;
+    transition: opacity 200ms ease !important;
+  }
+}

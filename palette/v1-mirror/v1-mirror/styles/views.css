@@ -1,0 +1,577 @@
+/**
+ * View-mode overrides · Cycle 18 (demo device frames)
+ * ──────────────────────────────────────────────────────────────────
+ * The app supports three view modes for demo purposes. When opened on
+ * a desktop browser during a live share, we render the app inside a
+ * device bezel so the audience sees exactly what they'd see on the
+ * actual device.
+ *
+ *   data-view="iphone"   → 390 × 844 logical viewport inside a
+ *                          photorealistic iPhone bezel (default on
+ *                          desktop browsers, no bezel on real iPhone).
+ *   data-view="watch"    → 205 × 251 logical viewport inside an
+ *                          Apple Watch Ultra bezel (digital crown +
+ *                          side button on the right, aluminium case).
+ *   data-view="desktop"  → Edge-to-edge full window, no bezel — the
+ *                          "PC" experience.
+ *
+ * Bezels are drawn with pure CSS (no image assets) so they scale
+ * crisply at any DPR. The `.ea-app` inner region is `transform:
+ * scale()`-ed to fit the browser window; all internal layout stays
+ * at logical viewport dimensions so measurements stay honest.
+ * ──────────────────────────────────────────────────────────────────
+ */
+
+/* ═══════════════════════════════════════════════════════════════════
+ * DESKTOP · Full-window edge-to-edge (no bezel)
+ * ═══════════════════════════════════════════════════════════════════ */
+body[data-view="desktop"] {
+  overflow: hidden;
+  background: var(--ea-paper, #FBF6EC);
+}
+body[data-view="desktop"] .ea-app {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  max-height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  transform: none;
+  border-radius: 0;
+  overflow: hidden;
+  background: var(--ea-paper, #FBF6EC);
+  box-shadow: none;
+}
+body[data-view="desktop"] .ea-screen__inner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+body[data-view="desktop"] .tl-grid { grid-template-columns: repeat(7, 1fr); }
+
+/* ═══════════════════════════════════════════════════════════════════
+ * IPHONE · Photorealistic bezel at 390 × 844 logical viewport
+ * ═══════════════════════════════════════════════════════════════════
+ * Rendered on desktop only (window >= 500px). On real iPhones the
+ * bezel is suppressed and the app fills the viewport natively.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+/* Real iPhone: no bezel, full bleed */
+body[data-view="iphone"] {
+  overflow: hidden;
+  background: #000;
+}
+body[data-view="iphone"] .ea-app {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  inset: 0;
+  transform: none;
+  border-radius: 0;
+  overflow: hidden;
+  background: var(--ea-paper, #FBF6EC);
+}
+
+/* Desktop: draw the iPhone bezel around the .ea-app.
+   The dark background lets the bezel float over a matte studio backdrop. */
+@media (min-width: 500px) {
+  body[data-view="iphone"] {
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 45%, #232326 0%, #0a0a0c 60%, #050506 100%);
+  }
+  body[data-view="iphone"] .ea-app {
+    width: 390px;
+    height: 844px;
+    min-height: 844px;
+    max-height: 844px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform-origin: 0 0;
+    /* Fallback centering until JS scale applies */
+    transform: translate(-50%, -50%);
+    /* Screen shape: iPhone rounded rectangle (approx 47.33px physical corner) */
+    border-radius: 55px;
+    overflow: hidden;
+    background: var(--ea-paper, #FBF6EC);
+    /* Bezel: outer titanium ring + inner black bezel + drop shadow.
+       Layered box-shadows draw both the case and the ambient shadow. */
+    box-shadow:
+      /* Inner black bezel ring (1.5px) */
+      0 0 0 2px #050506,
+      /* Titanium outer case (8px) */
+      0 0 0 10px #4a4a4d,
+      /* Titanium outer highlight */
+      0 0 0 11px #6a6a6d,
+      /* Ambient shadow */
+      0 40px 80px rgba(0, 0, 0, 0.6),
+      0 20px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Dynamic Island — the pill-shaped camera housing centered near the top
+     of the physical device. Rendered as a fixed pseudo-element that JS
+     re-positions after scale() applies. */
+  body[data-view="iphone"]::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 10000;
+    width: 126px;
+    height: 37px;
+    border-radius: 999px;
+    background: #000;
+    transform-origin: 0 0;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.05);
+  }
+
+  /* Physical side buttons: volume up/down (left) + action + power (right).
+     These use ::after with multiple box-shadows to draw all four buttons
+     from a single pseudo-element (positioned by JS to hug the case edge). */
+  body[data-view="iphone"]::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 9999;
+    width: 4px;
+    height: 1px;
+    background: transparent;
+    transform-origin: 0 0;
+    pointer-events: none;
+    /* Buttons drawn via box-shadow spread — JS scales/positions the anchor,
+       these offsets are in the pre-scale coordinate space of the bezel.
+       Layout for iPhone 15 Pro (button y-offsets in .ea-app coords):
+         - Left side (x=-14): Action button (top ~155), Volume Up (~215),
+           Volume Down (~285)
+         - Right side (x=W+10=400): Power (~215)
+       We keep them subtle — they're for demo polish, not interaction. */
+    box-shadow:
+      /* Left buttons */
+      -14px 155px 0 0 #5a5a5d,
+      -14px 156px 0 0 #4a4a4d,
+      -14px 215px 0 0 #5a5a5d,
+      -14px 216px 0 0 #4a4a4d,
+      -14px 285px 0 0 #5a5a5d,
+      -14px 286px 0 0 #4a4a4d,
+      /* Right power button */
+       400px 215px 0 0 #5a5a5d,
+       400px 216px 0 0 #4a4a4d;
+  }
+  body[data-view="iphone"]:not(.__iphone-scaled)::before,
+  body[data-view="iphone"]:not(.__iphone-scaled)::after {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * WATCH · Apple Watch Ultra bezel at 205 × 251 logical viewport
+ * ═══════════════════════════════════════════════════════════════════ */
+body[data-view="watch"] {
+  --ea-zone-header: 34px;
+  --ea-zone-chips:  0px;
+  font-size: 12px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, #1a1a1c 0%, #050506 60%);
+}
+body[data-view="watch"] .ea-app {
+  width: 205px;
+  height: 251px;
+  min-height: 251px;
+  max-height: 251px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform-origin: 0 0;
+  transform: translate(-50%, -50%);
+  /* Apple Watch Ultra display corners are slightly softer than Series 9;
+     the physical curve is ~34px. Screen sits inside a titanium case. */
+  border-radius: 42px;
+  overflow: hidden;
+  background: #000;
+  color: #f5f5f7;
+  box-shadow:
+    /* Inner bezel gasket */
+    0 0 0 3px #0a0a0c,
+    /* Titanium case */
+    0 0 0 12px #3a3a3d,
+    /* Case highlight */
+    0 0 0 13px #5a5a5d,
+    /* Ambient shadow */
+    0 30px 60px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+/* Digital crown + side button — positioned by JS in applyViewScale() */
+body[data-view="watch"]::before,
+body[data-view="watch"]::after {
+  content: "";
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 10;
+  pointer-events: none;
+  transform-origin: 0 0;
+  border-radius: 4px;
+}
+body[data-view="watch"]::before {
+  width: 14px; height: 44px;
+  background: linear-gradient(90deg, #5a5a5d 0%, #3a3a3d 60%, #1a1a1c 100%);
+  box-shadow: inset 1px 0 0 rgba(255,255,255,0.20), 0 2px 6px rgba(0,0,0,0.4);
+}
+body[data-view="watch"]::after {
+  width: 10px; height: 60px;
+  background: linear-gradient(90deg, #4a4a4d 0%, #1a1a1c 100%);
+  box-shadow: inset 1px 0 0 rgba(255,255,255,0.14);
+  border-radius: 3px;
+}
+body[data-view="watch"]:not(.__watch-scaled)::before,
+body[data-view="watch"]:not(.__watch-scaled)::after {
+  display: none;
+}
+body[data-view="watch"] .ea-screen {
+  background: #000;
+  color: #f5f5f7;
+}
+body[data-view="watch"] .ea-header {
+  background: transparent;
+  color: #f5f5f7;
+}
+body[data-view="watch"] .ea-header__title { color: #f5f5f7; opacity: 0.9; }
+body[data-view="watch"] .ea-emotion-label { color: #f5f5f7; }
+body[data-view="watch"] .ea-btn {
+  background: rgba(255,255,255,0.14);
+  color: #f5f5f7;
+  border: none;
+}
+body[data-view="watch"] .ea-btn:hover,
+body[data-view="watch"] .ea-btn:focus-visible {
+  background: rgba(255,255,255,0.22);
+}
+body[data-view="watch"] .tg-date,
+body[data-view="watch"] .tg-mood { color: #f5f5f7; opacity: 0.85; }
+body[data-view="watch"] .ea-timeline { background: transparent; border: 0; padding: 6px; }
+body[data-view="watch"] .ea-timeline__eyebrow,
+body[data-view="watch"] .ea-timeline__hint { color: #f5f5f7; opacity: 0.6; }
+body[data-view="watch"] .ea-after__title { color: #f5f5f7; }
+body[data-view="watch"] .ea-after__meta,
+body[data-view="watch"] .ea-after__eyebrow { color: #f5f5f7; opacity: 0.7; }
+body[data-view="watch"] .ea-header__meta,
+body[data-view="watch"] .ea-header__sub,
+body[data-view="watch"] .ea-chips,
+body[data-view="watch"] .ea-chips-band,
+body[data-view="watch"] .ea-hint,
+body[data-view="watch"] .ea-slider-block,
+body[data-view="watch"] .ea-card,
+body[data-view="watch"] .ea-tiles,
+body[data-view="watch"] .ea-section-title,
+body[data-view="watch"] .ea-check,
+body[data-view="watch"] .ea-circumplex__label,
+body[data-view="watch"] .ea-circumplex__ring,
+body[data-view="watch"] .ea-progress-strip,
+body[data-view="watch"] .ea-immersive-btn,
+/* Watch has no room for the style picker or its info chip; the user
+   picks a style on the phone before the wrist session begins. */
+body[data-view="watch"] .ea-style-picker-row,
+body[data-view="watch"] .ea-style-picker-btn,
+body[data-view="watch"] .ea-help-chip--inline,
+/* Sub-lede prose is too long for a 205px wrist frame; the map itself
+   already carries the intent and the header title gives context. */
+body[data-view="watch"] .ea-screen[data-screen="before"] .ea-screen__sublede,
+/* Circumplex hint overlay ("tap or drag to place yourself") does not
+   fit inside the 120px watch puck and is confusing at that scale. */
+body[data-view="watch"] .ea-circumplex__hint,
+/* Secondary ghost buttons (View Timeline, Open Gallery) are phone-only. */
+body[data-view="watch"] #btn-before-timeline,
+body[data-view="watch"] #btn-before-gallery,
+/* Muse-connect card and any secondary help chips do not belong on wrist. */
+body[data-view="watch"] #btn-muse-connect,
+body[data-view="watch"] .ea-help-chip {
+  display: none !important;
+}
+
+/* Hard clip: nothing on watch should ever spill past the 205px bezel.
+   Combined with min/max-width on .ea-app above, this catches any child
+   that forgot to declare its own max-width. */
+body[data-view="watch"] .ea-app,
+body[data-view="watch"] .ea-screen,
+body[data-view="watch"] .ea-screen__inner {
+  max-width: 205px;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+body[data-view="watch"] .ea-header {
+  padding: 6px 10px;
+  /* Wrist header uses grid so back-button and title never overprint. */
+  display: grid;
+  grid-template-columns: 28px 1fr 28px;
+  align-items: center;
+  gap: 4px;
+}
+body[data-view="watch"] .ea-header__title {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ea-ink-2);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+/* The "Done" text is not needed at 205px; the SVG chevron is enough
+   affordance and prevents overlap with the header title. */
+body[data-view="watch"] .ea-header__back {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  min-width: 0;
+}
+body[data-view="watch"] .ea-header__back .ea-header__back-label {
+  display: none;
+}
+body[data-view="watch"] .ea-header__brand {
+  min-width: 0;
+  overflow: hidden;
+}
+
+body[data-view="watch"] .ea-screen {
+  padding: 4px 8px 8px;
+}
+/* Session screen is always full-bleed regardless of view — canvas fills. */
+body[data-view="watch"] .ea-screen[data-screen="session"],
+body[data-view="iphone"] .ea-screen[data-screen="session"],
+body[data-view="desktop"] .ea-screen[data-screen="session"] {
+  padding: 0;
+}
+body[data-view="watch"] .ea-screen__inner {
+  max-width: 100%;
+  padding-bottom: 6px;
+}
+body[data-view="watch"] .ea-screen__lede {
+  font-size: 11px;
+  margin: 0 0 6px;
+  color: var(--ea-ink-2);
+}
+
+/* Compact circumplex → a soft round color puck the user still taps */
+body[data-view="watch"] .ea-circumplex {
+  max-width: 120px;
+  border-radius: 999px;
+  border: none;
+  background: radial-gradient(circle at 50% 50%, #fff, #f3ecdd);
+  box-shadow: inset 0 0 0 1px var(--ea-line);
+  margin: 4px auto 8px;
+}
+body[data-view="watch"] .ea-circumplex__cross {
+  opacity: 0.25;
+}
+body[data-view="watch"] .ea-circumplex__thumb {
+  width: 22px; height: 22px;
+  box-shadow:
+    0 0 0 4px rgba(232, 90, 60, 0.15),
+    0 2px 8px rgba(232, 90, 60, 0.3);
+}
+
+/* CTA becomes a compact chip */
+body[data-view="watch"] .ea-cta {
+  position: static;
+  padding: 6px 0 0;
+}
+body[data-view="watch"] .ea-btn,
+body[data-view="watch"] .ea-cta .ea-btn {
+  padding: 0 10px;
+  font-size: 11px;
+  height: 32px;
+  min-width: 0;
+  width: auto;
+  max-width: 140px;
+  box-sizing: border-box;
+}
+body[data-view="watch"] .ea-cta {
+  padding: 6px 8px 4px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Session view on watch = big emotion label, minimal text */
+body[data-view="watch"] .ea-session-idle__hint {
+  font-size: 9px;
+  margin-top: 4px;
+}
+body[data-view="watch"] .ea-cta--session .ea-btn {
+  font-size: 10px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 12px;
+}
+body[data-view="watch"] .ea-cta--session {
+  bottom: 8px;
+  padding: 0 8px;
+}
+body[data-view="watch"] .ea-session-idle {
+  padding: 0 8px;
+  gap: 2px;
+}
+body[data-view="watch"] .ea-session-idle__line {
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+body[data-view="watch"] .ea-session-idle__line--big {
+  font-size: 24px;
+  margin: 2px 0;
+}
+body[data-view="watch"] .ea-emotion-label {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  margin: 4px 0 0;
+  padding: 0;
+}
+body[data-view="watch"] .ea-countdown__num {
+  font-size: 48px;
+}
+body[data-view="watch"] .ea-countdown__meta,
+body[data-view="watch"] .ea-countdown__hint {
+  font-size: 10px;
+}
+
+/* Watch has no Muse card / tiles / immersive button — force enable Start */
+body[data-view="watch"] .ea-section-title {
+  display: none !important;
+}
+body[data-view="watch"] .ea-screen[data-screen="active"] .ea-screen__inner {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100% - 34px);
+  gap: 8px;
+  padding-bottom: 0;
+}
+body[data-view="watch"] #btn-start-experience {
+  opacity: 1 !important;
+  cursor: pointer !important;
+}
+
+/* Hide the Emotion Map panel on Apple Watch — no room for a full
+   circumplex + brain-waves surface. Watch users just see the fluid. */
+body[data-view="watch"] .ea-muse-panel,
+body[data-view="watch"] .ea-muse-toggle {
+  display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+ * VIEW SWITCHER (bottom-right floating pill cluster)
+ * ─────────────────────────────────────────────────────────────────
+ * Cycle 18: visible during ALL screens including the live session,
+ * so the demo can toggle between devices mid-flow. Dimmed during
+ * dark session phase but never fully hidden.
+ * ═══════════════════════════════════════════════════════════════ */
+.ea-viewswitch {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 10001;   /* above bezel pseudo-elements */
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(20, 20, 22, 0.72);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.55),
+              0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+.ea-viewswitch__btn {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  padding: 6px 12px;
+  min-width: 60px;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  transition: background 160ms ease, color 160ms ease;
+}
+.ea-viewswitch__btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+.ea-viewswitch__btn[aria-pressed="true"] {
+  background: #fff;
+  color: #101014;
+}
+.ea-viewswitch__btn:focus-visible {
+  outline: 2px solid var(--ea-accent, #7BE0D6);
+  outline-offset: 2px;
+}
+
+/* When the app is dimmed during a live session, the switcher becomes
+   translucent so it never competes with the fluid — but stays clickable
+   so the demo can toggle mid-flow. */
+body[data-dim="true"] .ea-viewswitch {
+  opacity: 0.35;
+}
+body[data-dim="true"] .ea-viewswitch:hover {
+  opacity: 1;
+}
+
+/* Session-screen composition (Eyal Gever, 2026-07):
+   the switcher re-centers under the Eyal Gever legal mark so the
+   bottom band on the session screen reads as one composed column.
+   Symmetric 8pt rhythm between the three rows above the safe-area.
+   Declared inside a @media that matches the mobile rule below so
+   its bottom/right cannot be undone by source-order overrides. */
+body[data-screen="session"] .ea-viewswitch,
+body[data-screen="session"][data-view="iphone"] .ea-viewswitch,
+body[data-screen="session"][data-view="watch"] .ea-viewswitch,
+body[data-screen="session"][data-view="desktop"] .ea-viewswitch {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+}
+@media (max-width: 499px) {
+  body[data-screen="session"] .ea-viewswitch {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  }
+}
+
+/* Real mobile devices (portrait): shrink the switcher but keep it visible
+   so the demo can toggle frames from a phone too. Consistency across
+   iPhone / Watch / PC views. Pulled slightly further away from the CTA
+   edge so it never crowds primary buttons underneath. */
+@media (max-width: 499px) {
+  .ea-viewswitch {
+    right: 8px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+    padding: 3px;
+    gap: 3px;
+    opacity: 0.85;
+  }
+  .ea-viewswitch__btn {
+    padding: 5px 9px;
+    min-width: 46px;
+    font-size: 10px;
+  }
+}
+
+/* Global bottom-right reserved zone so no screen's own content ever
+   lays under the view switcher. Screens can override with a bigger
+   pad where they own the corner (e.g. summary/replay). Value is
+   derived from switcher height + gap: ~26 + 14 + safe-area = ~48px. */
+body {
+  --ea-viewswitch-reserve: calc(env(safe-area-inset-bottom, 0px) + 48px);
+}
+@media (max-width: 499px) {
+  body { --ea-viewswitch-reserve: calc(env(safe-area-inset-bottom, 0px) + 44px); }
+}

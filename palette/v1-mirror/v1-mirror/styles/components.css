@@ -1,0 +1,5162 @@
+/* =============================================================
+   Empathic App — Components
+   ============================================================= */
+
+/* -------- Buttons -------- */
+.ea-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ea-s-2);
+  height: 56px;
+  padding: 0 var(--ea-s-6);
+  font-family: var(--ea-font-ui);
+  font-weight: var(--ea-w-semi);
+  font-size: var(--ea-t-body);
+  letter-spacing: -0.01em;
+  border: none;
+  border-radius: var(--ea-r-pill);
+  cursor: pointer;
+  transition:
+    background var(--ea-dur-fast) var(--ea-ease-out),
+    transform var(--ea-dur-fast) var(--ea-ease-out),
+    box-shadow var(--ea-dur-med) var(--ea-ease-out),
+    opacity var(--ea-dur-fast) var(--ea-ease-out);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ea-btn:active:not(:disabled) { transform: scale(0.98); }
+.ea-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ea-btn--primary {
+  width: 100%;
+  background: var(--ea-accent);
+  color: #fff;
+  box-shadow: var(--ea-shadow-cta);
+}
+.ea-btn--primary:hover:not(:disabled) { background: var(--ea-accent-hover); }
+
+.ea-btn--danger {
+  width: 100%;
+  background: #B4261A;
+  color: #fff;
+}
+
+.ea-btn--ghost {
+  background: transparent;
+  color: var(--ea-ink);
+  border: 1px solid var(--ea-line-strong);
+}
+.ea-btn--ghost:hover:not(:disabled) { background: var(--ea-surface-3); }
+
+/* Slim variant: shorter height and smaller type, for secondary rows
+   that shouldn't compete with the primary CTA. Rendered as a subtle
+   text-link — no border, no filled background — so the Home CTA cluster
+   reads as a single confident primary button with two quiet auxiliary
+   links below it. */
+.ea-btn--slim {
+  height: 36px;
+  padding: 0 var(--ea-s-2);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: transparent;
+  border: none;
+  color: var(--ea-ink-2, rgba(27, 21, 18, 0.62));
+  min-width: 0;
+  border-radius: 999px;
+  transition: color 160ms ease, background 160ms ease;
+}
+.ea-btn--slim:hover:not(:disabled),
+.ea-btn--slim:focus-visible {
+  color: var(--ea-ink, #1b1512);
+  background: rgba(27, 21, 18, 0.05);
+  outline: none;
+}
+.ea-btn--slim:active { transform: scale(0.98); }
+
+/* Secondary CTA row — sits below the primary Start Session button on
+   the Home screen. Two quiet text links separated by a hairline dot,
+   centered as a single balanced row under the primary CTA.
+   The "OR" prefix was removed (Eyal Gever, 2026-07): it rendered as an
+   orphaned pair of letters far to the left of the row on narrow phone
+   viewports, breaking the composition. The dot separator between the
+   two links carries the same connective meaning more elegantly. */
+.ea-cta__secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ea-s-1, 4px);
+  padding: 2px 0;
+  color: var(--ea-ink-2, rgba(27, 21, 18, 0.62));
+}
+.ea-cta__secondary .ea-btn--slim {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: none;
+}
+.ea-cta__secondary .ea-btn--slim + .ea-btn--slim::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  margin-right: var(--ea-s-2);
+  border-radius: 50%;
+  background: rgba(27, 21, 18, 0.28);
+  vertical-align: middle;
+}
+
+/* -------- Cards -------- */
+.ea-card {
+  background: #fff;
+  border-radius: var(--ea-r-lg);
+  padding: var(--ea-s-5);
+  box-shadow: var(--ea-shadow-1);
+  border: 1px solid var(--ea-line);
+}
+.ea-card--emphasis {
+  border-color: var(--ea-accent);
+  background: linear-gradient(180deg, #fff 0%, var(--ea-accent-tint) 200%);
+}
+.ea-card--muted {
+  background: var(--ea-surface-2);
+  box-shadow: none;
+}
+
+/* -------- Selection tiles (music, options) -------- */
+.ea-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ea-s-3);
+  width: 100%;
+  padding: var(--ea-s-4) var(--ea-s-5);
+  background: #fff;
+  border: 1.5px solid var(--ea-line);
+  border-radius: var(--ea-r-lg);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--ea-dur-fast) var(--ea-ease-out),
+              background var(--ea-dur-fast) var(--ea-ease-out);
+}
+.ea-tile:hover { background: var(--ea-surface-2); }
+.ea-tile[aria-checked="true"] {
+  border-color: var(--ea-accent);
+  background: linear-gradient(180deg, #fff, var(--ea-accent-tint));
+}
+
+.ea-tile__radio {
+  flex: 0 0 24px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--ea-line-strong);
+  display: grid;
+  place-items: center;
+  transition: all var(--ea-dur-fast) var(--ea-ease-out);
+}
+.ea-tile[aria-checked="true"] .ea-tile__radio {
+  border-color: var(--ea-accent);
+  background: var(--ea-accent);
+}
+.ea-tile[aria-checked="true"] .ea-tile__radio::after {
+  content: "";
+  width: 10px; height: 6px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+.ea-tile__body { flex: 1; min-width: 0; }
+.ea-tile__title {
+  font-weight: var(--ea-w-semi);
+  font-size: var(--ea-t-h3);
+  color: var(--ea-ink);
+  margin: 0 0 2px;
+}
+.ea-tile__meta {
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink-3);
+  margin: 0;
+}
+
+/* -------- Checkbox row -------- */
+.ea-check {
+  display: flex;
+  align-items: center;
+  gap: var(--ea-s-3);
+  padding: var(--ea-s-4) var(--ea-s-5);
+  background: var(--ea-surface-2);
+  border-radius: var(--ea-r-md);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--ea-dur-fast) var(--ea-ease-out);
+  position: relative;
+}
+.ea-check:hover { background: var(--ea-surface-3); }
+/* Visually hide the native input; keep it focusable for a11y */
+.ea-check input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px; height: 1px;
+  margin: 0; padding: 0;
+  border: 0;
+}
+.ea-check__box {
+  width: 22px; height: 22px;
+  border: 2px solid var(--ea-line-strong);
+  border-radius: 5px;
+  display: grid; place-items: center;
+  flex: 0 0 auto;
+  transition: all var(--ea-dur-fast) var(--ea-ease-out);
+}
+.ea-check[aria-checked="true"] .ea-check__box {
+  border-color: var(--ea-ink);
+  background: var(--ea-ink);
+}
+.ea-check[aria-checked="true"] .ea-check__box::after {
+  content: "";
+  width: 10px; height: 6px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.ea-check__label {
+  font-size: var(--ea-t-body);
+  font-weight: var(--ea-w-medium);
+}
+
+/* -------- Circumplex (Valence × Arousal picker) -------- */
+.ea-circumplex {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #fff;
+  border-radius: var(--ea-r-lg);
+  border: 1px solid var(--ea-line);
+  overflow: hidden;
+  touch-action: none;
+  cursor: crosshair;
+}
+.ea-circumplex__axis-v,
+.ea-circumplex__axis-h {
+  position: absolute;
+  background: var(--ea-line);
+}
+.ea-circumplex__axis-v { top: 0; bottom: 0; left: 50%; width: 1px; }
+.ea-circumplex__axis-h { left: 0; right: 0; top: 50%; height: 1px; }
+
+.ea-circumplex__label {
+  position: absolute;
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink-2);
+  font-weight: var(--ea-w-medium);
+  pointer-events: none;
+}
+.ea-circumplex__label--top    { top: var(--ea-s-3);    left: 50%; transform: translateX(-50%); }
+.ea-circumplex__label--bottom { bottom: var(--ea-s-3); left: 50%; transform: translateX(-50%); }
+.ea-circumplex__label--left   { left: var(--ea-s-3);   top: 50%;  transform: translateY(-50%); }
+.ea-circumplex__label--right  { right: var(--ea-s-3);  top: 50%;  transform: translateY(-50%); }
+
+.ea-circumplex__thumb {
+  position: absolute;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--ea-accent);
+  transform: translate(-50%, -50%);
+  transition: background var(--ea-dur-med) var(--ea-ease-out);
+  box-shadow:
+    0 0 0 6px rgba(232, 90, 60, 0.15),
+    0 4px 12px rgba(232, 90, 60, 0.3);
+  pointer-events: none;
+}
+
+/* -------- Slider (Openness) -------- */
+.ea-slider {
+  position: relative;
+  width: 100%;
+  height: 56px;
+  background: #fff;
+  border-radius: var(--ea-r-md);
+  border: 1px solid var(--ea-line);
+  padding: 0 var(--ea-s-4);
+  display: flex;
+  align-items: center;
+  touch-action: none;
+  cursor: pointer;
+}
+.ea-slider__track {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  background: var(--ea-line);
+  border-radius: 2px;
+}
+.ea-slider__thumb {
+  position: absolute;
+  top: 50%;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--ea-accent);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 6px rgba(232, 90, 60, 0.15);
+  pointer-events: none;
+}
+.ea-slider__caps {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--ea-s-4);
+  pointer-events: none;
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink-3);
+}
+
+/* -------- Prompt / section labels -------- */
+.ea-prompt {
+  font-family: var(--ea-font-ui);
+  font-weight: var(--ea-w-regular);
+  font-size: var(--ea-t-body);
+  color: var(--ea-ink-2);
+  margin: 0 0 var(--ea-s-4);
+}
+.ea-section-label {
+  font-family: var(--ea-font-ui);
+  font-weight: var(--ea-w-semi);
+  font-size: var(--ea-t-h3);
+  color: var(--ea-ink);
+  margin: var(--ea-s-6) 0 var(--ea-s-3);
+  letter-spacing: -0.01em;
+}
+
+/* -------- Muse card -------- */
+.ea-muse-card {
+  display: flex;
+  align-items: center;
+  gap: var(--ea-s-3);
+  width: 100%;
+  padding: var(--ea-s-4) var(--ea-s-5);
+  background: #fff;
+  border: 1.5px solid var(--ea-accent);
+  color: var(--ea-accent);
+  border-radius: var(--ea-r-pill);
+  font-weight: var(--ea-w-semi);
+  cursor: pointer;
+  transition: background var(--ea-dur-fast) var(--ea-ease-out);
+}
+.ea-muse-card:hover { background: var(--ea-accent-tint); }
+.ea-muse-card__icon { width: 20px; height: 20px; flex-shrink: 0; }
+
+/* -------- Countdown numeral --------
+   Sits centered above the Stop button. Sized so it never collides with
+   the CTA on mobile (was min(64vw,64vh) — that overflowed and covered
+   the Stop button on phones). Color pulled from the deep-ink token so it
+   doesn't clash with the cream backdrop; opacity finishes at 0.85 so it
+   feels grounded, not floating. */
+.ea-countdown {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ea-s-4);
+  pointer-events: none;
+}
+/* -------- Countdown numeral (Boundless-style zoom-out + fade) --------
+ * Each tick: the number appears large and bold at the center in strong
+ * ink, then scales down and fades out toward the vanishing point over
+ * the full 1000ms tick interval. The next number then replaces it at
+ * full size again. This matches the Boundless app's countdown behavior.
+ *
+ * Timing: animation duration matches the 1s tick so the number is at
+ * its faintest / smallest right as the next number lands at full scale.
+ * transform-origin is center so the shrink reads as retreat, not drift.
+ */
+.ea-countdown__num {
+  font-family: var(--ea-font-numeric);
+  font-size: clamp(140px, 40vmin, 300px);
+  font-weight: 800;
+  color: var(--ea-ink);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  transform-origin: center center;
+  will-change: transform, opacity, filter;
+  animation: ea-count-zoom-out 1000ms var(--ea-ease-out) forwards;
+}
+@keyframes ea-count-zoom-out {
+  0% {
+    transform: scale(1.0);
+    opacity: 1.0;
+    filter: blur(0);
+  }
+  20% {
+    transform: scale(0.95);
+    opacity: 0.95;
+    filter: blur(0);
+  }
+  100% {
+    transform: scale(0.30);
+    opacity: 0.0;
+    filter: blur(2px);
+  }
+}
+
+/* -------- Session "In progress" small header (below main header) -------- */
+.ea-progress-strip {
+  position: absolute;
+  top: var(--ea-zone-header);
+  left: 0; right: 0;
+  padding: var(--ea-s-3) var(--ea-s-4);
+  text-align: center;
+  z-index: var(--ea-z-content);
+  pointer-events: none;
+  transition: opacity var(--ea-dur-med) var(--ea-ease-out);
+}
+.ea-progress-strip__label {
+  font-family: var(--ea-font-display);
+  font-weight: var(--ea-w-semi);
+  font-size: var(--ea-t-h2);
+  color: var(--ea-ink);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.ea-progress-strip__meta {
+  font-family: var(--ea-font-ui);
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink-3);
+  margin: 2px 0 0;
+}
+.ea-progress-strip--dim { opacity: 0.35; }
+
+/* -------- Session timer (large centered when idle-fade) --------
+ * Uses the numeric font (SF Pro Display on iOS) with tabular numerals
+ * to prevent the timer from shifting horizontally as digits change. */
+.ea-session-timer {
+  font-family: var(--ea-font-numeric);
+  font-weight: 700;
+  font-size: 56px;
+  color: var(--ea-ink);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------- Chips (Voice / Muse / Info) -------- */
+.ea-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ea-s-2);
+  height: 36px;
+  padding: 0 var(--ea-s-4);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--ea-line);
+  border-radius: var(--ea-r-pill);
+  font-size: var(--ea-t-small);
+  font-weight: var(--ea-w-medium);
+  color: var(--ea-ink);
+  cursor: pointer;
+  transition: background var(--ea-dur-fast) var(--ea-ease-out),
+              border-color var(--ea-dur-fast) var(--ea-ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+.ea-chip:hover { background: #fff; }
+.ea-chip[aria-pressed="true"] {
+  background: var(--ea-ink);
+  color: #fff;
+  border-color: var(--ea-ink);
+}
+
+/* Voice chip has a REC dot embedded — no floating pill.
+   Cycle 12: on the session dark stage the Voice chip is upsized to 48px
+   and re-skinned with the same translucent dark-glass finish as the
+   Emotion Map plaque so the two chips read as equal-weight siblings on
+   the top row. The cream/white variant is kept for other surfaces
+   (before-screen, gallery), but inside `.ea-chips-band` it inherits the
+   dark-stage treatment. */
+.ea-chip--voice {}
+.ea-chips-band .ea-chip--voice {
+  height: 48px;
+  padding: 0 var(--ea-s-4);
+  gap: 10px;
+  border-radius: 999px;
+  background: rgba(251, 246, 236, 0.14);
+  border: 1px solid rgba(251, 246, 236, 0.38);
+  color: var(--ea-cream);
+  font-family: var(--ea-font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+.ea-chips-band .ea-chip--voice:hover {
+  background: rgba(251, 246, 236, 0.22);
+  border-color: rgba(251, 246, 236, 0.5);
+}
+.ea-chip__dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--ea-ink-3);
+  transition: background var(--ea-dur-fast) var(--ea-ease-out);
+}
+.ea-chips-band .ea-chip--voice .ea-chip__dot {
+  background: rgba(251, 246, 236, 0.55);
+}
+.ea-chip--recording {
+  background: var(--ea-rec-dim);
+  border-color: var(--ea-rec);
+  color: var(--ea-rec);
+}
+.ea-chips-band .ea-chip--voice.ea-chip--recording {
+  background: rgba(232, 90, 60, 0.22);
+  border-color: var(--ea-rec);
+  color: var(--ea-rec);
+}
+.ea-chip--recording .ea-chip__dot {
+  background: var(--ea-rec);
+  animation: ea-pulse 1.2s var(--ea-ease-inout) infinite;
+}
+.ea-chips-band .ea-chip--voice.ea-chip--recording .ea-chip__dot {
+  background: var(--ea-rec);
+}
+@keyframes ea-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%      { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* v1.5.5 — while a voice note is being recorded, hide the session
+   End Session (Stop) button so the user cannot accidentally end the
+   whole session when they meant to stop the recording. The pulsing
+   Recording pill becomes the only primary action on screen. When
+   recording ends, the button fades back in. `visibility: hidden`
+   preserves layout so nothing shifts around the CTA slot. */
+body[data-voice-recording="1"] .ea-cta--session {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+.ea-cta--session {
+  transition: opacity 220ms ease;
+}
+
+.ea-chip__timer {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--ea-font-mono);
+  font-size: var(--ea-t-mono);
+}
+
+/* -------- Emotion label (in-session, inline in HUD) -------- */
+/* Kept in the DOM for accessibility (aria-live sync) but hidden visually.
+ * The emotion name is now shown ONLY by .ea-emotion-reveal__word below,
+ * which is centered, large, always-visible, and colorized per emotion. */
+.ea-emotion-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* -------- Emotion reveal (large ephemeral word on emotion shifts) -------- */
+/* Elastic positioning. The word sits centered horizontally at all
+   times, with vertical position dependent on whether the Emotion Map panel
+   is open. When closed, it sits at ~58% (below the timer). When open, it
+   rises to ~28% (well above the panel's top edge) so it can never overlap
+   the circumplex or the brain-wave lanes. Transition is smooth so opening
+   or closing the map feels intentional, not jarring. */
+.ea-emotion-reveal {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Default: below the timer, above the CTA. Never overlaps brainwaves
+     because the panel is closed in this state. */
+  top: 58%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 600ms var(--ea-ease-out),
+              top 400ms var(--ea-ease-out);
+  z-index: 27; /* above muse-panel (26) so the word always reads on top */
+  width: 100%;
+  max-width: 100%;
+  padding: 0 5%;
+  box-sizing: border-box;
+}
+
+/* When the Emotion Map is OPEN, lift the word above the panel's top edge.
+   The panel is anchored at bottom: ~208px on iPhone; the word must sit
+   above where the panel's title/circumplex begins. 24% keeps it well clear
+   on all three views (iPhone 844h, PC ~800h, Watch ~250h). */
+body[data-emotion-map-open="true"] .ea-emotion-reveal {
+  top: 24%;
+}
+
+/* On the tiny Watch face, the word must live in its own micro-band and
+   never overlap the (tiny) muse panel. Force it near the top and clamp
+   the font size. */
+body[data-view="watch"] .ea-emotion-reveal {
+  top: 18%;
+}
+body[data-view="watch"][data-emotion-map-open="true"] .ea-emotion-reveal {
+  top: 10%;
+}
+body[data-view="watch"] .ea-emotion-reveal__word {
+  font-size: clamp(14px, 4.2vmin, 22px) !important;
+  max-width: 92vw !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ea-emotion-reveal[aria-hidden="false"] { opacity: 1; }
+.ea-emotion-reveal__word {
+  --reveal-hue: var(--ea-cream);
+  font-family: var(--ea-font-feeling);
+  font-weight: 500;
+  font-style: italic;
+  /* Single unified size for the persistent emotion word. Scales with the
+     containing frame, not the raw viewport, so a long word like
+     "Contemplation" stays inside the iPhone bezel. */
+  font-size: clamp(32px, 7cqi, 64px);
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  /* Color is set inline by JS to the current emotion's hex.
+   * A dark text-shadow keeps the colored word legible over any fluid state. */
+  color: var(--ea-cream);
+  text-shadow:
+    0 0 18px rgba(0, 0, 0, 0.85),
+    0 0 42px rgba(0, 0, 0, 0.65),
+    0 2px 6px rgba(0, 0, 0, 0.95);
+  transform: translateY(0);
+  transition: color 400ms var(--ea-ease-out);
+  max-width: 88%;
+  text-align: center;
+  padding-bottom: 0;
+  border-bottom: none;
+  text-decoration: none;
+  will-change: color;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Enable container queries on the app frame so 7cqi resolves against the
+   iPhone/Watch/desktop frame width — not the raw window. */
+.ea-app { container-type: inline-size; }
+
+/* PC (desktop) frame is wide — give the word more presence. */
+body[data-view="desktop"] .ea-emotion-reveal__word {
+  font-size: clamp(48px, 5vw, 84px);
+}
+
+/* Summary/replay screen: the reveal sits ABOVE the emotion-map panel as a
+   museum plaque — same rhythm as the live session. On the summary panel
+   the header takes ~230px so the word lands at 32% and is centered
+   between the title area and the panel edge. z-index 27 ensures it's
+   above the summary panel's circumplex. */
+.ea-screen--summary #summary-reveal {
+  top: 30%;
+  bottom: auto;
+  z-index: 27;
+}
+.ea-screen--summary #summary-reveal-word {
+  font-size: clamp(34px, 10cqi, 56px);
+}
+body[data-view="desktop"] .ea-screen--summary #summary-reveal {
+  top: 26%;
+}
+body[data-view="desktop"] .ea-screen--summary #summary-reveal-word {
+  font-size: clamp(48px, 5.5vw, 88px);
+}
+/* Watch face is too small for a museum-plaque overlay without
+   overlapping the SESSION REPLAY title and the summary panel below.
+   The emotion word is already visible inside the summary panel content,
+   and per-crossing splats still fire on the fluid canvas, so we hide
+   the persistent overlay word on Watch replay only. */
+body[data-view="watch"] .ea-screen--summary #summary-reveal {
+  display: none;
+}
+.ea-emotion-reveal[aria-hidden="false"] .ea-emotion-reveal__word {
+  transform: translateY(0);
+}
+body[data-session-phase="waiting"] .ea-emotion-reveal__word { color: var(--ea-ink); }
+
+/* Hide the small inline label while the big reveal is showing */
+.ea-session-idle:has(~ .ea-emotion-reveal[aria-hidden="false"]) .ea-emotion-label {
+  opacity: 0;
+}
+
+/* -------- Muse data toggle + panel -------- */
+/* Pill-shaped toggle: icon + text so the user knows tapping it reveals the
+ * emotion map / muse data. Sits in the inset upper-right of the session
+ * / replay view. NOTE: we combine the class with [data-ea-tip] on the
+ * anchor rules to out-specificity the tooltip base rule ([data-ea-tip] {
+ * position: relative }) that appears later in the cascade — otherwise the
+ * icon breaks out of its absolute anchor and lands in the natural flow. */
+.ea-muse-toggle,
+.ea-muse-toggle.ea-muse-toggle[data-ea-tip] {
+  /* Cycle 14: previously absolute-positioned in the upper-right corner.
+     Now sits in-flow as a flex child of `.ea-chips-band` (session) or
+     `.ea-summary__topbar` (summary) so it never overlaps sibling chips.
+     `position:relative` keeps `[data-ea-tip]` popover anchoring correct. */
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  bottom: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ea-s-2);
+  height: 40px;
+  padding: 0 var(--ea-s-4);
+  border-radius: 999px;
+  background: rgba(251, 246, 236, 0.14);
+  border: 1px solid rgba(251, 246, 236, 0.32);
+  color: var(--ea-cream);
+  font-family: var(--ea-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  z-index: 25;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background var(--ea-dur-fast) var(--ea-ease-out),
+              border-color var(--ea-dur-fast) var(--ea-ease-out),
+              transform var(--ea-dur-fast) var(--ea-ease-out);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+/* Plaque variant: 48px round icon PLUS an inline label so users see it
+   as a real button ("Emotion Map"). When the panel is open (aria-
+   pressed=true) the label shrinks to just "Hide" so the plaque stays
+   present but out of the way. Same design in-session and in replay. */
+.ea-muse-toggle.ea-muse-toggle--plaque {
+  width: auto;
+  min-height: 48px;
+  padding: 0 14px 0 4px;
+  border-radius: 999px;
+  gap: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  background: rgba(251, 246, 236, 0.14);
+  border: 1px solid rgba(251, 246, 236, 0.38);
+}
+.ea-muse-toggle.ea-muse-toggle--plaque .ea-muse-toggle__plaque {
+  width: 40px;
+  height: 40px;
+  margin: 4px 0;
+}
+.ea-muse-toggle.ea-muse-toggle--plaque .ea-muse-toggle__label {
+  font-family: var(--ea-font-ui, inherit);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: currentColor;
+  white-space: nowrap;
+  display: inline-block;
+}
+.ea-muse-toggle.ea-muse-toggle--plaque[aria-pressed="true"] .ea-muse-toggle__label {
+  /* When panel is open the label reads "Hide" — kept short so the plaque
+     stays discreet while the emotion map dominates the screen. */
+}
+.ea-muse-toggle__plaque {
+  display: block;
+  width: 32px;
+  height: 32px;
+  color: currentColor;
+}
+.ea-muse-toggle svg { flex-shrink: 0; }
+.ea-muse-toggle:hover {
+  background: rgba(251, 246, 236, 0.24);
+  border-color: rgba(251, 246, 236, 0.5);
+  transform: translateY(-1px);
+}
+.ea-muse-toggle:active { transform: translateY(0); }
+.ea-muse-toggle[aria-pressed="true"] {
+  background: rgba(251, 246, 236, 0.32);
+  border-color: rgba(251, 246, 236, 0.6);
+}
+body[data-session-phase="waiting"] .ea-muse-toggle {
+  color: var(--ea-ink);
+  background: rgba(27, 21, 18, 0.06);
+  border-color: rgba(27, 21, 18, 0.22);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+/* Gentle pulse to draw the eye toward the toggle in the first ~14s of a session,
+ * then it settles into a static pill. Users learn it's tappable without a
+ * mandatory tooltip. */
+@keyframes ea-muse-toggle-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(251, 246, 236, 0.35); }
+  50%      { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 10px rgba(251, 246, 236, 0.0); }
+}
+[data-screen="session"] .ea-muse-toggle {
+  animation: ea-muse-toggle-pulse 2.2s var(--ea-ease-out) 2;
+}
+
+/* Live Muse panel — bottom-anchored dominant panel that mirrors the
+   summary replay panel design. The circumplex is the primary visual
+   element, brain-waves sit prominently below, and the panel spans the
+   full available width so it dominates the frame. Matches the visual
+   language of .ea-summary__panel so users see one consistent design
+   for the emotion map across live session and playback. */
+.ea-muse-panel {
+  position: absolute;
+  left: var(--ea-s-3);
+  right: var(--ea-s-3);
+  /* Anchor near the bottom of the session screen, above the CTA. */
+  bottom: calc(var(--ea-s-16) + var(--ea-safe-bottom) + var(--ea-s-3));
+  /* Cap height so it doesn't push the timer off-screen on short phones. */
+  max-height: calc(100vh - var(--ea-s-12) - var(--ea-safe-top) - var(--ea-safe-bottom) - 200px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  z-index: 26;
+  padding: var(--ea-s-4);
+  /* Translucent dark panel (matches summary panel). Backdrop-blur
+     softens the fluid behind so numbers stay legible. */
+  background: rgba(10, 8, 8, 0.72);
+  color: var(--ea-cream);
+  border: 1px solid rgba(251, 246, 236, 0.18);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity var(--ea-dur-med) var(--ea-ease-out),
+              transform var(--ea-dur-med) var(--ea-ease-out);
+  font-family: var(--ea-font-body);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(251, 246, 236, 0.2) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-s-3);
+}
+.ea-muse-panel::-webkit-scrollbar { width: 6px; }
+.ea-muse-panel::-webkit-scrollbar-thumb { background: rgba(251, 246, 236, 0.2); border-radius: 3px; }
+.ea-muse-panel::-webkit-scrollbar-track { background: transparent; }
+.ea-muse-panel[aria-hidden="false"] {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+/* Inside the live muse panel, the circumplex claims most of the space —
+   matches summary panel styling for visual consistency across live +
+   playback modes. */
+.ea-muse-panel .ea-muse-vis {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+}
+.ea-muse-panel .ea-muse-vis__svg {
+  width: 100%;
+  height: 100%;
+}
+body[data-muse-mode="off"] .ea-muse-panel .ea-muse-vis {
+  max-width: 400px;
+}
+/* Prominent brain-waves inside the live panel — no longer a tiny strip. */
+.ea-muse-panel .ea-muse-waves {
+  margin-top: var(--ea-s-2);
+  padding-top: var(--ea-s-2);
+}
+.ea-muse-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--ea-s-3);
+}
+.ea-muse-panel__eyebrow {
+  font-family: var(--ea-font-body);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.ea-muse-panel__close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 0 4px;
+}
+.ea-muse-panel__close:hover { opacity: 1; }
+/* ---- Muse mini-circumplex visualiser ---- */
+.ea-muse-vis {
+  position: relative;
+  margin: 0 auto;
+  padding: 2px 0 0;
+}
+.ea-muse-vis__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  overflow: visible;
+}
+.ea-muse-vis__caption {
+  margin-top: var(--ea-s-2);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ea-muse-vis__name {
+  font-family: var(--ea-font-display);
+  font-weight: 400;
+  font-style: italic;
+  font-size: 24px;
+  line-height: 1.1;
+  color: var(--ea-cream);
+  letter-spacing: -0.005em;
+}
+.ea-muse-vis__coord {
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* v1.5.2 — entropy readout. Matches the coord line typographically
+   (mono, small, dim) so it reads as a sibling data channel, but the
+   word itself is set in italic to signal it's a categorical label,
+   not a number. The inline "i" info glyph opens the entropy tooltip. */
+.ea-muse-vis__entropy {
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.ea-muse-vis__entropy em {
+  font-style: italic;
+  font-family: var(--ea-font-display);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--ea-cream);
+  opacity: 0.9;
+}
+.ea-info-glyph--inline {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  padding: 0;
+  font-size: 9px;
+  line-height: 14px;
+  border-radius: 999px;
+}
+
+/* When muse is off, the panel already spans full-width. Keep brainwaves
+   visible in the simulation flow — user asked to always see them. */
+/* Hide the biosignal band entirely in no-muse mode; also compact when on. */
+.ea-muse-panel .ea-muse-waves[hidden] { display: none; }
+
+/* ---- Brain waves strip (below the wheel) ---- */
+.ea-muse-waves {
+  margin-top: var(--ea-s-3);
+  padding-top: var(--ea-s-3);
+  border-top: 1px solid rgba(251, 246, 236, 0.12);
+}
+.ea-muse-waves__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.ea-muse-waves__eyebrow {
+  font-family: var(--ea-font-body);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ea-cream);
+  opacity: 0.82;
+}
+.ea-muse-waves__hint {
+  font-family: var(--ea-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  opacity: 0.5;
+}
+.ea-muse-waves__canvas {
+  display: block;
+  width: 100%;
+  /* Height is set imperatively by muse-brainwaves.js resize() based on LANE_H.
+     The initial 96px here is only visible before first paint. */
+  height: 96px;
+}
+
+/* ---- Journey progress bar under the wheel ---- */
+.ea-muse-progress {
+  margin-top: var(--ea-s-3);
+  padding-top: var(--ea-s-3);
+  border-top: 1px solid rgba(251, 246, 236, 0.12);
+  display: grid;
+  grid-template-columns: 68px 1fr 48px;
+  align-items: center;
+  gap: 10px;
+}
+.ea-muse-progress__label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+.ea-muse-progress__track {
+  position: relative;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(251, 246, 236, 0.14);
+  overflow: hidden;
+}
+.ea-muse-progress__track i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: var(--ea-cream);
+  transition: width 400ms var(--ea-ease-out);
+}
+.ea-muse-progress__value {
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  text-align: right;
+  opacity: 0.82;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------- Toast -------- */
+.ea-toast {
+  position: fixed;
+  bottom: calc(var(--ea-s-16) + var(--ea-safe-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--ea-s-3) var(--ea-s-5);
+  background: rgba(27, 21, 18, 0.92);
+  color: #fff;
+  border-radius: var(--ea-r-pill);
+  font-size: var(--ea-t-small);
+  z-index: var(--ea-z-toast);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ea-dur-med) var(--ea-ease-out);
+}
+.ea-toast--visible { opacity: 1; }
+
+/* -------- Screen-specific: "In progress" landing (post-countdown) -------- */
+/* HUD sits over the fluid cream canvas. Text is dark ink with cream halos
+   so it reads whether the splat behind is cream or a saturated emotion color. */
+.ea-session-idle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ea-s-2);
+  pointer-events: none;
+  color: var(--ea-ink-2);
+  padding: 0 var(--ea-s-6);
+  text-align: center;
+}
+.ea-session-idle__hint {
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink-3);
+  margin-top: var(--ea-s-4);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 12px rgba(251, 246, 236, 0.8);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Progress strip fill (bottom-of-screen thin bar during session)
+   ───────────────────────────────────────────────────────────────────── */
+.ea-progress-strip__fill {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--ea-accent), transparent);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.25s var(--ea-ease-out);
+}
+
+/* Multiple idle lines stacked in the session HUD (over cream canvas) */
+.ea-session-idle__line {
+  font-family: var(--ea-font-ui);
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink-3);
+  margin: 0;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 12px rgba(251, 246, 236, 0.85);
+}
+.ea-session-idle__line--big {
+  /* Boundless-style session timer: heavy geometric sans with tabular
+   * numerals. On iOS this resolves to SF Pro Display (the same face
+   * Boundless uses in their session screen). */
+  font-family: var(--ea-font-numeric);
+  font-size: clamp(56px, 10vw, 96px);
+  font-variant-numeric: tabular-nums;
+  color: var(--ea-ink);
+  margin: var(--ea-s-3) 0 var(--ea-s-2);
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  text-transform: none;
+  text-shadow: 0 2px 24px rgba(251, 246, 236, 0.85);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Header extras
+   ───────────────────────────────────────────────────────────────────── */
+.ea-header__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.15;
+}
+.ea-header__sub {
+  font-family: var(--ea-font-ui);
+  font-size: 11px;
+  color: var(--ea-ink-3);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Chip variants
+   ───────────────────────────────────────────────────────────────────── */
+.ea-chip__label {
+  font-family: var(--ea-font-ui);
+  font-weight: var(--ea-w-med);
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink);
+}
+.ea-chip--muted {
+  opacity: 0.5;
+}
+.ea-chip--muted .ea-chip__label { color: var(--ea-ink-3); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Screen variants
+   ───────────────────────────────────────────────────────────────────── */
+.ea-screen--dim {
+  background: var(--ea-surface-2, #f3ecdd);
+}
+.ea-screen--session {
+  background: var(--ea-surface, #fbf6ec);
+  color: var(--ea-ink);
+  transition: background var(--ea-dur-slow, 1.6s) var(--ea-ease-out, ease);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Session dark phase (crossfade from cream on countdown → near‑black)
+   The fluid engine fades its own paper via crossfadeSurfaceTo(); this
+   block matches the DOM chrome so HUD text stays legible over the ink.
+   ───────────────────────────────────────────────────────────────────── */
+body[data-session-phase="fading"] .ea-screen--session,
+body[data-session-phase="dark"]   .ea-screen--session {
+  background: #0d0b0a;
+}
+body[data-session-phase="dark"] .ea-session-idle {
+  color: rgba(245, 242, 234, 0.86);
+}
+body[data-session-phase="dark"] .ea-session-idle__line {
+  color: rgba(245, 242, 234, 0.62);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
+}
+body[data-session-phase="dark"] .ea-session-idle__line--big {
+  color: #ffffff;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
+}
+body[data-session-phase="dark"] .ea-session-idle__hint {
+  color: rgba(245, 242, 234, 0.5);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5);
+}
+body[data-session-phase="dark"] .ea-emotion-label {
+  color: #f5f2ea;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+}
+/* Header slips into the dark palette too */
+body[data-session-phase="dark"] .ea-header {
+  background: rgba(13, 11, 10, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom-color: rgba(245, 242, 234, 0.08);
+}
+body[data-session-phase="dark"] .ea-header__title,
+body[data-session-phase="dark"] .ea-header__meta,
+body[data-session-phase="dark"] .ea-header__sub {
+  color: rgba(245, 242, 234, 0.86);
+}
+body[data-session-phase="dark"] .ea-header__back {
+  color: rgba(245, 242, 234, 0.8);
+}
+/* Chips row: cream‑glass on dark */
+body[data-session-phase="dark"] .ea-chip {
+  background: rgba(245, 242, 234, 0.1);
+  border-color: rgba(245, 242, 234, 0.16);
+  color: rgba(245, 242, 234, 0.9);
+}
+body[data-session-phase="dark"] .ea-chip:hover {
+  background: rgba(245, 242, 234, 0.18);
+}
+body[data-session-phase="dark"] .ea-chip__label {
+  color: rgba(245, 242, 234, 0.9);
+}
+/* End Session pill: cream text on ink pill, subtle ring for contrast */
+body[data-session-phase="dark"] .ea-cta--session .ea-btn {
+  background: rgba(245, 242, 234, 0.1);
+  color: #f5f2ea;
+  border-color: rgba(245, 242, 234, 0.18);
+  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.7),
+              0 0 0 3px rgba(13, 11, 10, 0.35);
+}
+body[data-session-phase="dark"] .ea-cta--session .ea-btn:hover:not(:disabled) {
+  background: rgba(245, 242, 234, 0.18);
+}
+.ea-screen__lede {
+  font-family: var(--ea-font-display);
+  font-size: var(--ea-t-h2);
+  font-weight: var(--ea-w-med);
+  color: var(--ea-ink);
+  text-align: center;
+  margin: 0 0 var(--ea-s-6);
+  letter-spacing: -0.02em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Circumplex adornments
+   ───────────────────────────────────────────────────────────────────── */
+.ea-circumplex__ring {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--ea-line);
+  pointer-events: none;
+}
+.ea-circumplex__cross {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, transparent calc(50% - 0.5px), var(--ea-line) calc(50% - 0.5px), var(--ea-line) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom, transparent calc(50% - 0.5px), var(--ea-line) calc(50% - 0.5px), var(--ea-line) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Slider adornments
+   ───────────────────────────────────────────────────────────────────── */
+.ea-slider__labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--ea-font-ui);
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink-3);
+  margin-bottom: var(--ea-s-3);
+}
+.ea-slider__labels > span:nth-child(2) {
+  color: var(--ea-ink);
+  font-weight: var(--ea-w-semi);
+}
+.ea-slider__fill {
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%;
+  width: 50%;
+  background: var(--ea-accent);
+  border-radius: inherit;
+  transition: width var(--ea-dur-fast) var(--ea-ease-out);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Card + section-title + tiles wrapper
+   ───────────────────────────────────────────────────────────────────── */
+.ea-card {
+  background: var(--ea-surface-2);
+  border: 1px solid var(--ea-line);
+  border-radius: var(--ea-r-lg);
+  padding: var(--ea-s-4) var(--ea-s-5);
+  margin-bottom: var(--ea-s-6);
+}
+.ea-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ea-s-4);
+}
+.ea-card__title {
+  font-family: var(--ea-font-display);
+  font-size: var(--ea-t-h3);
+  font-weight: var(--ea-w-semi);
+  color: var(--ea-ink);
+  letter-spacing: -0.01em;
+}
+.ea-card__sub {
+  font-family: var(--ea-font-ui);
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink-3);
+  margin-top: 2px;
+}
+.ea-section-title {
+  font-family: var(--ea-font-display);
+  font-size: var(--ea-t-h3);
+  font-weight: var(--ea-w-med);
+  color: var(--ea-ink);
+  margin: var(--ea-s-4) 0 var(--ea-s-3);
+  letter-spacing: -0.01em;
+}
+.ea-tiles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-s-3);
+  margin-bottom: var(--ea-s-6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Visual-style carousel (Before-screen picker)
+
+   Horizontal thumb-scrollable strip with live preview canvases. See
+   src/visuals/style-carousel.js for the interaction model and RAF
+   guardrails. The tile shape mirrors .ea-tile but is denser and
+   optimised for a horizontal scroller instead of the vertical stack.
+   ───────────────────────────────────────────────────────────────────── */
+.ea-style-carousel {
+  margin-bottom: var(--ea-s-6);
+}
+/* Default — vertical 3-column CSS grid used by the v1.4.3 picker
+   popover. Column count is intentionally fixed at 3 so the layout
+   reads identically on iPhone portrait and on desktop preview mode
+   inside the modal (the panel itself caps to ~560px wide). Tiles
+   auto-size and their inner canvas fills them via aspect-ratio. */
+.ea-style-carousel--grid .ea-style-carousel__track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ea-s-3);
+  padding: 4px 2px 8px;
+}
+/* Legacy horizontal scroller — kept for any inline embed that isn't
+   the modal (none right now, but the API supports it). */
+.ea-style-carousel--row .ea-style-carousel__track {
+  display: flex;
+  gap: var(--ea-s-3);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 2px 8px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.ea-style-carousel--row .ea-style-carousel__track::-webkit-scrollbar { display: none; }
+/* Tile shape. In grid mode the tile spans its grid cell; in row mode
+   it keeps its explicit width so the horizontal scroller still snaps.
+   Vertical aspect (4:5) is enforced by .ea-style-tile__preview so the
+   name+subtitle strip always sits at the bottom of the preview. */
+.ea-style-tile {
+  position: relative;
+  width: 100%;
+  padding: 0;
+  background: var(--ea-surface-2);
+  border: 1px solid var(--ea-line);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+/* Row-mode variant — fixed width to preserve horizontal snapping. */
+.ea-style-carousel--row .ea-style-tile {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  width: 148px;
+}
+.ea-style-tile:hover {
+  border-color: var(--ea-line-strong);
+  transform: translateY(-1px);
+}
+.ea-style-tile[aria-checked="true"] {
+  border-color: var(--ea-accent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ea-accent) 30%, transparent);
+}
+/* Preview owns the whole tile; labels float over it as bright text. */
+.ea-style-tile__preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background: #000;
+  overflow: hidden;
+}
+.ea-style-tile__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  position: relative;
+  z-index: 1;
+}
+/* Poster — static image shown under the live-preview canvas. When the
+   tile is running a live preview, the canvas paints on top of the
+   poster (canvas has an opaque backing colour, so the poster only
+   shows through if the canvas hasn’t drawn yet or was destroyed). */
+.ea-style-tile__poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  z-index: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* Meta sits absolutely over the bottom of the preview. A very soft
+   linear-gradient shadow gives the text just enough contrast to read
+   against any preview colour, without the hard rectangular chip look
+   of a solid background. */
+.ea-style-tile__meta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 18px 12px 10px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.35) 0%,
+    rgba(0, 0, 0, 0.18) 55%,
+    rgba(0, 0, 0, 0.00) 100%
+  );
+  pointer-events: none;
+}
+.ea-style-tile__name {
+  font-family: var(--ea-font-ui);
+  font-size: var(--ea-t-body);
+  font-weight: var(--ea-w-med);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.01em;
+}
+.ea-style-tile__sub {
+  font-family: var(--ea-font-ui);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.30);
+  line-height: 1.3;
+}
+/* “New” badge — top-right, small warm pill. Sits above the info chip
+   in the DOM order so it doesn't intercept its click. The info chip
+   stays anchored top-right; the badge lives on the LEFT of the tile
+   header so both fit without overlapping.
+
+   In grid mode the tile is compact (≤120px wide) and the badge would
+   crowd the info chip, so we keep it small (10px type, tight padding)
+   and put it top-left. */
+.ea-style-tile__badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  font-family: var(--ea-font-ui);
+  font-size: 10px;
+  font-weight: var(--ea-w-med);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: color-mix(in oklab, var(--ea-accent) 82%, black 18%);
+  padding: 3px 7px;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+@media (max-width: 380px) {
+  /* On very narrow iPhone frames the 3-column grid gets tight; shrink
+     the badge a hair so it doesn't clip the tile's rounded corner. */
+  .ea-style-tile__badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    top: 6px;
+    left: 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ea-style-tile { transition: none; }
+  .ea-style-tile:hover { transform: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Countdown adornments
+   ───────────────────────────────────────────────────────────────────── */
+.ea-countdown__eyebrow {
+  font-family: var(--ea-font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-ink-3);
+}
+.ea-countdown__meta {
+  font-family: var(--ea-font-ui);
+  font-size: var(--ea-t-body);
+  color: var(--ea-ink-2);
+  margin-top: var(--ea-s-2);
+}
+.ea-countdown__hint {
+  font-family: var(--ea-font-ui);
+  font-size: var(--ea-t-small);
+  color: var(--ea-ink-3);
+  margin-top: var(--ea-s-3);
+  max-width: 32ch;
+  text-align: center;
+}
+
+/* Slider block: labels row above the track — clean two-row stack.
+   Constrained to the circumplex width so it reads as one form. */
+.ea-slider-block {
+  max-width: 380px;
+  margin: var(--ea-s-2) auto var(--ea-s-6);
+}
+.ea-slider-block .ea-slider__labels {
+  margin-bottom: var(--ea-s-2);
+  padding: 0 var(--ea-s-2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   AFTER screen — Timeline (top) + Gallery (bottom)
+   ─────────────────────────────────────────────────────────────────
+   The After screen is the post-session hub. It is a scrollable
+   column laid on the cream paper: header meta at the top, then the
+   timeline strip, then the vertigo gallery of past-session cards.
+   ═══════════════════════════════════════════════════════════════ */
+.ea-screen--after {
+  background: var(--ea-paper, #FBF6EC);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  /* Cycle 11 (Eyal Gever, 2026-07-13): the bottom padding reserves
+     space for BOTH the fixed copyright mark (~28px tall) AND the fixed
+     view switcher (~38px tall). Previously the reserve was just
+     safe-bottom + s-8 (~32px) and a scrolled 5th gallery card slid
+     visually behind the copyright mark. Now we reserve s-14 (~56px)
+     which clears both fixed elements with a comfortable gap. */
+  padding: 0 var(--ea-s-4) calc(var(--ea-safe-bottom) + var(--ea-s-20));
+}
+.ea-after {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-s-6);
+  padding-top: var(--ea-s-4);
+  max-width: 720px;
+  margin: 0 auto;
+}
+.ea-after__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--ea-s-4) var(--ea-s-2) 0;
+}
+.ea-after__eyebrow {
+  font-family: var(--ea-font-body);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ea-ink);
+  opacity: 0.55;
+}
+.ea-after__title {
+  font-family: var(--ea-font-display);
+  font-weight: 400;
+  font-style: italic;
+  font-size: 34px;
+  line-height: 1.05;
+  color: var(--ea-ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.ea-after__meta {
+  font-family: var(--ea-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--ea-ink);
+  opacity: 0.65;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  /* v1.5.1 — stack the two meta lines + narrative caption vertically. */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* v1.5.1 — two-line meta anatomy. Each line reads as one soft
+   monospace strip; the info glyph tucks in at the end of line 2. */
+.ea-session-meta__line {
+  display: inline;
+}
+.ea-session-meta__info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* v1.5.5 — size the vocab info glyph to match .ea-info-glyph so it
+     reads as clearly related to the header help chip (36px) instead
+     of feeling like a decorative afterthought. 22px matches the
+     shared base inline glyph used elsewhere in the app. */
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  margin-left: 8px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.04);
+  font-family: var(--ea-font-serif, "Fraunces", Georgia, serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--ea-ink);
+  opacity: 0.7;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.ea-session-meta__info:hover,
+.ea-session-meta__info:focus-visible {
+  opacity: 1;
+  border-color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.08);
+  outline: none;
+}
+.ea-session-meta__info:active {
+  transform: scale(0.94);
+}
+
+/* v1.5.1 — the narrative caption. Muted italic body serif, reads as
+   session credits sitting quietly under the meta lines. */
+.ea-session-narrative {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--ea-font-display, Georgia, serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 14.5px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: var(--ea-ink);
+  opacity: 0.72;
+  max-width: 62ch;
+}
+
+/* v1.5.1 — the whole "Session Complete / <emotion> / meta / narrative"
+   header only makes sense on Timeline (the freshly-finished session).
+   On Gallery each card carries its own title, so hide the block. */
+.ea-screen--after[data-view="gallery"] .ea-after__header {
+  display: none;
+}
+
+/* ─── After: Timeline ↔ Gallery pill toggle ─────────────── */
+.ea-after__viewtoggle {
+  display: inline-flex;
+  align-self: center;
+  align-items: stretch;
+  gap: 0;
+  padding: 3px;
+  background: rgba(27, 21, 18, 0.05);
+  border: 1px solid rgba(27, 21, 18, 0.10);
+  border-radius: 999px;
+  margin: 0 auto var(--ea-s-2);
+}
+.ea-after__viewtoggle-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--ea-font-body);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-ink);
+  opacity: 0.6;
+  padding: 8px 18px;
+  border-radius: 999px;
+  transition: background 200ms ease, opacity 200ms ease, color 200ms ease;
+  min-width: 96px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.ea-after__viewtoggle-btn:hover { opacity: 0.85; }
+.ea-after__viewtoggle-btn[aria-selected="true"] {
+  background: rgba(27, 21, 18, 0.92);
+  color: var(--ea-cream, #F6F0E4);
+  opacity: 1;
+}
+.ea-after__viewtoggle-btn:focus-visible {
+  outline: 2px solid rgba(212, 132, 62, 0.7);
+  outline-offset: 2px;
+}
+body[data-view="watch"] .ea-after__viewtoggle-btn {
+  font-size: 10px;
+  padding: 6px 12px;
+  min-width: 74px;
+  letter-spacing: 0.10em;
+}
+
+/* ─── Timeline ─────────────────────────────────────────────── */
+.ea-timeline[hidden]{display:none !important}
+.ea-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-s-2);
+  padding: var(--ea-s-3);
+  background: rgba(27, 21, 18, 0.03);
+  border: 1px solid rgba(27, 21, 18, 0.08);
+  border-radius: 14px;
+}
+.ea-timeline__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--ea-s-1);
+}
+.ea-timeline__eyebrow {
+  font-family: var(--ea-font-body);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ea-ink);
+  opacity: 0.55;
+}
+.ea-timeline__zoom {
+  display: inline-flex;
+  gap: 6px;
+}
+.ea-timeline__zoombtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(27, 21, 18, 0.14);
+  background: rgba(27, 21, 18, 0.04);
+  color: var(--ea-ink);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.ea-timeline__zoombtn:hover { background: rgba(27, 21, 18, 0.08); transform: scale(1.04); }
+.ea-timeline__zoombtn:active { transform: scale(0.94); }
+
+.ea-timeline__viewport {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 108px;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(27, 21, 18, 0.02), rgba(27, 21, 18, 0.05));
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(27, 21, 18, 0.2) transparent;
+}
+.ea-timeline__viewport::-webkit-scrollbar { height: 6px; }
+.ea-timeline__viewport::-webkit-scrollbar-thumb { background: rgba(27, 21, 18, 0.18); border-radius: 3px; }
+.ea-timeline__strip {
+  position: relative;
+  height: 72px;
+  min-width: 100%;
+  padding: 0 var(--ea-s-4);
+}
+.ea-timeline__axis {
+  position: relative;
+  height: 24px;
+  min-width: 100%;
+  border-top: 1px dashed rgba(27, 21, 18, 0.16);
+  padding: 4px var(--ea-s-4);
+  font-family: var(--ea-font-mono);
+  font-size: 10px;
+  color: var(--ea-ink);
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+.ea-timeline__tick {
+  position: absolute;
+  transform: translateX(-50%);
+  padding-top: 2px;
+}
+/* A single session dot on the timeline. Position + hue are set inline. */
+.ea-timeline__dot {
+  position: absolute;
+  bottom: 8px;
+  transform: translate(-50%, 0);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(251, 246, 236, 0.9);
+  box-shadow:
+    0 0 0 2px rgba(27, 21, 18, 0.06),
+    0 6px 18px rgba(27, 21, 18, 0.14);
+  cursor: pointer;
+  transition: transform 0.16s var(--ea-ease-out), box-shadow 0.16s ease;
+  background: #888;
+}
+.ea-timeline__dot:hover,
+.ea-timeline__dot:focus-visible {
+  transform: translate(-50%, -3px) scale(1.15);
+  box-shadow:
+    0 0 0 3px rgba(27, 21, 18, 0.1),
+    0 12px 28px rgba(27, 21, 18, 0.22);
+  outline: none;
+}
+.ea-timeline__dot::after {
+  /* Emotion name tooltip that appears on hover */
+  content: attr(data-name);
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--ea-font-display);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ea-ink);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+.ea-timeline__dot:hover::after,
+.ea-timeline__dot:focus-visible::after {
+  opacity: 1;
+}
+/* v2.2 horizontal ribbon timeline — one colored line per session */
+.ea-timeline__hint {
+  font-family: var(--ea-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--ea-ink);
+  opacity: 0.55;
+}
+.ea-timeline__presets {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(27, 21, 18, 0.05);
+  border: 1px solid rgba(27, 21, 18, 0.08);
+}
+.ea-timeline__presets button {
+  font-family: var(--ea-font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--ea-ink);
+  opacity: 0.7;
+  cursor: pointer;
+  transition: background 0.14s ease, opacity 0.14s ease;
+}
+.ea-timeline__presets button:hover { opacity: 1; }
+.ea-timeline__presets button.active {
+  background: var(--ea-ink);
+  color: var(--ea-cream);
+  opacity: 1;
+}
+.ea-timeline__zbtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(27, 21, 18, 0.14);
+  background: rgba(27, 21, 18, 0.03);
+  color: var(--ea-ink);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.ea-timeline__zbtn:hover { background: rgba(27, 21, 18, 0.08); }
+.ea-timeline__zbtn:active { transform: scale(0.94); }
+
+.tl-scroll {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 148px;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg,
+      rgba(27, 21, 18, 0.02),
+      rgba(27, 21, 18, 0.06));
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(27, 21, 18, 0.2) transparent;
+  cursor: default;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+.tl-scroll::-webkit-scrollbar { height: 6px; }
+.tl-scroll::-webkit-scrollbar-thumb { background: rgba(27, 21, 18, 0.18); border-radius: 3px; }
+.tl-scroll::-webkit-scrollbar-track { background: transparent; }
+.tl-scroll--zoomed { cursor: grab; }
+.tl-scroll--dragging { cursor: grabbing; }
+.tl-inner {
+  position: relative;
+  min-width: 100%;
+  height: 100%;
+  padding: 0;
+}
+.tl-ribbon {
+  position: relative;
+  height: 112px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 12px var(--ea-s-3);
+  box-sizing: border-box;
+}
+.tl-line {
+  --tl-color: #888;
+  --tl-h: 60%;
+  flex: 0 0 auto;
+  height: var(--tl-h);
+  min-width: 3px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--tl-color) 85%, white 15%) 0%,
+    var(--tl-color) 55%,
+    color-mix(in oklab, var(--tl-color) 78%, black 22%) 100%
+  );
+  box-shadow: 0 0 0 0 rgba(0,0,0,0);
+  transition:
+    transform 0.14s var(--ea-ease-out),
+    box-shadow 0.14s ease,
+    filter 0.14s ease;
+}
+@supports not (background: color-mix(in oklab, red, blue)) {
+  .tl-line { background: var(--tl-color); }
+}
+.tl-line:hover,
+.tl-line:focus-visible {
+  transform: scaleY(1.06) translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(251, 246, 236, 0.85),
+    0 6px 18px rgba(20, 12, 0, 0.22);
+  filter: brightness(1.08);
+  outline: none;
+  z-index: 2;
+}
+.tl-axis {
+  position: relative;
+  height: 22px;
+  min-width: 100%;
+  border-top: 1px dashed rgba(27, 21, 18, 0.16);
+  font-family: var(--ea-font-mono);
+  font-size: 10px;
+  color: var(--ea-ink);
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+.tl-axis__tick {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 0 2px;
+}
+.tl-axis__tick[data-edge="start"] { transform: none; left: 0 !important; }
+.tl-axis__tick[data-edge="end"]   { transform: translateX(-100%); left: 100% !important; }
+.ea-timeline__hover {
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ea-ink);
+  opacity: 0.7;
+  margin: 0;
+  padding: 4px var(--ea-s-2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 18px;
+}
+.tl-hover__sep { opacity: 0.35; }
+.tl-hover__mood {
+  font-family: var(--ea-font-display);
+  font-style: italic;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+body[data-view="watch"] .tl-scroll { height: 96px; }
+body[data-view="watch"] .tl-ribbon { height: 78px; padding: 8px var(--ea-s-2); }
+body[data-view="watch"] .ea-timeline__zoom { gap: 4px; }
+body[data-view="watch"] .ea-timeline__presets button { padding: 3px 7px; font-size: 9.5px; }
+body[data-view="watch"] .ea-timeline__hover { font-size: 9.5px; }
+
+.ea-timeline__empty {
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  color: var(--ea-ink);
+  opacity: 0.55;
+  text-align: center;
+  padding: var(--ea-s-4);
+  margin: 0;
+}
+
+/* ─── Gallery (vertigo-scrolling deck) ────────────────────── */
+.ea-gallery[hidden]{display:none !important}
+.ea-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-s-3);
+}
+.ea-gallery__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 var(--ea-s-2);
+}
+.ea-gallery__eyebrow {
+  font-family: var(--ea-font-body);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ea-ink);
+  opacity: 0.55;
+}
+.ea-gallery__hint {
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  color: var(--ea-ink);
+  opacity: 0.5;
+}
+/* ──────────────────────────────────────────────────────────────
+   Session Gallery — grid of portrait cards. Each card is one
+   completed session: a colored valence/arousal trail on a dark
+   circumplex disc, dominant emotion label, and a compact meta
+   line. The (i) chip in the top-right opens a details popover.
+   — Eyal Gever 2026-07 (v1.4.0)
+   ────────────────────────────────────────────────────────────── */
+.ea-gallery__reel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-content: start;
+  padding: 4px var(--ea-s-2) var(--ea-s-6);
+}
+.ea-gallery__empty {
+  font-family: var(--ea-font-body);
+  font-size: 13px;
+  color: var(--ea-ink);
+  opacity: 0.55;
+  text-align: center;
+  padding: var(--ea-s-6) var(--ea-s-4);
+  margin: 0;
+}
+.ea-gallery__card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0e0b0a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  transition: transform 240ms var(--ea-ease-out),
+              box-shadow 240ms var(--ea-ease-out),
+              border-color 240ms var(--ea-ease-out);
+}
+.ea-gallery__card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.36);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.ea-gallery__card-open {
+  display: block;
+  width: 100%;
+  padding: 12px 12px 14px;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+  font: inherit;
+}
+.ea-gallery__card-date {
+  display: block;
+  font-family: var(--ea-font-body);
+  font-size: 10px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.ea-gallery__card-canvas-wrap {
+  display: block;
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  border-radius: 12px;
+  background: radial-gradient(120% 90% at 50% 40%,
+                              rgba(255, 255, 255, 0.04) 0%,
+                              rgba(255, 255, 255, 0.00) 60%),
+              #0a0808;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.ea-gallery__card-replay,
+.ea-gallery__card-overlay,
+.ea-gallery__card-canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ea-gallery__card-replay {
+  z-index: 1;
+}
+.ea-gallery__card-overlay {
+  z-index: 2;
+  pointer-events: none;
+}
+/* When a card is in the round-robin spotlight, its outline breathes a
+   little so the viewer's eye can find which card is currently "live".
+   Kept extremely quiet so the effect is felt more than seen. */
+.ea-gallery__card[data-spotlight="true"] .ea-gallery__card-canvas-wrap {
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+}
+.ea-gallery__card-name {
+  display: block;
+  font-family: var(--ea-font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1.05;
+  margin: 0 0 4px;
+  color: #f4b23a;
+}
+.ea-gallery__card-duration {
+  display: block;
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.52);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* (i) chip in the top-right corner. Uses the same visual language as
+   the existing .ea-help-chip so it feels part of the tooltip system. */
+.ea-gallery__card-info {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.75);
+  font-family: var(--ea-font-display);
+  font-style: italic;
+  font-size: 13px;
+  line-height: 24px;
+  text-align: center;
+  cursor: pointer;
+  z-index: 2;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.ea-gallery__card-info:hover,
+.ea-gallery__card-info:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+  outline: none;
+}
+
+/* Speaker chip — top-LEFT, mirror position of the (i) chip. Visible
+   only when the session has a voice note; when playing, the chip
+   picks up a subtle warm pulse so you know audio is live. */
+.ea-gallery__card-voice {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.75);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 3;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.ea-gallery__card-voice:hover,
+.ea-gallery__card-voice:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+  outline: none;
+}
+.ea-gallery__card-voice[data-playing="true"] {
+  color: #f4b23a;
+  border-color: rgba(244, 178, 58, 0.65);
+  background: rgba(244, 178, 58, 0.14);
+  animation: ea-voice-pulse 1400ms ease-in-out infinite;
+}
+.ea-gallery__card-voice--muted {
+  opacity: 0.42;
+  cursor: default;
+}
+@keyframes ea-voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 178, 58, 0.25); }
+  50%      { box-shadow: 0 0 0 6px rgba(244, 178, 58, 0.00); }
+}
+
+/* Voice-note row inside the (i) popover. Inline Play/Stop control
+   sitting beside the row label, matching the popover's rhythm. */
+.ea-gallery-info-panel__row--voice { align-items: center; }
+.ea-gallery-info__voice { display: flex; }
+.ea-gallery-info__voice-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ea-font-body);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.ea-gallery-info__voice-btn:hover,
+.ea-gallery-info__voice-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.30);
+  outline: none;
+}
+.ea-gallery-info__voice-btn[data-playing="true"] {
+  color: #f4b23a;
+  border-color: rgba(244, 178, 58, 0.55);
+  background: rgba(244, 178, 58, 0.12);
+}
+.ea-gallery-info__voice-btn--muted {
+  opacity: 0.55;
+  cursor: default;
+}
+.ea-gallery-info__voice-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ea-gallery-info__voice-time {
+  font-family: var(--ea-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.02em;
+}
+
+/* Watch view: single column, smaller cards */
+body[data-view="watch"] .ea-gallery__reel {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+body[data-view="watch"] .ea-gallery__card-name { font-size: 18px; }
+
+/* PC view: 3 columns, wider gutter */
+body[data-view="pc"] .ea-gallery__reel {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+@media (min-width: 900px) {
+  body[data-view="pc"] .ea-gallery__reel {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Session details popover — opens from a card's (i) chip. Mirrors
+   the visual language of the Style Picker popover.
+   ────────────────────────────────────────────────────────────── */
+.ea-gallery-info-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 9500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+.ea-gallery-info-backdrop[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.ea-gallery-info-panel {
+  position: relative;
+  width: min(420px, 100%);
+  background: #14100e;
+  color: var(--ea-cream, #f4ede4);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 28px 24px 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  transform: translateY(6px);
+  opacity: 0;
+  transition: transform 220ms var(--ea-ease-out),
+              opacity 220ms var(--ea-ease-out);
+}
+.ea-gallery-info-backdrop[data-open="true"] .ea-gallery-info-panel {
+  transform: translateY(0);
+  opacity: 1;
+}
+.ea-gallery-info-panel__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 18px;
+  line-height: 28px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+.ea-gallery-info-panel__close:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: #fff;
+}
+.ea-gallery-info-panel__title {
+  margin: 0 0 18px;
+  font-family: var(--ea-font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 22px;
+  color: #f4ede4;
+}
+.ea-gallery-info-panel__list {
+  margin: 0 0 20px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.ea-gallery-info-panel__row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: baseline;
+  gap: 12px;
+}
+.ea-gallery-info-panel__row dt {
+  font-family: var(--ea-font-body);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+.ea-gallery-info-panel__row dd {
+  margin: 0;
+  font-family: var(--ea-font-body);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.92);
+  font-variant-numeric: tabular-nums;
+}
+.ea-gallery-info-panel__row--chips {
+  align-items: start;
+}
+.ea-gallery-info__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+.ea-gallery-info__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--ea-font-body);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.02em;
+}
+.ea-gallery-info__chip--muted {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+.ea-gallery-info__dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+}
+.ea-gallery-info-panel__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 4px;
+}
+.ea-gallery-info-panel__actions .ea-btn {
+  min-width: 130px;
+}
+.ea-gallery-info__delete--armed {
+  background: rgba(168, 46, 40, 0.22) !important;
+  border-color: rgba(168, 46, 40, 0.55) !important;
+  color: #ffb7b0 !important;
+}
+.ea-after__cta {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--ea-s-4);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SUMMARY screen — Clip playback
+   ─────────────────────────────────────────────────────────────────
+   Full-bleed dark stage with the fluid replay behind, and a
+   scrollable panel of controls anchored to the bottom.
+   ═══════════════════════════════════════════════════════════════ */
+.ea-screen--summary {
+  background: #0d0b0a;
+  color: var(--ea-cream);
+  position: relative;
+  overflow: hidden;
+}
+.ea-screen--summary .ea-fluid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+.ea-screen--summary .ea-emotion-reveal {
+  z-index: 5;
+}
+.ea-summary {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--ea-safe-top) + var(--ea-s-8)) var(--ea-s-4) calc(var(--ea-safe-bottom) + var(--ea-s-4));
+  pointer-events: none;
+}
+/* Cycle 14: the summary top bar (`.ea-summary__topbar`) is a flex row
+   that owns the "i" chip and the Emotion Map plaque above the summary head.
+   Since the head sits BELOW that bar (not underneath it), we no longer
+   need the 62px left padding that pushed the eyebrow clear of the chip. */
+.ea-summary__topbar {
+  position: absolute;
+  top: calc(var(--ea-safe-top) + 14px);
+  left: 14px;
+  right: 14px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 40;
+  pointer-events: none;
+}
+.ea-summary__topbar > * {
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+
+.ea-summary__head {
+  pointer-events: auto;
+  color: var(--ea-cream);
+  /* Cycle 14: 62px left padding removed — the "i" chip no longer sits over
+     the eyebrow; it lives in `.ea-summary__topbar` above the head block. */
+  padding: 0 var(--ea-s-1);
+  /* Cycle 14: push head below the 48px top bar (14px inset + 48px bar
+     + 12px breathing gap) so the eyebrow doesn't sit under the chips. */
+  margin-top: calc(48px + var(--ea-s-3));
+  text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+.ea-summary__eyebrow {
+  font-family: var(--ea-font-body);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.ea-summary__title {
+  font-family: var(--ea-font-display);
+  font-style: italic;
+  /* Cycle 14: title can now breathe again — the Emotion Map plaque moved
+     up into `.ea-summary__topbar` above the head, so the title no longer
+     shares a horizontal row with the plaque. Restored to 26px with a
+     generous width cap and ellipsis safety net for extreme labels. */
+  font-size: 26px;
+  line-height: 1.1;
+  margin: 4px 0 2px;
+  letter-spacing: -0.01em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ea-summary__meta {
+  font-family: var(--ea-font-mono);
+  font-size: 12px;
+  opacity: 0.85;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  /* v1.5.1 — stack the two meta lines + narrative caption vertically. */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* v1.5.1 — Session Replay uses a light ink on the narrative caption
+   because the header sits over the running fluid style. The default
+   `.ea-session-narrative` rule is dark (—ea-ink) for the cream
+   Session Complete background; this override lifts it to cream and
+   adds a soft text-shadow scrim so it survives on any style. */
+.ea-summary__meta .ea-session-narrative {
+  color: var(--ea-cream);
+  opacity: 0.95;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55), 0 0 22px rgba(0, 0, 0, 0.35);
+}
+.ea-summary__meta .ea-session-meta__line {
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+/* Lift the "i" glyph too so it reads on the dark fluid. Uses the
+   same 22px footprint as the base rule and the shared
+   .ea-info-glyph so the vocab affordance is visually aligned with
+   the header help chip and the emotion-map info glyph. */
+.ea-summary__meta .ea-session-meta__info {
+  border-color: rgba(251, 246, 236, 0.32);
+  background: rgba(251, 246, 236, 0.08);
+  color: var(--ea-cream);
+  opacity: 0.86;
+}
+.ea-summary__meta .ea-session-meta__info:hover,
+.ea-summary__meta .ea-session-meta__info:focus-visible {
+  border-color: rgba(251, 246, 236, 0.6);
+  background: rgba(251, 246, 236, 0.14);
+  opacity: 1;
+}
+.ea-summary__panel {
+  margin-top: auto;
+  pointer-events: auto;
+  background: rgba(10, 8, 8, 0.72);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  border: 1px solid rgba(251, 246, 236, 0.18);
+  border-radius: 16px;
+  padding: var(--ea-s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-s-3);
+  position: relative;
+  /* Cap the panel to 82% of viewport height so the voice-note list, share
+     row, and Timeline/Home actions remain reachable on small phones. When
+     content exceeds the cap, scroll internally instead of pushing content
+     off-screen. */
+  max-height: 82vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  transition: opacity var(--ea-dur-med) var(--ea-ease-out),
+              transform var(--ea-dur-med) var(--ea-ease-out);
+}
+/* Slim, subtle scrollbar so it doesn't fight the design. */
+.ea-summary__panel::-webkit-scrollbar {
+  width: 6px;
+}
+.ea-summary__panel::-webkit-scrollbar-thumb {
+  background: rgba(251, 246, 236, 0.18);
+  border-radius: 3px;
+}
+.ea-summary__panel::-webkit-scrollbar-track { background: transparent; }
+.ea-summary__panel[aria-hidden="true"] {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  /* Fully collapse so it doesn't reserve space or block clicks. */
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin: 0;
+  border-width: 0;
+  overflow: hidden;
+}
+.ea-summary__close {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  z-index: 3;
+}
+/* Scoped variant of the muse toggle for the Summary screen — same look,
+   but positioned relative to the summary screen and always visible. The
+   selector is doubled with [data-ea-tip] so we outspecify the tooltip
+   base rule (see note on .ea-muse-toggle above). */
+/* Cycle 14: summary plaque is now a flex child of `.ea-summary__topbar`.
+   No absolute positioning needed — the parent bar handles placement. */
+.ea-muse-toggle--summary,
+.ea-muse-toggle.ea-muse-toggle--summary[data-ea-tip] {
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  bottom: auto;
+  z-index: 1;
+}
+
+/* Persistent Replay-nav cluster on the right, positioned directly below
+   the plaque icon so it never overlaps the Session Replay title on the
+   left. Three 40px round buttons stacked vertically with an 8px gap.
+   Stays above the fluid canvas and the collapsed panel, always visible
+   during playback so the user has an exit route (Timeline / Gallery /
+   New session). */
+.ea-replay-nav {
+  position: absolute;
+  /* Header (56px) + plaque (48px) + 12px gap + 14px inset. */
+  top: calc(var(--ea-safe-top) + var(--ea-zone-header) + 74px);
+  right: 14px;
+  left: auto;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 40;
+  pointer-events: auto;
+}
+.ea-replay-nav__btn {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(251, 246, 236, 0.10);
+  border: 1px solid rgba(251, 246, 236, 0.34);
+  color: var(--ea-cream, #fbf6ec);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.ea-replay-nav__btn:hover,
+.ea-replay-nav__btn:focus-visible {
+  background: rgba(251, 246, 236, 0.22);
+  border-color: rgba(251, 246, 236, 0.5);
+  transform: translateY(-1px);
+  outline: none;
+}
+.ea-replay-nav__btn:active { transform: translateY(0) scale(0.96); }
+.ea-replay-nav__btn svg { display: block; }
+/* Hide the pulsing ::after tooltip dot on these chips — they already
+   read as tappable and the dot would visually clutter. */
+.ea-replay-nav__btn[data-ea-tip]::after { display: none; }
+/* Only render this nav on the Summary screen. */
+.ea-screen:not([data-screen="summary"]) .ea-replay-nav { display: none; }
+
+/* Share row inside the replay panel. Five circular monochrome glyph
+   buttons in a centered row, above the primary actions. The row has a
+   small label with an info-glyph for context. Sits below the voice-note
+   list and above Timeline/Gallery + Home. */
+.ea-summary__share {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: var(--ea-s-3, 12px) 0 var(--ea-s-2, 8px);
+  padding-top: var(--ea-s-2, 8px);
+  border-top: 1px solid rgba(251, 246, 236, 0.10);
+}
+.ea-summary__share-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--ea-font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(251, 246, 236, 0.62);
+}
+.ea-summary__share-label .ea-info-glyph {
+  margin-left: 4px;
+}
+.ea-summary__share-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.ea-share-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(251, 246, 236, 0.08);
+  border: 1px solid rgba(251, 246, 236, 0.28);
+  color: var(--ea-cream, #fbf6ec);
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.ea-share-btn:hover,
+.ea-share-btn:focus-visible {
+  background: rgba(251, 246, 236, 0.18);
+  border-color: rgba(251, 246, 236, 0.44);
+  transform: translateY(-1px);
+  outline: none;
+}
+.ea-share-btn:active { transform: translateY(0) scale(0.94); }
+.ea-share-btn.is-copied {
+  background: rgba(180, 220, 190, 0.24);
+  border-color: rgba(180, 220, 190, 0.7);
+}
+.ea-share-btn svg { display: block; }
+/* Circumplex claims the majority of the summary panel. When the user picked
+   Muse-off, the EEG lane band is hidden entirely (see [data-muse-mode='off'])
+   and the wheel can grow a little further — the extra 60px opens up room for
+   the peripheral emotion labels and the YOU caption to breathe. */
+.ea-summary__circumplex {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+}
+.ea-summary__circumplex .ea-muse-vis__svg {
+  width: 100%;
+  height: 100%;
+}
+[data-screen="summary"][data-muse-mode="off"] .ea-summary__circumplex {
+  max-width: 400px;
+}
+/* Brain-waves band — compact so the circumplex stays the star.
+   Old layout let waves take 140px next to a 260px circumplex, which flipped
+   the visual hierarchy. Now waves is capped at 88px and the eyebrow is smaller. */
+.ea-summary__waves {
+  border-top: 1px solid rgba(251, 246, 236, 0.12);
+  padding-top: var(--ea-s-2);
+  margin-top: var(--ea-s-1);
+}
+.ea-summary__waves[hidden] {
+  display: none;
+}
+/* The canvas height is authoritatively set by muse-brainwaves.js resize()
+   (LANE_H * 5 + PADDING*2 = ~122px on the current 22px lane setting). Do NOT
+   set an explicit height here — that would fight the JS. Keep the container
+   compact via margins instead. */
+.ea-summary__waves .ea-muse-waves__eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+}
+.ea-summary__scrub {
+  display: grid;
+  grid-template-columns: 36px 1fr 56px;
+  align-items: center;
+  gap: 10px;
+  padding-top: var(--ea-s-2);
+  border-top: 1px solid rgba(251, 246, 236, 0.12);
+  margin-top: var(--ea-s-2);
+}
+.ea-summary__play {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(251, 246, 236, 0.3);
+  background: rgba(251, 246, 236, 0.06);
+  color: var(--ea-cream);
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.ea-summary__play:hover { background: rgba(251, 246, 236, 0.14); transform: scale(1.05); }
+.ea-summary__track {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(251, 246, 236, 0.14);
+  overflow: visible;
+  cursor: pointer;
+}
+.ea-summary__track-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  background: var(--ea-cream);
+  border-radius: 2px;
+  transition: width 0.05s linear;
+}
+.ea-summary__timeleft {
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  color: var(--ea-cream);
+  opacity: 0.75;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* Voice-note markers overlaid on the scrub track (small dots). */
+.ea-summary__notes {
+  position: absolute;
+  inset: -6px 0;
+  pointer-events: none;
+}
+.ea-summary__notes .ea-summary__note-dot {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: rgba(251, 246, 236, 0.65);
+  box-shadow: 0 0 6px rgba(251, 246, 236, 0.45);
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────────────────
+ * Voice-note list — the user's recorded reflections.
+ *
+ * Sits BELOW the scrub bar. Historically these pills were nearly
+ * invisible (10.5 px on a 10 %-opacity cream background); rebuilt
+ * as clearly labelled cards so users don't miss their own audio.
+ * A dedicated section header ("Voice notes") appears before the
+ * list when at least one note exists.
+ * ───────────────────────────────────────────────────────── */
+.ea-summary__voicelist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin-top: 4px;
+  /* IMPORTANT: the summary panel is a flex-column with limited height. Without
+     `flex-shrink: 0` this card collapses to a 26px sliver and the pill inside
+     overflows visually on top of the brainwaves band below. Locking the size
+     ensures heading + pill stack cleanly above brainwaves. */
+  flex: 0 0 auto;
+  min-height: 0;
+  background: rgba(251, 246, 236, 0.05);
+  border: 1px solid rgba(251, 246, 236, 0.14);
+  border-radius: 14px;
+}
+.ea-summary__voicelist:empty { display: none; }
+
+/* Header injected before the first pill (see summary-playback.js). */
+.ea-summary__voicelist-heading {
+  font-family: var(--ea-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(251, 246, 236, 0.72);
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ea-summary__voicelist-heading::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+  flex: 0 0 auto;
+}
+.ea-summary__voicelist-empty {
+  font-family: var(--ea-font-body, inherit);
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(251, 246, 236, 0.5);
+  padding: 2px 0;
+}
+
+.ea-summary__voice-pill {
+  /* Was inline-flex — that made the pill shrink to content and, combined
+     with the collapsed voicelist container, produced visual overlap with the
+     brainwaves band. Full-width flex keeps the pill anchored inside its card. */
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  min-height: 40px;
+  background: rgba(251, 246, 236, 0.14);
+  border: 1px solid rgba(251, 246, 236, 0.28);
+  border-radius: 12px;
+  font-family: var(--ea-font-sans, inherit);
+  font-size: 13px;
+  color: var(--ea-fg-1, #fbf6ec);
+  cursor: pointer;
+  text-align: left;
+  flex: 0 0 auto;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.ea-summary__voice-pill:hover,
+.ea-summary__voice-pill:focus-visible {
+  background: rgba(251, 246, 236, 0.22);
+  border-color: rgba(251, 246, 236, 0.45);
+  outline: none;
+}
+.ea-summary__voice-pill:active { transform: scale(0.98); }
+.ea-summary__voice-pill--playing {
+  background: rgba(251, 246, 236, 0.32);
+  border-color: rgba(251, 246, 236, 0.70);
+}
+
+/* Replay state — shown for ~4s after playback ends. Signals to the user
+   they can tap again to replay. Subtle emerald pulse so it reads as a
+   completion cue, not a warning. */
+.ea-summary__voice-pill--replay {
+  background: rgba(120, 200, 160, 0.18);
+  border-color: rgba(160, 220, 190, 0.55);
+  animation: ea-pill-replay-pulse 1.6s var(--ea-ease-inout) 2;
+}
+.ea-summary__voice-pill--replay .ea-summary__voice-pill__glyph {
+  background: rgba(160, 220, 190, 0.55);
+  color: #0d0b0a;
+  font-size: 12px;
+}
+@keyframes ea-pill-replay-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(160, 220, 190, 0.0); }
+  50%      { box-shadow: 0 0 0 6px rgba(160, 220, 190, 0.25); }
+}
+
+/* The play glyph is a real triangle, not a bullet. Swaps to a
+ * pause bar when the pill is in the --playing state. */
+.ea-summary__voice-pill__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(251, 246, 236, 0.22);
+  color: var(--ea-fg-1, #fbf6ec);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.ea-summary__voice-pill--playing .ea-summary__voice-pill__glyph {
+  background: rgba(251, 246, 236, 0.55);
+  color: #0d0b0a;
+}
+
+.ea-summary__voice-pill__label {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.ea-summary__voice-pill__time {
+  font-family: var(--ea-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  font-size: 11px;
+  opacity: 0.75;
+  margin-left: auto;
+}
+.ea-summary__voice-pill__dur {
+  font-family: var(--ea-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+/* Cycle 10: .ea-summary__actions removed. The bottom actions row on the
+   Session Replay screen duplicated the header chevron and stole vertical
+   space from the ghost title + share row. The header back-label is now
+   the single source of truth for exiting the replay screen. */
+
+/* ═══════════════════════════════════════════════════════════════════
+   Multi-device parity — Desktop and Watch behave like mobile
+   ─────────────────────────────────────────────────────────────────
+   The After and Summary screens are stage-heavy layouts that also
+   need the same full-frame treatment as the Session stage. When the
+   viewswitch pill picks Desktop or Watch, the app-shell gets the
+   correct aspect chrome but the screens still get their whole
+   available interactive area.
+   ═══════════════════════════════════════════════════════════════ */
+body[data-view="desktop"] .ea-screen--after,
+body[data-view="watch"]   .ea-screen--after {
+  padding-inline: var(--ea-s-4);
+}
+body[data-view="watch"] .ea-after__title { font-size: 22px; }
+/* Gallery watch-view rules now live with the gallery block above. */
+body[data-view="watch"] .ea-summary__title { font-size: 20px; }
+body[data-view="watch"] .ea-summary__circumplex { max-width: 160px; }
+body[data-view="watch"] .ea-summary__panel { padding: var(--ea-s-3); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Microphone Permission Help Overlay
+   ─────────────────────────────────────────────────────────────────
+   Shown when getUserMedia() throws NotAllowedError. Modal, backdrop-
+   dismissable. Neutral, museum-grade styling to match the app.
+   ═══════════════════════════════════════════════════════════════ */
+
+.mic-help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999998; /* above everything except the debug overlay */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: rgba(255, 255, 255, 0.92);
+  font-family: var(--ea-font-body, system-ui, -apple-system, sans-serif);
+  animation: mic-help-fade 220ms ease-out;
+}
+@keyframes mic-help-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mic-help-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 8, 14, 0.72);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+}
+
+.mic-help-sheet {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  padding: 28px 24px 24px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(28, 30, 40, 0.98), rgba(18, 20, 28, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  animation: mic-help-rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes mic-help-rise {
+  from { transform: translateY(12px) scale(0.985); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.mic-help-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.mic-help-close:hover,
+.mic-help-close:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  outline: none;
+}
+
+.mic-help-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(255, 100, 100, 0.14);
+  color: rgb(255, 130, 130);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.mic-help-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+  color: rgba(255, 255, 255, 0.98);
+}
+
+.mic-help-subtitle {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.68);
+  margin: 0 0 16px;
+}
+
+.mic-help-steps {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.86);
+}
+.mic-help-steps li { padding-left: 4px; margin-bottom: 8px; }
+.mic-help-steps li::marker { color: rgba(255, 255, 255, 0.4); font-weight: 600; }
+
+.mic-help-note {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 210, 120, 0.9);
+  background: rgba(255, 210, 120, 0.08);
+  border: 1px solid rgba(255, 210, 120, 0.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0 0 16px;
+}
+
+.mic-help-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.mic-help-primary,
+.mic-help-retry {
+  flex: 1 1 0;
+  min-width: 130px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform 120ms ease, background 140ms ease, box-shadow 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mic-help-primary {
+  background: rgba(255, 255, 255, 0.94);
+  color: rgb(20, 22, 30);
+}
+.mic-help-primary:hover,
+.mic-help-primary:focus-visible {
+  background: rgb(255, 255, 255);
+  outline: none;
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.14);
+}
+.mic-help-primary:active { transform: scale(0.98); }
+
+.mic-help-retry {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.mic-help-retry:hover,
+.mic-help-retry:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+  outline: none;
+}
+.mic-help-retry:active { transform: scale(0.98); }
+
+.mic-help-context {
+  margin: 16px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.34);
+  text-align: center;
+}
+.mic-help-context span { color: rgba(255, 255, 255, 0.5); }
+
+@media (max-width: 380px) {
+  .mic-help-sheet { padding: 22px 18px 20px; }
+  .mic-help-title { font-size: 18px; }
+  .mic-help-actions { flex-direction: column; }
+  .mic-help-primary, .mic-help-retry { flex: none; width: 100%; }
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * Tooltip (universal) — used by data-ea-tip anchors and by the
+ * circumplex SVG hit layer for emotion tips. One node, positioned
+ * by JS. Content areas: title, body, sig (mono), science.
+ * ──────────────────────────────────────────────────────────────── */
+.ea-tip {
+  position: fixed;
+  z-index: 500;
+  max-width: 320px;
+  min-width: 180px;
+  padding: 12px 14px 14px;
+  border-radius: 12px;
+  background: rgba(15, 12, 10, 0.94);
+  color: var(--ea-cream);
+  border: 1px solid rgba(251, 246, 236, 0.14);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  font-family: var(--ea-font-ui);
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 180ms var(--ea-ease-out), transform 180ms var(--ea-ease-out);
+  pointer-events: none;
+  --ea-tip-accent: rgba(251, 246, 236, 0.8);
+}
+.ea-tip[aria-hidden="false"] { opacity: 1; transform: translateY(0); }
+.ea-tip[data-has-accent="1"] { border-color: var(--ea-tip-accent); }
+
+.ea-tip__title {
+  font-family: var(--ea-font-serif, "Fraunces", Georgia, serif);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  color: var(--ea-tip-accent);
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+.ea-tip__body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(251, 246, 236, 0.88);
+  /* v1.5.1 — respect \n\n paragraph breaks in multi-term tooltip bodies
+     (session vocabulary popover). Prose tooltips wrap normally either
+     way; this only affects tooltips that embed newlines on purpose. */
+  white-space: pre-wrap;
+}
+.ea-tip__sig[hidden], .ea-tip__science[hidden] { display: none; }
+.ea-tip__sig {
+  font-family: var(--ea-font-mono, "JetBrains Mono", monospace);
+  font-size: 10.5px;
+  color: rgba(251, 246, 236, 0.62);
+  margin-top: 9px;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+}
+.ea-tip__science {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: rgba(251, 246, 236, 0.58);
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(251, 246, 236, 0.10);
+  letter-spacing: 0.01em;
+}
+
+/* Muse toggle label (added text next to icon) */
+.ea-muse-toggle__label {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * Tooltip discoverability — subtle visual affordance on any
+ * element with a [data-ea-tip] attribute. A tiny pulsing dot in
+ * the corner tells the user "this has info". On the first session
+ * we also flash the dot pattern more brightly for a few seconds.
+ * ──────────────────────────────────────────────────────────────── */
+[data-ea-tip] {
+  position: relative;
+}
+[data-ea-tip]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(251, 246, 236, 0.55);
+  box-shadow: 0 0 6px rgba(251, 246, 236, 0.35);
+  pointer-events: none;
+  opacity: 0.7;
+  animation: ea-tip-affordance-pulse 3s ease-in-out infinite;
+  z-index: 5;
+}
+/* The pulsing corner dot was too subtle for touch users. We now surface
+   a dedicated info-glyph chip so tooltips are discoverable at a glance.
+   The ::after affordance stays on desktop-hover-friendly elements as a
+   secondary cue but is hidden on the primary chrome (chips, plaque
+   toggles, scrub track) where it would visually clutter. */
+.ea-summary__track[data-ea-tip]::after,
+.ea-summary__play[data-ea-tip]::after,
+.ea-chip[data-ea-tip]::after,
+.ea-muse-toggle[data-ea-tip]::after,
+.ea-muse-panel__close[data-ea-tip]::after {
+  display: none;
+}
+@keyframes ea-tip-affordance-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 0.9; transform: scale(1.25); }
+}
+
+/* Help chip that reveals a one-line hint when tapped. Cycle 10:
+   pulled out of the centered chips-band flow and pinned to the
+   upper-left as an absolute affordance so it never crowds the
+   Emotion Map plaque on the right. Same visual footprint (36px
+   round) as before; only its container position changes.
+
+   Vertically aligned with the plaque (`--ea-safe-top + header + 18px`
+   — the plaque itself sits at +14 and is 48px tall, so a 36px chip
+   at +18 matches its optical center). */
+/* Cycle 14: help chip is now a flex child of `.ea-chips-band` (session)
+   or `.ea-summary__topbar` (summary), NOT absolute-positioned. Same 36px
+   round visual footprint but sits in-flow with browser-guaranteed spacing
+   from its siblings. Absolute positioning removed to prevent overlap. */
+.ea-chip--help {
+  position: relative;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  gap: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(251, 246, 236, 0.14);
+  border: 1px solid rgba(251, 246, 236, 0.32);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  color: var(--ea-cream);
+  cursor: pointer;
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+.ea-chip--help:hover,
+.ea-chip--help:focus-visible {
+  background: rgba(251, 246, 236, 0.24);
+  border-color: rgba(251, 246, 236, 0.5);
+  outline: none;
+}
+.ea-chip--help:active { transform: scale(0.96); }
+
+/* Cycle 14: summary-screen help-chip vertical offset override is no
+   longer needed — the chip is now positioned by its parent
+   `.ea-summary__topbar` flex container (see layout.css). */
+.ea-chip--help .ea-chip__info-glyph {
+  font-family: var(--ea-font-serif, "Fraunces", Georgia, serif);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ea-cream);
+  opacity: 0.92;
+}
+
+/* Info glyph — small circular "i" affordance placed inline in eyebrows
+   or section heads. Uses data-ea-tip so the universal tooltip fires on
+   pointerover (desktop) or tap (mobile). Kept quiet enough to sit next
+   to labels without competing, but visible enough to be obviously
+   tappable. */
+.ea-info-glyph {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  padding: 0;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: rgba(251, 246, 236, 0.08);
+  border: 1px solid rgba(251, 246, 236, 0.28);
+  color: var(--ea-cream, #fbf6ec);
+  font-family: var(--ea-font-serif, "Fraunces", Georgia, serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0;
+  cursor: pointer;
+  vertical-align: middle;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 140ms ease,
+    opacity 160ms ease;
+  opacity: 0.86;
+  flex: 0 0 auto;
+  -webkit-tap-highlight-color: transparent;
+}
+.ea-info-glyph:hover,
+.ea-info-glyph:focus-visible {
+  background: rgba(251, 246, 236, 0.14);
+  border-color: rgba(251, 246, 236, 0.44);
+  opacity: 1;
+  outline: none;
+}
+.ea-info-glyph:active {
+  transform: scale(0.94);
+}
+.ea-info-glyph > span {
+  display: inline-block;
+  transform: translateY(-0.5px);
+  pointer-events: none;
+}
+
+/* Track handle — appears where the fill ends so the scrub bar reads
+ * like a real slider (draggable). Follows the fill's width via CSS var
+ * set from JS. */
+.ea-summary__track {
+  cursor: pointer;
+  position: relative;
+  touch-action: none;
+  z-index: 3;
+}
+/* Invisible tap-target overlay that grows the touch area to ~44px tall
+   without changing the visual bar height. Sits IN FRONT of note-dots
+   (pointer-events: none on the notes container ensures dots don't steal
+   the drag). */
+.ea-summary__track::after {
+  content: "";
+  position: absolute;
+  inset: -20px 0;
+  cursor: pointer;
+  z-index: 2;
+  /* Transparent but hittable. */
+  background: transparent;
+}
+.ea-summary__track-handle {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ea-cream);
+  border: 2px solid rgba(15, 12, 10, 0.6);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 120ms var(--ea-ease-out), background 120ms var(--ea-ease-out);
+  pointer-events: none;
+}
+.ea-summary__track:hover .ea-summary__track-handle,
+.ea-summary__track:focus .ea-summary__track-handle,
+.ea-summary__track--dragging .ea-summary__track-handle {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+.ea-summary__track--dragging {
+  cursor: grabbing;
+}
+
+/* Restart button for the summary — appears where the play button sits when
+ * playback ends. We reuse the play button and swap its glyph via JS. */
+.ea-summary__play[data-state="ended"] {
+  background: rgba(251, 246, 236, 0.24);
+  border-color: rgba(251, 246, 236, 0.5);
+}
+
+/* Emotion label / dot hit affordance — the SVG in muse-vis attaches
+ * pointer listeners for emotion tips. Give the labels a subtle hover
+ * cue so they feel discoverable. */
+.ea-muse-vis__svg text[data-emo],
+.ea-muse-vis__svg circle[data-emo] {
+  cursor: help;
+  transition: opacity 200ms var(--ea-ease-out);
+}
+.ea-muse-vis__svg text[data-emo]:hover,
+.ea-muse-vis__svg circle[data-emo]:hover {
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Cycle 17 · Fullscreen toggle button
+   ─────────────────────────────────────────────────────────────────────
+   Pinned to the top-right of the session screen. Small, round, glassy,
+   deliberately quiet so it never competes with the fluid painting.
+   Icon swaps on aria-pressed. Sits above the fluid canvas but under the
+   Emotion Map panel so an opened panel visually takes precedence.
+   ═══════════════════════════════════════════════════════════════════ */
+.ea-immersive-btn {
+  position: absolute;
+  /* Cycle 17 fix: pinned to the LEFT edge, BELOW the chips-band row.
+     The chips-band occupies y = header+14 through header+14+48 (its 48px
+     height). We anchor 12px below the band on the LEFT edge, away from
+     the header clock (top-right), the Emotion Map plaque (chips-band
+     right), the help chip (chips-band left, y within band), and the
+     Muse panel (bottom-anchored). This puts the button at roughly
+     y=132, x=14 — an empty column of viewport that has no other UI. */
+  top: calc(var(--ea-safe-top) + var(--ea-zone-header) + 14px + 48px + 12px);
+  left: 14px;
+  z-index: calc(var(--ea-z-content) + 2);
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--ea-ink-2);
+  cursor: pointer;
+  transition: background var(--ea-dur-fast) ease, color var(--ea-dur-fast) ease, opacity var(--ea-dur-med) ease;
+}
+.ea-immersive-btn:hover,
+.ea-immersive-btn:focus-visible {
+  background: #fff;
+  color: var(--ea-ink);
+  outline: none;
+}
+.ea-immersive-btn__exit { display: none; }
+.ea-immersive-btn[aria-pressed="true"] .ea-immersive-btn__enter { display: none; }
+.ea-immersive-btn[aria-pressed="true"] .ea-immersive-btn__exit { display: inline-block; }
+
+/* Dim-phase palette: match other session chips so the button doesn't
+   glow white against a dimmed canvas. */
+body[data-session-phase="dark"] .ea-immersive-btn {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.72);
+}
+body[data-session-phase="dark"] .ea-immersive-btn:hover {
+  background: rgba(255, 255, 255, 0.20);
+  color: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Cycle 17 · Immersive mode (iOS Fullscreen fallback)
+   ─────────────────────────────────────────────────────────────────────
+   iPhone Safari doesn't expose element.requestFullscreen() for non-video
+   elements, so we simulate fullscreen by fixing the app shell to the
+   viewport with 100dvh, hiding the URL bar via scroll, and zeroing the
+   safe-area insets we visually own. Chrome desktop uses the real API
+   and skips this class entirely.
+   ═══════════════════════════════════════════════════════════════════ */
+body[data-immersive="true"] .ea-app {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+body[data-immersive="true"] .ea-viewswitch { display: none; }
+body[data-immersive="true"] {
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Cycle 17 · Dim-on-stillness + touch-to-interact hint
+   ─────────────────────────────────────────────────────────────────────
+   After 5 seconds of no user pointer input (music amplitude and Muse
+   changes do NOT wake), every session-screen chrome element fades to
+   ~15% opacity and pointer-events go through. The emotion name and the
+   fluid canvas stay fully opaque so the art is uninterrupted. A single
+   line of hint text fades in centered near the bottom, prompting touch.
+   Any pointer/touch event wakes the UI in 200 ms and restarts the timer.
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --ea-dim-opacity: 0.15;
+  --ea-dim-dur: 900ms;
+  --ea-wake-dur: 200ms;
+}
+
+/* Elements that should fade when the session is dimmed. Add / remove
+   by class; the emotion-name and fluid-canvas are deliberately absent
+   so the art stays full-brightness. */
+body[data-dim="true"] .ea-screen--session .ea-progress-strip,
+body[data-dim="true"] .ea-screen--session .ea-session-idle__line,
+body[data-dim="true"] .ea-screen--session .ea-immersive-btn,
+body[data-dim="true"] .ea-screen--session .ea-cta--session,
+body[data-dim="true"] .ea-screen--session .ea-muse-panel,
+body[data-dim="true"] .ea-chips-band,
+body[data-dim="true"] .ea-header,
+body[data-dim="true"] .ea-hint-band {
+  opacity: var(--ea-dim-opacity);
+  transition: opacity var(--ea-dim-dur) ease;
+  pointer-events: none;
+}
+
+/* Explicit wake transition — snappier than the fade-in so the interface
+   feels responsive to the first touch. */
+body:not([data-dim="true"]) .ea-screen--session .ea-progress-strip,
+body:not([data-dim="true"]) .ea-screen--session .ea-session-idle__line,
+body:not([data-dim="true"]) .ea-screen--session .ea-immersive-btn,
+body:not([data-dim="true"]) .ea-screen--session .ea-cta--session,
+body:not([data-dim="true"]) .ea-screen--session .ea-muse-panel,
+body:not([data-dim="true"]) .ea-chips-band,
+body:not([data-dim="true"]) .ea-header,
+body:not([data-dim="true"]) .ea-hint-band {
+  transition: opacity var(--ea-wake-dur) ease;
+}
+
+/* Emotion name & reveal stay fully lit (dimmable false). */
+body[data-dim="true"] .ea-emotion-label,
+body[data-dim="true"] .ea-emotion-reveal {
+  opacity: 1;
+}
+
+/* Touch-to-interact hint. Only visible while dimmed. Placed well above
+   the End Session pill so it never overlaps the CTA when the CTA fades
+   during dim. Sits between the fluid painting focus and the Stop button. */
+.ea-touch-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 128px);
+  transform: translateX(-50%);
+  z-index: var(--ea-z-content);
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.90);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--ea-dim-dur) ease;
+}
+body[data-dim="true"] .ea-touch-hint { opacity: 0.85; }
+
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Emotion Map, replay panel, and immersive controls
+   ─────────────────────────────────────────────────────────────────────
+   Consolidated component-level rules: Before-Session help chip and
+   overlay, in-session toolbar responsiveness, the in-panel emotion
+   word (live + replay), Emotion Map plaque active/dim state, the
+   fullscreen (immersive) button, the debug pill position, chrome
+   dimming while the Emotion Map is closed, and Emotion Map panel
+   centering.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─────────── Before Session — title row with (i) chip + sub-lede ─── */
+
+/* Anchor the (i) chip AFTER the title as an inline-block sibling so it
+   never steals horizontal space and never forces the title to wrap.
+   The chip sits at the end of the title's last line — elegant and out
+   of the way. */
+.ea-screen__title-row {
+  position: relative;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.ea-screen__title-row .ea-screen__lede {
+  margin: 0;
+  display: inline;
+}
+
+.ea-screen__title-row .ea-help-chip {
+  position: relative;
+  vertical-align: super;
+  margin-left: 8px;
+  top: -2px;
+}
+
+/* Subtle "(i)" chip anchored to the title. 22px round pill, muted
+   ink-2, transitions to full ink on hover. Small enough that it never
+   competes with the title, big enough to be tappable (≥24px hit area
+   via padding). */
+.ea-help-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.24);
+  background: transparent;
+  color: var(--ea-ink-2, #555);
+  font-family: var(--ea-font-ui, "General Sans", Inter, sans-serif);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 200ms ease,
+    border-color 200ms ease,
+    background-color 200ms ease,
+    transform 200ms ease;
+  flex: 0 0 auto;
+}
+.ea-help-chip:hover,
+.ea-help-chip:focus-visible {
+  color: var(--ea-ink, #1a1a1a);
+  border-color: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.04);
+  outline: none;
+}
+.ea-help-chip:active {
+  transform: scale(0.94);
+}
+.ea-help-chip[aria-expanded="true"] {
+  color: var(--ea-ink, #1a1a1a);
+  border-color: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* Quiet intro line under the lede. Italic serif matches the museum
+   voice; ink-2 keeps it subordinate to the H2. */
+.ea-screen__sublede {
+  margin: 0 auto 22px;
+  max-width: 34ch;
+  color: var(--ea-ink-2, #555);
+  font-family: var(--ea-font-display, "GT Sectra", "Cormorant Garamond", serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(13px, 3.4vw, 15px);
+  line-height: 1.45;
+  text-align: center;
+  letter-spacing: 0.005em;
+  opacity: 0.86;
+}
+body[data-view="watch"] .ea-screen__sublede {
+  font-size: 10px;
+  margin: 0 auto 8px;
+  max-width: 28ch;
+}
+body[data-view="desktop"] .ea-screen__sublede {
+  font-size: 15px;
+  margin: 0 auto 24px;
+}
+
+/* Gentle first-time hint at the default center of the circumplex.
+   Fades out on first drag/tap (JS toggles .ea-circumplex--touched). */
+.ea-circumplex {
+  position: relative;
+}
+.ea-circumplex__hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, calc(-50% + 26px));
+  color: var(--ea-ink-2, #888);
+  font-family: var(--ea-font-display, "GT Sectra", "Cormorant Garamond", serif);
+  font-style: italic;
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0.015em;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0.5;
+  transition: opacity 500ms ease;
+  white-space: nowrap;
+}
+.ea-circumplex--touched .ea-circumplex__hint {
+  opacity: 0;
+}
+body[data-view="watch"] .ea-circumplex__hint {
+  font-size: 8px;
+  transform: translate(-50%, calc(-50% + 12px));
+}
+
+/* ─────────── Before Session — help overlay (quadrants + Openness) ── */
+
+.ea-help-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 60;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.ea-help-panel-backdrop[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ea-help-panel {
+  position: relative;
+  background: var(--ea-cream, #FBF6EC);
+  color: var(--ea-ink, #1a1a1a);
+  border-radius: 18px;
+  padding: 28px 28px 24px;
+  max-width: 460px;
+  width: 100%;
+  max-height: 88vh;
+  overflow: auto;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28);
+  transform: translateY(12px);
+  transition: transform 320ms cubic-bezier(0.2, 0.65, 0.25, 1);
+  font-family: var(--ea-font-ui, "General Sans", Inter, sans-serif);
+}
+.ea-help-panel-backdrop[data-open="true"] .ea-help-panel {
+  transform: translateY(0);
+}
+
+.ea-help-panel__title {
+  font-family: var(--ea-font-display, "GT Sectra", serif);
+  font-weight: 500;
+  font-size: clamp(20px, 5.4vw, 24px);
+  line-height: 1.15;
+  margin: 0 0 6px;
+}
+.ea-help-panel__intro {
+  color: var(--ea-ink-2, #555);
+  font-family: var(--ea-font-display, "GT Sectra", serif);
+  font-style: italic;
+  font-size: 14px;
+  margin: 0 0 22px;
+  line-height: 1.5;
+}
+
+.ea-help-panel__section {
+  padding: 14px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+.ea-help-panel__section:first-of-type {
+  border-top: none;
+  padding-top: 4px;
+}
+
+.ea-help-panel__label {
+  font-family: var(--ea-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-ink-2, #666);
+  margin: 0 0 10px;
+}
+.ea-help-panel__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  margin-bottom: 6px;
+}
+.ea-help-panel__item {
+  font-family: var(--ea-font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ea-ink, #1a1a1a);
+}
+.ea-help-panel__item b {
+  font-weight: 600;
+  color: var(--ea-ink, #1a1a1a);
+}
+.ea-help-panel__item span {
+  color: var(--ea-ink-2, #666);
+}
+.ea-help-panel__note {
+  color: var(--ea-ink-2, #666);
+  font-family: var(--ea-font-display, serif);
+  font-style: italic;
+  font-size: 13px;
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
+.ea-help-panel__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ea-ink, #1a1a1a);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 180ms ease, transform 180ms ease;
+}
+.ea-help-panel__close:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+.ea-help-panel__close:active {
+  transform: scale(0.92);
+}
+
+/* Watch: shrink modal chrome. */
+body[data-view="watch"] .ea-help-panel {
+  padding: 16px 16px 14px;
+  max-height: 92vh;
+  border-radius: 12px;
+}
+body[data-view="watch"] .ea-help-panel__title { font-size: 15px; }
+body[data-view="watch"] .ea-help-panel__intro { font-size: 11px; margin-bottom: 12px; }
+body[data-view="watch"] .ea-help-panel__item { font-size: 11px; }
+body[data-view="watch"] .ea-help-panel__label { font-size: 9px; }
+body[data-view="watch"] .ea-help-panel__row { grid-template-columns: 1fr; gap: 6px; }
+
+/* ─────────── In-session toolbar — kill iPhone overflow ────────────── */
+
+/* At narrow widths (iPhone view lives in a ~360px device frame) we must
+   collapse the chip labels so the row fits without cropping. Only the
+   plaque svg + info glyph stay visible. Full labels return at ≥ 420px
+   or on the desktop viewport. */
+
+@media (max-width: 419px) {
+  body[data-view="iphone"] .ea-chips-band .ea-chip--voice .ea-chip__label,
+  body[data-view="iphone"] .ea-chips-band .ea-chip--zen .ea-chip__label {
+    display: none;
+  }
+  body[data-view="iphone"] .ea-chips-band .ea-chip--voice,
+  body[data-view="iphone"] .ea-chips-band .ea-chip--zen {
+    padding-left: 10px;
+    padding-right: 10px;
+    min-width: 40px;
+    gap: 0;
+  }
+  /* Emotion Map plaque: icon-only on iPhone during session AND replay. */
+  body[data-view="iphone"] .ea-chips-band .ea-muse-toggle .ea-muse-toggle__label,
+  body[data-view="iphone"] .ea-summary__topbar .ea-muse-toggle .ea-muse-toggle__label {
+    display: none;
+  }
+  body[data-view="iphone"] .ea-chips-band .ea-muse-toggle,
+  body[data-view="iphone"] .ea-summary__topbar .ea-muse-toggle {
+    padding-left: 6px;
+    padding-right: 6px;
+    min-width: 44px;
+    gap: 0;
+  }
+}
+
+/* Watch: labels always hidden. */
+body[data-view="watch"] .ea-chips-band .ea-chip__label,
+body[data-view="watch"] .ea-chips-band .ea-muse-toggle__label,
+body[data-view="watch"] .ea-summary__topbar .ea-muse-toggle__label {
+  display: none;
+}
+
+/* Also give the chips-band a slightly tighter gap on iPhone to buy a
+   few more pixels of breathing room. */
+body[data-view="iphone"] .ea-chips-band {
+  gap: 8px;
+}
+
+/* ─────────── Session Replay — in-panel emotion word ───────────────── */
+
+/* The word lives INSIDE the summary panel between the circumplex and
+   the transport/brainwaves. Elegant italic serif, colored per-emotion
+   via --reveal-hue. Kept in normal flow — cannot crop. */
+.ea-summary__emotion-word {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px 8px;
+  min-height: 40px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 380ms ease,
+    transform 380ms ease;
+}
+.ea-summary__emotion-word[aria-hidden="false"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+.ea-summary__emotion-word__text {
+  font-family: var(--ea-font-display, "GT Sectra", "Cormorant Garamond", serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(22px, 6vw, 30px);
+  line-height: 1.1;
+  letter-spacing: 0.005em;
+  color: var(--reveal-hue, var(--ea-cream, #FBF6EC));
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+  transition: color 500ms ease;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Desktop: larger, still elegant. */
+body[data-view="desktop"] .ea-summary__emotion-word {
+  min-height: 56px;
+  padding: 8px 16px 12px;
+}
+body[data-view="desktop"] .ea-summary__emotion-word__text {
+  font-size: clamp(28px, 2.6vw, 40px);
+}
+
+/* Watch: micro-band, tiny type, no crop. */
+body[data-view="watch"] .ea-summary__emotion-word {
+  min-height: 22px;
+  padding: 2px 6px 4px;
+}
+body[data-view="watch"] .ea-summary__emotion-word__text {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Hide the big overlay `#summary-reveal` when the panel is open
+   (in-panel word takes over). Show the overlay again ONLY when the
+   panel is hidden (immersive/fullscreen replay). */
+body.ea-summary-panel-hidden .ea-screen--summary #summary-reveal {
+  /* fall through to original overlay position when panel is hidden */
+}
+body:not(.ea-summary-panel-hidden) .ea-screen--summary #summary-reveal {
+  display: none !important;
+}
+
+/* ─────────── Emotion Map plaque: aria-pressed drives visual state ──
+   Session and summary both use .ea-muse-toggle--plaque. The label reads
+   "Emotion Map" in both states — active/dim is conveyed visually only. */
+.ea-muse-toggle--plaque[aria-pressed="false"] {
+  opacity: 0.62;
+}
+.ea-muse-toggle--plaque[aria-pressed="false"] .ea-muse-toggle__plaque {
+  filter: saturate(0.6);
+}
+.ea-muse-toggle--plaque[aria-pressed="true"] {
+  opacity: 1;
+}
+.ea-muse-toggle--plaque[aria-pressed="true"] .ea-muse-toggle__plaque {
+  filter: drop-shadow(0 0 6px rgba(255, 240, 210, 0.35));
+}
+
+/* Zen mode: gentle breathing animation on the plaque so it feels alive
+   without demanding attention. Only when Zen is active. */
+@keyframes ea-plaque-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.88; transform: scale(1.04); }
+}
+body[data-zen="true"] .ea-muse-toggle--plaque {
+  animation: ea-plaque-breathe 3.6s ease-in-out infinite;
+}
+
+/* iPhone: collapse the "Emotion Map" label to icon-only inside the plaque.
+   The plaque icon itself is a clear emotion-wheel glyph, so the label is
+   redundant on the smallest viewport. */
+@media (max-width: 419px) {
+  body[data-view="iphone"] .ea-muse-toggle__label,
+  body[data-view="watch"]  .ea-muse-toggle__label {
+    display: none;
+  }
+  /* Tighten the plaque padding when label is gone so it's a clean circle. */
+  body[data-view="iphone"] .ea-muse-toggle--plaque,
+  body[data-view="watch"]  .ea-muse-toggle--plaque {
+    padding: 4px;
+  }
+}
+
+/* Emotion word — one word only policy. When the Emotion Map panel is
+   OPEN, hide the centered overlay so the in-panel word (below the
+   circumplex, above the Muse strip) is the only emotion word on screen.
+   When the panel is CLOSED (Zen or immersive), the centered overlay is
+   the only word. Never both. */
+body[data-emotion-map-open="true"] .ea-emotion-reveal,
+body[data-emotion-map-open="true"] #summary-reveal {
+  display: none !important;
+}
+
+/* Emotion word in the session Muse panel — italic serif, colored per
+   emotion. `#muse-vis-name` is populated by muse-vis.js which sets
+   `--reveal-hue` inline. */
+.ea-muse-vis__name {
+  font-family: "Fraunces", "Iowan Old Style", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: 0.005em;
+  line-height: 1.15;
+  color: var(--reveal-hue, var(--ea-ink));
+  text-align: center;
+  margin: 6px auto 4px;
+  transition: color 420ms ease;
+  /* subtle cream halo for readability over fluid backgrounds */
+  text-shadow:
+    0 0 8px rgba(251, 246, 236, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Summary/replay in-panel word — mirror styling so the two experiences
+   feel identical. */
+#summary-panel-word-text {
+  font-family: "Fraunces", "Iowan Old Style", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--reveal-hue, var(--ea-ink));
+  transition: color 420ms ease;
+}
+
+/* ─────────── Fullscreen icon — bottom-right, dim, tiny ──────────────
+   Both #btn-immersive (session) and #btn-immersive-summary (replay) are
+   moved OUT of the top nav and reanchored to the bottom-right corner,
+   just left of the view switcher. Small, dim, aligned to the same 14px
+   grid. On desktop it stays visible; on iPhone it stays but at 34px. */
+.ea-immersive-btn,
+.ea-immersive-btn--summary {
+  position: fixed !important;
+  /* Sit ABOVE the view switcher (which is at bottom: 14px, right: 14px).
+     14 + 44 (switcher height) + 24 gap = 82px from bottom. Prior spacing
+     (8px gap) caused the two rounded shapes to visually crowd each other
+     on iPhone view — the extra breathing room reads more professional. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 82px) !important;
+  right: calc(env(safe-area-inset-right, 0px) + 14px) !important;
+  top: auto !important;
+  left: auto !important;
+  width: 36px !important;
+  height: 36px !important;
+  opacity: 0.42;
+  background: rgba(20, 20, 22, 0.55) !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  z-index: 10002;   /* above view switcher (10001) — but that's fine, they don't overlap */
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.ea-immersive-btn:hover,
+.ea-immersive-btn:focus-visible,
+.ea-immersive-btn--summary:hover,
+.ea-immersive-btn--summary:focus-visible {
+  opacity: 0.92;
+  transform: scale(1.06);
+  background: rgba(20, 20, 22, 0.82) !important;
+  color: #fff !important;
+}
+.ea-immersive-btn[aria-pressed="true"] {
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+.ea-immersive-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Hide the fullscreen button in Zen (chrome-free by definition). */
+body[data-zen="true"] .ea-immersive-btn,
+body[data-zen="true"] .ea-immersive-btn--summary {
+  display: none !important;
+}
+
+/* When immersive is active, the view switcher hides (existing behavior).
+   The fullscreen button should stay visible so the user can EXIT — but
+   at the same anchor point (14px). */
+body[data-immersive="true"] .ea-immersive-btn,
+body[data-immersive="true"] .ea-immersive-btn--summary {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px) !important;
+  opacity: 0.55;
+}
+
+/* ─────────── DEBUG button → top-RIGHT, LOUD RED, always on top.
+   The user asked for the same visible red debug affordance we had
+   during development. It only mounts when the URL carries ?debug=1,
+   so the release build never shows it to real users. Positioned
+   top-right so it does not overlap the view switcher (bottom-right),
+   the legal notice (bottom-left), or the chamber content in the
+   middle of the screen. Overrides the inline styles set by
+   src/debug/debug-overlay.js. ──────────────── */
+#debug-pill,
+.ea-debug-pill {
+  top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+  right: calc(env(safe-area-inset-right, 0px) + 12px) !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  z-index: 2147483647 !important; /* max int32 — above absolutely everything */
+  background: #dc2626 !important;
+  color: #fff !important;
+  border: 2px solid #fff !important;
+  border-radius: 10px !important;
+  padding: 12px 18px !important;
+  font: 800 14px/1 ui-monospace, SF Mono, Menlo, monospace !important;
+  letter-spacing: 0.12em !important;
+  box-shadow: 0 4px 20px rgba(220,38,38,0.6), 0 0 0 4px rgba(220,38,38,0.2) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ─────────── Chrome dimming while the Emotion Map is closed ───────────
+   When the Emotion Map panel is closed during a session, chrome
+   (brain-waves, timer, "Session in progress" eyebrow, "Touch to
+   interact" hint, top chips row, header) fades to ~5% opacity so the
+   fluid + emotion word are the entire experience. Touching the canvas
+   brings UI back (map opens, chrome returns to full opacity). */
+
+/* Only apply on the live session screen — do not affect other screens */
+body[data-emotion-map-open="false"] .ea-screen--session .ea-progress-strip,
+body[data-emotion-map-open="false"] .ea-screen--session .ea-session-idle__line,
+body[data-emotion-map-open="false"] .ea-screen--session .ea-immersive-btn,
+body[data-emotion-map-open="false"] .ea-screen--session .ea-muse-waves-strip,
+body[data-emotion-map-open="false"] .ea-chips-band,
+body[data-emotion-map-open="false"] .ea-header,
+body[data-emotion-map-open="false"] .ea-hint-band,
+body[data-emotion-map-open="false"] .ea-touch-hint {
+  opacity: 0.06 !important;
+  transition: opacity 700ms ease !important;
+  pointer-events: none !important;
+}
+
+/* Keep the Stop (End Session) button and legal footer at a slightly
+   higher opacity so users can still see how to exit if needed. Stop
+   is the only escape hatch — it must stay findable. */
+body[data-emotion-map-open="false"] .ea-screen--session .ea-cta--session {
+  opacity: 0.22 !important;
+  transition: opacity 700ms ease !important;
+}
+
+/* Emotion word + fluid remain full brightness — never dim */
+body[data-emotion-map-open="false"] .ea-emotion-label,
+body[data-emotion-map-open="false"] .ea-emotion-reveal,
+body[data-emotion-map-open="false"] .ea-fluid {
+  opacity: 1 !important;
+}
+
+/* Wake transition: when the map opens, chrome comes back faster than it
+   faded, so touch feels responsive. */
+body[data-emotion-map-open="true"] .ea-screen--session .ea-progress-strip,
+body[data-emotion-map-open="true"] .ea-screen--session .ea-session-idle__line,
+body[data-emotion-map-open="true"] .ea-screen--session .ea-immersive-btn,
+body[data-emotion-map-open="true"] .ea-screen--session .ea-muse-waves-strip,
+body[data-emotion-map-open="true"] .ea-chips-band,
+body[data-emotion-map-open="true"] .ea-header,
+body[data-emotion-map-open="true"] .ea-hint-band,
+body[data-emotion-map-open="true"] .ea-screen--session .ea-cta--session {
+  transition: opacity 220ms ease !important;
+}
+
+/* ─────────── Emotion Map panel — vertically centered between top chips
+   and the Stop button ────────────────────────────────────────────────
+   Use explicit top + bottom insets so the panel sits with equal ~32px
+   gaps above (below the chips row) and below (above Stop). The panel
+   is scrollable if content exceeds available height. */
+
+.ea-muse-panel {
+  /* Top gap: chips band top ≈ safe-top + zone-header + 14px, chips
+     height 48px → chips bottom ≈ safe-top + zone-header + 62px. Add
+     a comfortable 24px breathing room. */
+  top: calc(var(--ea-safe-top) + var(--ea-zone-header) + 62px + 24px);
+
+  /* Bottom gap: sit 20px above the Stop pill's top edge so the panel
+     never overlaps the composed bottom band (Eyal Gever 2026-07).
+     Bottom-band composition tokens (keep in sync with layout.css /
+     legal.css / views.css if the band changes):
+       view switcher bottom : safe-bottom + 10   (26px tall)
+       legal mark    bottom : safe-bottom + 48   (25px tall)
+       Stop pill     bottom : safe-bottom + 85   (56px tall)
+       Stop pill     top    : safe-bottom + 141
+     Panel bottom = Stop-top + 20 breathing room = safe-bottom + 161. */
+  bottom: calc(var(--ea-safe-bottom) + 161px);
+
+  /* No fixed max-height cap — top/bottom insets determine height, and
+     internal overflow-y:auto handles overflow. */
+  max-height: none;
+}
+
+/* Watch view keeps its own layout — don't apply the reposition */
+body[data-view="watch"] .ea-muse-panel {
+  top: auto;
+  bottom: calc(var(--ea-s-16) + var(--ea-safe-bottom) + var(--ea-s-3));
+  max-height: calc(100vh - var(--ea-s-12) - var(--ea-safe-top) - var(--ea-safe-bottom) - 200px);
+}
+
+/* Desktop/PC view — use a tighter max-height so the panel doesn't
+   dominate a wide screen. Center vertically on tall viewports.
+
+   IMPORTANT: this rule must NOT apply to the iPhone or Watch views
+   when the browser viewport happens to be wide, because those views
+   render inside a 390px (iPhone) or 208px (Watch) frame. Applying
+   `left: 50%; right: auto` inside the frame collapses the panel to
+   a narrow strip on the right half of the frame. The rule is scoped
+   to `data-view="pc"` so it only affects the real PC layout. */
+@media (min-width: 780px) {
+  body[data-view="pc"] .ea-muse-panel {
+    top: calc(var(--ea-safe-top) + var(--ea-zone-header) + 62px + 32px);
+    bottom: calc(var(--ea-safe-bottom) + 80px + 32px);
+    max-width: 520px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) translateY(12px);
+  }
+  body[data-view="pc"] .ea-muse-panel[aria-hidden="false"] {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ─────────── In-panel emotion word centering + text-shadow cleanup ───
+   Two visual fixes:
+
+   1. Emotion tag word (#muse-vis-name / #summary-panel-word-text) sits
+      centered between the circumplex bottom and the "BRAIN WAVES"
+      divider, instead of touching it. Root cause: `.ea-muse-vis` had a
+      fixed 1:1 aspect-ratio and the caption block, a normal-flow child
+      placed after the SVG, was pushed outside the wrapper's box. Fix:
+      drop the fixed aspect-ratio on the panel-scoped wrapper and cap
+      the SVG height directly so the caption flows inside the wrapper.
+
+   2. The big overlay word (`.ea-emotion-reveal__word`), shown when the
+      Emotion Map is closed (Zen state), no longer shows a semi-black
+      rectangular halo. Replaced the three stacked heavy text-shadow
+      layers with a softer, more diffuse dark halo that still
+      guarantees legibility over any fluid state. */
+
+/* Kill the fixed aspect-ratio on the LIVE panel wrapper so the caption
+   can flow inside the wrapper's box instead of being pushed underneath
+   into the waves divider. Same for the summary panel below. */
+.ea-muse-panel .ea-muse-vis {
+  aspect-ratio: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+/* Cap the circumplex svg to a sensible size and let its own
+   `aspect-ratio: 1/1` (defined on `.ea-muse-vis__svg`) keep it square.
+   In simulated mode (no Muse headband), let the svg breathe to 340px
+   so the emotion labels around the ring don't crowd each other. This
+   matches the summary/replay treatment. */
+.ea-muse-panel .ea-muse-vis__svg {
+  width: 100% !important;
+  max-width: 260px !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 auto !important;
+}
+body[data-muse-mode="off"] .ea-muse-panel .ea-muse-vis__svg {
+  max-width: 340px !important;
+}
+
+/* Caption sits below the SVG inside the wrapper. Give it breathing
+   room above (from the SVG) and below (before the divider). */
+.ea-muse-vis__caption {
+  margin-top: 18px !important;
+  margin-bottom: 14px !important;
+  gap: 6px !important;
+  align-self: center !important;
+  width: 100% !important;
+}
+
+/* Same treatment for the REPLAY summary panel. The summary panel uses
+   `.ea-summary__panel` → `.ea-summary__circumplex` (svg wrapper) →
+   `.ea-summary__emotion-word` (emotion tag) → `.ea-summary__waves`.
+   Fix the same aspect-ratio problem by dropping the 1:1 constraint on
+   the wrapper and capping svg size. Also covers the equivalent node
+   inside the summary panel's caption wrapper so both views feel
+   identical. */
+.ea-screen--summary .ea-muse-vis {
+  aspect-ratio: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+.ea-screen--summary .ea-muse-vis__svg {
+  width: 100% !important;
+  max-width: 260px !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 auto !important;
+}
+body[data-muse-mode="off"] .ea-screen--summary .ea-muse-vis__svg {
+  max-width: 340px !important;
+}
+.ea-screen--summary .ea-muse-vis__caption {
+  margin-top: 18px !important;
+  margin-bottom: 14px !important;
+  gap: 6px !important;
+  align-self: center !important;
+  width: 100% !important;
+}
+
+.ea-summary__circumplex {
+  aspect-ratio: auto !important;
+  max-width: 260px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+body[data-muse-mode="off"] .ea-summary__circumplex {
+  max-width: 340px !important;
+}
+.ea-summary__circumplex .ea-muse-vis__svg,
+.ea-summary__circumplex > svg {
+  width: 100% !important;
+  max-width: 260px !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  flex: 0 0 auto !important;
+}
+body[data-muse-mode="off"] .ea-summary__circumplex .ea-muse-vis__svg,
+body[data-muse-mode="off"] .ea-summary__circumplex > svg {
+  max-width: 340px !important;
+}
+
+/* Emotion word in replay: tighten the space between the circumplex and
+   the word so it feels centered under the wheel, not adrift. */
+.ea-summary__emotion-word,
+.ea-screen--summary .ea-summary__emotion-word {
+  margin-top: 18px !important;
+  margin-bottom: 14px !important;
+  padding: 0 !important;
+  min-height: auto !important;
+}
+
+/* Pull the divider to a comfortable, non-crowded spacing so the name
+   doesn't visually crash into the "BRAIN WAVES" header. */
+.ea-muse-panel .ea-muse-waves,
+.ea-screen--summary .ea-muse-waves {
+  margin-top: 8px !important;
+  padding-top: 16px !important;
+}
+
+/* Text-shadow cleanup on the overlay emotion word: replace the stacked
+   black rectangles with a diffuse soft halo. Uses two large-radius
+   shadows at low opacity to keep the word legible over any bright
+   fluid state without producing a hard-edged dark rectangle behind
+   the glyphs. */
+.ea-emotion-reveal__word,
+#emotion-reveal-word,
+#summary-reveal-word {
+  text-shadow:
+    0 0 24px rgba(0, 0, 0, 0.35),
+    0 0 48px rgba(0, 0, 0, 0.22),
+    0 1px 2px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Empathic Art style picker (Before-screen)
+   ──────────────────────────────────────────────────────────────── */
+
+/* Small pill under the sublede that opens the gallery popover. */
+.ea-style-picker-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 6px 0 14px;
+  padding: 10px 14px;
+  background: color-mix(in oklab, var(--ea-cream, #FBF6EC) 96%, black 4%);
+  border: 1px solid var(--ea-line);
+  border-radius: 12px;
+  font-family: var(--ea-font-ui);
+  color: var(--ea-ink);
+  cursor: pointer;
+  transition: background 160ms ease, transform 120ms ease;
+}
+.ea-style-picker-btn:hover { background: color-mix(in oklab, var(--ea-cream) 90%, black 10%); }
+.ea-style-picker-btn:active { transform: scale(0.995); }
+.ea-style-picker-btn__label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.ea-style-picker-btn__kicker {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-ink-2, #666);
+}
+.ea-style-picker-btn__name {
+  font-size: 15px;
+  font-weight: var(--ea-w-medium, 500);
+  color: var(--ea-ink);
+}
+.ea-style-picker-btn__hint {
+  font-size: 12px;
+  color: var(--ea-ink-2, #666);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ea-line);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* Live preview canvas layered inside the circumplex ring. Sits behind
+   the ring, cross-hairs, labels, hint, and dot so those UI affordances
+   stay legible. */
+.ea-circumplex__preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+/* Bump the interactive layers above the preview canvas. */
+.ea-circumplex__ring,
+.ea-circumplex__cross,
+.ea-circumplex__axis-v,
+.ea-circumplex__axis-h,
+.ea-circumplex__label,
+.ea-circumplex__thumb,
+.ea-circumplex__hint {
+  position: absolute;
+  z-index: 1;
+}
+/* Give the labels a soft halo so they read on top of any bright
+   preview colour without a hard background chip. */
+.ea-circumplex__label {
+  text-shadow:
+    0 0 10px rgba(255, 255, 255, 0.85),
+    0 0 20px rgba(255, 255, 255, 0.55);
+}
+
+/* Popover modal for the style gallery. Rides on the same visual
+   language as .ea-help-panel-backdrop / .ea-help-panel. */
+.ea-style-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 60;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.ea-style-picker-backdrop[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.ea-style-picker-panel {
+  position: relative;
+  background: var(--ea-cream, #FBF6EC);
+  color: var(--ea-ink, #1a1a1a);
+  border-radius: 18px;
+  padding: 28px 22px 24px;
+  max-width: 560px;
+  width: 100%;
+  /* v1.4.3: bigger sheet so the 3-column grid can show two rows of
+     tiles above the fold. 88vh was the horizontal-row max; the grid
+     needs more vertical room to feel like a browsable gallery. */
+  max-height: 92vh;
+  overflow: auto;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28);
+  transform: translateY(12px);
+  transition: transform 320ms cubic-bezier(0.2, 0.65, 0.25, 1);
+  font-family: var(--ea-font-ui, "General Sans", Inter, sans-serif);
+}
+.ea-style-picker-backdrop[data-open="true"] .ea-style-picker-panel {
+  transform: translateY(0);
+}
+.ea-style-picker-panel__title {
+  font-family: var(--ea-font-display, "GT Sectra", serif);
+  font-weight: 500;
+  font-size: clamp(20px, 5.4vw, 24px);
+  line-height: 1.15;
+  margin: 0 0 6px;
+}
+.ea-style-picker-panel__intro {
+  color: var(--ea-ink-2, #555);
+  font-family: var(--ea-font-display, "GT Sectra", serif);
+  font-style: italic;
+  font-size: 14px;
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+.ea-style-picker-panel__gallery {
+  /* .ea-style-carousel already handles its own layout; give it
+     breathing room inside the panel. */
+  margin: 0 -6px;
+}
+
+/* Section tabs — sits above the gallery, below the intro.
+   Segmented-control feel: pill background, active pill = cream on ink
+   so the selection reads immediately at a glance. Tabs collapse to a
+   scrollable row on narrow frames rather than wrapping to two lines. */
+.ea-style-picker-panel__tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 4px;
+  background: color-mix(in oklab, var(--ea-cream, #FBF6EC) 92%, black 8%);
+  border-radius: 999px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.ea-style-picker-panel__tabs::-webkit-scrollbar { display: none; }
+.ea-style-picker-panel__tab {
+  appearance: none;
+  flex: 1 1 auto;
+  min-width: 68px;
+  padding: 7px 14px;
+  border: none;
+  background: transparent;
+  color: var(--ea-ink-2, #555);
+  font-family: var(--ea-font-ui);
+  font-size: 13px;
+  font-weight: var(--ea-w-med);
+  letter-spacing: 0.01em;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, transform 160ms ease;
+  white-space: nowrap;
+}
+.ea-style-picker-panel__tab:hover {
+  color: var(--ea-ink, #1a1a1a);
+  background: color-mix(in oklab, var(--ea-cream, #FBF6EC) 78%, black 22%);
+}
+.ea-style-picker-panel__tab[aria-selected="true"] {
+  background: var(--ea-ink, #1a1a1a);
+  color: var(--ea-cream, #FBF6EC);
+}
+.ea-style-picker-panel__tab[aria-selected="true"]:hover {
+  background: var(--ea-ink, #1a1a1a);
+  color: var(--ea-cream, #FBF6EC);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ea-style-picker-panel__tab { transition: none; }
+}
+.ea-style-picker-panel__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ea-ink, #1a1a1a);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 180ms ease, transform 180ms ease;
+}
+.ea-style-picker-panel__close:hover { background: rgba(0, 0, 0, 0.12); }
+.ea-style-picker-panel__close:active { transform: scale(0.92); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   The Chamber
+   ─────────────────────────────────────────────────────────────────────
+   A single rounded-rectangle enclosure that fuses the emotion wheel
+   and the Openness slider into one continuous Turrell-style light
+   chamber. Every visual style (Breath, Skyspace, Halo, Aperture, and any
+   future WebGL/WebGPU variant) renders its field across the whole
+   chamber; the wheel + slider are UI overlays on top of that shared
+   surface.
+
+   Layout
+     - Chamber is a rounded rectangle spanning the card width
+     - Wheel zone (square-ish) at top
+     - Slider zone (short lane) at bottom
+     - One <canvas> painted absolutely at chamber level, behind
+       every overlay
+
+   Chrome adaptations
+     - Default dark-ink labels and thin grey lines disappear on the
+       dark field, so we swap them for light chrome with a subtle
+       shadow. The wheel's own white background and the slider's
+       own white pill are removed — the chamber owns the surface.
+
+   Author: Eyal Gever
+*/
+.ea-chamber {
+  position: relative;
+  width: 100%;
+  background: #1B1E22;
+  border-radius: var(--ea-r-lg);
+  border: 1px solid rgba(240, 236, 226, 0.08);
+  overflow: hidden;
+  /* Chamber floats above the cream page — a soft, wide drop shadow
+     grounds it as a physical object rather than a pasted rectangle.
+     Two layers: crisp contact shadow + wide ambient glow. */
+  box-shadow:
+    0 2px 4px rgba(24, 20, 14, 0.10),
+    0 16px 40px rgba(24, 20, 14, 0.14);
+}
+
+/* Inner vignette — draws a soft dark bevel just inside the rounded
+   rectangle so the aperture reads as "looking into a chamber" instead
+   of a flat gradient. Non-interactive; sits above the field but below
+   every overlay (labels, cross, thumb). */
+.ea-chamber::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: inset 0 0 42px 6px rgba(0, 0, 0, 0.32);
+}
+
+/* Field canvas: absolutely positioned to fill the entire chamber
+   (wheel + slider). Sits behind every overlay. */
+.ea-chamber__field {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Wheel zone inside the chamber
+   ------------------------------
+   The circumplex keeps its 1:1 aspect and interaction target, but
+   loses its own background and border — the chamber owns those. */
+.ea-chamber .ea-circumplex {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  z-index: 1;
+}
+
+/* Slider zone inside the chamber
+   ------------------------------
+   Openness lives inside the same enclosure. Its own white pill is
+   gone — the track and thumb sit directly on the shared field. A
+   thin top hairline separates the two zones. */
+.ea-slider-block--chamber {
+  position: relative;
+  padding: var(--ea-s-4) var(--ea-s-4) var(--ea-s-4);
+  z-index: 1;
+  border-top: 1px solid rgba(240, 236, 226, 0.10);
+}
+.ea-slider-block--chamber .ea-slider__labels {
+  color: rgba(245, 240, 228, 0.85);
+  margin-bottom: var(--ea-s-3);
+}
+.ea-slider-block--chamber .ea-slider__labels > span:nth-child(2) {
+  color: rgba(245, 240, 228, 0.96);
+  font-weight: var(--ea-w-semi);
+}
+.ea-slider-block--chamber .ea-slider {
+  background: transparent;
+  border: none;
+  padding: 0 var(--ea-s-2);
+  height: 44px;
+}
+.ea-slider-block--chamber .ea-slider__track {
+  background: rgba(240, 236, 226, 0.22);
+}
+.ea-slider-block--chamber .ea-slider__fill {
+  background: rgba(240, 236, 226, 0.55);
+}
+.ea-slider-block--chamber .ea-slider__thumb {
+  background: rgba(245, 240, 228, 0.96);
+  box-shadow:
+    0 0 0 4px rgba(245, 240, 228, 0.18),
+    0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+/* Light chrome on the chamber
+   ---------------------------
+   Applies to every visual style: labels, hint, axes, ring, cross,
+   and thumb all switch to light-ink treatment against the dark
+   chamber surface. */
+.ea-chamber .ea-circumplex__label,
+.ea-chamber .ea-circumplex__hint {
+  color: rgba(245, 240, 228, 0.96);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  font-weight: var(--ea-w-medium);
+}
+.ea-chamber .ea-circumplex__axis-v,
+.ea-chamber .ea-circumplex__axis-h {
+  background: rgba(240, 236, 226, 0.32);
+}
+/* Dashed reference circle retired — the field itself is a superellipse
+   that shows the circle → rectangle morph, so a second dashed circle
+   would compete with it. Kept in the DOM for other views (session
+   replay, trail) but hidden inside the chamber. */
+.ea-chamber .ea-circumplex__ring {
+  display: none;
+}
+.ea-chamber .ea-circumplex__cross {
+  opacity: 0.55;
+  mix-blend-mode: screen;
+  background:
+    linear-gradient(to right,
+      transparent calc(50% - 0.5px),
+      rgba(240, 236, 226, 0.55) calc(50% - 0.5px),
+      rgba(240, 236, 226, 0.55) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom,
+      transparent calc(50% - 0.5px),
+      rgba(240, 236, 226, 0.55) calc(50% - 0.5px),
+      rgba(240, 236, 226, 0.55) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px));
+}
+/* Thumb inherits the current emotion hue via CSS custom property.
+   `--ea-emotion` is written by the visual style each frame (rgba
+   string). The fallback keeps the thumb visible before the first
+   frame. Halo, Current, Skyspace all set it. */
+.ea-chamber .ea-circumplex__thumb {
+  background: var(--ea-emotion, #C46E54);
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.24),
+    0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+/* Slider thumb inherits the same emotion hue — UI element becomes
+   part of the chamber instead of a separate terracotta ball. */
+.ea-slider-block--chamber .ea-slider__thumb {
+  background: var(--ea-emotion, rgba(245, 240, 228, 0.96));
+  box-shadow:
+    0 0 0 4px rgba(245, 240, 228, 0.14),
+    0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+/* ────────────────────────────────────────────────────────────
+ * v1.2.2 — Tooltips + Change chip attention cue
+ * ──────────────────────────────────────────────────────────── */
+
+/* Inline info chip variant — sits next to titles or buttons rather
+ * than absolutely positioned in a title-row. Same visual as
+ * .ea-help-chip but a hair smaller so it doesn't dominate. */
+.ea-help-chip--inline {
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  margin-left: 6px;
+  align-self: center;
+  vertical-align: middle;
+}
+
+/* Change chip row — holds the style-picker button and its inline
+ * (i) chip side-by-side without absorbing the tap target. */
+.ea-style-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.ea-style-picker-row .ea-style-picker-btn {
+  flex: 1 1 auto;
+}
+.ea-style-picker-row .ea-help-chip {
+  flex: 0 0 auto;
+}
+
+/* Attention breathing cue on the Change picker.
+ *
+ * Rationale: this app is used session after session. Every time a
+ * user comes back to the Before screen to choose a style for a new
+ * session, the picker row must invite the tap. We breathe a very
+ * soft warm glow around the whole button + a slightly stronger
+ * pulse on the "Change" chip. The pulse is calm (~4.4s cycle) and
+ * only pauses while the picker sheet is actually open — a
+ * body-level `data-ea-picker-open` flag suppresses the animation
+ * during that moment so the cue does not compete with the sheet. */
+.ea-style-picker-btn {
+  position: relative;
+}
+.ea-style-picker-btn::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 1.5px solid transparent;
+  pointer-events: none;
+  animation: eaPickerBreath 4400ms ease-in-out infinite;
+  opacity: 0;
+}
+.ea-style-picker-btn__hint {
+  position: relative;
+}
+.ea-style-picker-btn__hint::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  pointer-events: none;
+  box-shadow: 0 0 0 0 rgba(214, 122, 84, 0);
+  animation: eaChipBreath 4400ms ease-in-out infinite;
+}
+@keyframes eaPickerBreath {
+  0%, 100% {
+    opacity: 0;
+    border-color: rgba(214, 122, 84, 0);
+  }
+  50% {
+    opacity: 1;
+    border-color: rgba(214, 122, 84, 0.35);
+  }
+}
+@keyframes eaChipBreath {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(214, 122, 84, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(214, 122, 84, 0.28);
+  }
+}
+/* Pause the breathing only while the picker sheet is open (set from
+ * JS on body via data-ea-picker-open). The cue resumes as soon as
+ * the sheet closes so it stays consistent across every session. */
+body[data-ea-picker-open="1"] .ea-style-picker-btn::before,
+body[data-ea-picker-open="1"] .ea-style-picker-btn__hint::after {
+  animation: none;
+  opacity: 0;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ea-style-picker-btn::before,
+  .ea-style-picker-btn__hint::after {
+    animation: none;
+    opacity: 0;
+    box-shadow: none;
+  }
+}
+
+/* Style picker popover — title row with inline (i) chip */
+.ea-style-picker-panel__title-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 4px;
+}
+.ea-style-picker-panel__title-row .ea-style-picker-panel__title {
+  margin: 0;
+}
+
+/* Per-tile info chip. Sits in the top-right corner of every style
+ * tile so users can peek at what each style does before picking.
+ * Tap-target is the whole chip; click bubbling is stopped in JS
+ * so tapping (i) does not select the tile. */
+.ea-style-tile {
+  position: relative;
+}
+.ea-style-tile__info {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.95);
+  font-family: var(--ea-font-ui, "General Sans", Inter, sans-serif);
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 180ms ease, transform 180ms ease;
+}
+.ea-style-tile__info:hover,
+.ea-style-tile__info:focus-visible {
+  background: rgba(0, 0, 0, 0.45);
+  outline: none;
+}
+.ea-style-tile__info:active {
+  transform: scale(0.94);
+}
+
+/* ────────────────────────────────────────────────────────────
+ * v1.2.2 — Immersive: full hide when map closed
+ *
+ * When the user closes the emotion map during a live session,
+ * everything except the floating emotion name and a tiny "Tap
+ * to show map" hint should vanish. The previous default (~20%
+ * opacity) left the whole HUD ghosted over the art.
+ * ──────────────────────────────────────────────────────────── */
+/* Chrome to hide 100% while immersive-hidden is active. Uses the
+ * actual class names from the session screen: header, chips, muse
+ * toggle, muse panel, Stop button, view-switcher, dim hint. */
+body[data-immersive-hidden="1"] .ea-header,
+body[data-immersive-hidden="1"] #chip-help-session,
+body[data-immersive-hidden="1"] #chip-voice,
+body[data-immersive-hidden="1"] #btn-muse-data,
+body[data-immersive-hidden="1"] .ea-muse-panel,
+body[data-immersive-hidden="1"] #btn-session-stop,
+body[data-immersive-hidden="1"] #btn-immersive,
+body[data-immersive-hidden="1"] .ea-viewswitch,
+body[data-immersive-hidden="1"] .ea-debug-pill,
+body[data-immersive-hidden="1"] .ea-legal-footer,
+body[data-immersive-hidden="1"] #ea-legal-mark,
+body[data-immersive-hidden="1"] .ea-emotion-reveal,
+body[data-immersive-hidden="1"] .ea-session-idle,
+body[data-immersive-hidden="1"] #touch-hint {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 320ms ease;
+}
+
+/* Suppress the existing dim-on-stillness hint entirely while
+ * immersive-hidden is active — we own the hint in this state. */
+body[data-immersive-hidden="1"][data-dim="true"] #touch-hint {
+  opacity: 0 !important;
+}
+
+/* Floating emotion name — always visible, quiet centre-top position. */
+.ea-immersive-emotion-name {
+  position: fixed;
+  top: max(env(safe-area-inset-top, 0px), 18px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--ea-font-serif, "Fraunces", "EB Garamond", Georgia, serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+[data-immersive-hidden="1"] .ea-immersive-emotion-name {
+  opacity: 1;
+}
+
+/* "Tap to show map" hint. Fades in after 3s of idle inside
+ * immersive-hidden state; fades out again on any tap. */
+.ea-immersive-hint {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 26px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.82);
+  font-family: var(--ea-font-ui, "General Sans", Inter, sans-serif);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 200;
+  opacity: 0;
+  transform: translate(-50%, 6px);
+  transition: opacity 500ms ease, transform 500ms ease;
+}
+.ea-immersive-hint__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  animation: eaHintPulse 2200ms ease-in-out infinite;
+}
+@keyframes eaHintPulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.9); }
+  50%      { opacity: 1;   transform: scale(1.15); }
+}
+[data-immersive-hint-visible="1"] .ea-immersive-hint {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* v1.6.4.19 -- Muse-card actions row: Connect + Simulate side by side.
+   Kept as a small flex row so the Muse label + contact block stays flush
+   left while the two buttons sit compactly to the right. On very narrow
+   screens the row wraps and both buttons take the full available width. */
+.ea-muse-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.ea-muse-actions .ea-btn { white-space: nowrap; }
+
+/* Simulate button. Same ghost shape as Connect, but a slightly warmer edge
+   so it's obviously a secondary/demo affordance rather than the primary
+   real-hardware action. When active ("Simulating") it fills the border
+   with the sim amber so the state is unambiguous. */
+.ea-btn--sim {
+  border-color: rgba(196, 156, 96, 0.42);
+  color: rgba(248, 216, 168, 0.94);
+}
+.ea-btn--sim:hover:not(:disabled) {
+  border-color: rgba(196, 156, 96, 0.72);
+  background: rgba(48, 36, 20, 0.28);
+}
+.ea-btn--sim.is-active,
+.ea-btn--sim[data-state="on"] {
+  border-color: rgba(196, 156, 96, 0.9);
+  background: rgba(48, 36, 20, 0.42);
+}
