@@ -667,6 +667,70 @@
     }
     .body-hint__msg { flex: 1; }
 
+    /* Pulse-mode caption — Open register (spaced mono hint + big BPM).
+       Appears only when Pulse toggle is selected. Sits at the bottom-left
+       of the self-view, over the video, honest and quiet. */
+    .pulse-caption {
+      position: absolute;
+      left: 12px; bottom: 10px;
+      display: none;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px 12px 10px;
+      border-radius: 12px;
+      background: rgba(15, 12, 10, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      pointer-events: auto;
+      z-index: 4;
+    }
+    .pulse-caption.on { display: flex; }
+    .pulse-caption__row {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .pulse-caption__hint {
+      font-family: var(--ea-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+      color: rgba(238, 236, 231, 0.62);
+    }
+    .pulse-caption__amp {
+      font-family: var(--ea-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: lowercase;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(238, 236, 231, 0.35);
+      color: rgba(238, 236, 231, 0.80);
+      cursor: pointer;
+      user-select: none;
+      transition: color 200ms ease, border-color 200ms ease, background 200ms ease;
+    }
+    .pulse-caption__amp[aria-pressed="true"] {
+      background: rgba(238, 236, 231, 0.94);
+      color: #0f0c0a;
+      border-color: rgba(238, 236, 231, 0.94);
+    }
+    .pulse-caption__bpm {
+      font-family: var(--ea-font-display);
+      font-weight: 300;
+      font-size: 38px;
+      letter-spacing: -0.01em;
+      line-height: 1;
+      color: rgba(238, 236, 231, 0.96);
+      display: flex; align-items: baseline; gap: 6px;
+    }
+    .pulse-caption__unit {
+      font-family: var(--ea-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+      color: rgba(238, 236, 231, 0.55);
+    }
+
     /* Stats grid below self-view: signal quality + head pose */
     .sense-stats-grid {
       display: grid;
@@ -1192,6 +1256,14 @@
           <div class="body-hint" id="bodyHint" aria-hidden="true">
             <span class="body-hint__dot"></span>
             <span class="body-hint__msg">Step back so your shoulders fit — body sensing needs the full torso in frame.</span>
+          </div>
+          <!-- Pulse-mode caption + Amplify toggle, visible only when meshMode==='pulse'. -->
+          <div class="pulse-caption" id="pulseCaption" aria-hidden="true">
+            <div class="pulse-caption__row">
+              <span class="pulse-caption__hint">sensing your pulse:</span>
+              <span class="pulse-caption__amp" id="pulseAmpToggle" role="button" tabindex="0" aria-pressed="true" title="Amplify the real rPPG signal for visibility">amplified</span>
+            </div>
+            <div class="pulse-caption__bpm"><span id="pulseCaptionBpm">—</span><span class="pulse-caption__unit">bpm</span></div>
           </div>
         </div>
         <div class="sense-stats-grid" id="senseStatsGrid"></div>
@@ -2152,9 +2224,22 @@
     // Mesh overlay mode. 'off' | 'mesh' | 'labels'. Default 'mesh'.
     // Wired to the .sense-mesh-toggle pill in the sensing view.
     let meshMode = 'mesh';
+    // Pulse view: Amplify on by default (per Eyal, the piece is called Empathic
+    // Art, not Empathic Instrumentation). The signal is the same real rPPG
+    // extraction; only the visual gain changes. Waveform + BPM stay honest.
+    let pulseAmplify = true;
     (function initMeshToggle() {
       const wrap = document.getElementById('meshToggle');
       if (!wrap) return;
+      const pulseCaption = document.getElementById('pulseCaption');
+      const pulseAmp     = document.getElementById('pulseAmpToggle');
+      // Sync pulse caption visibility with mesh mode.
+      function syncPulseCaption() {
+        if (!pulseCaption) return;
+        const on = (meshMode === 'pulse');
+        pulseCaption.classList.toggle('on', on);
+        pulseCaption.setAttribute('aria-hidden', String(!on));
+      }
       wrap.addEventListener('click', (e) => {
         const btn = e.target.closest('button[data-mesh-mode]');
         if (!btn) return;
@@ -2162,8 +2247,23 @@
         for (const b of wrap.querySelectorAll('button')) {
           b.classList.toggle('on', b.dataset.meshMode === meshMode);
         }
+        syncPulseCaption();
         log('event', 'mesh mode', { mode: meshMode });
       });
+      // Amplify toggle: real signal vs amplified. State kept in pulseAmplify.
+      function togglePulseAmp() {
+        pulseAmplify = !pulseAmplify;
+        pulseAmp.setAttribute('aria-pressed', String(pulseAmplify));
+        pulseAmp.textContent = pulseAmplify ? 'amplified' : 'real';
+        log('event', 'pulse amplify', { on: pulseAmplify });
+      }
+      if (pulseAmp) {
+        pulseAmp.addEventListener('click', togglePulseAmp);
+        pulseAmp.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); togglePulseAmp(); }
+        });
+      }
+      syncPulseCaption();
     })();
 
     // Sensing view overlay: 468-vertex mesh + iris + gaze + head-pose
@@ -2196,18 +2296,25 @@
       if (f) {
         if (meshMode === 'pulse') {
           // Facial perfusion: warm glow on cheeks/forehead/lips/temples,
-          // brightness modulated by real HR + PPG phase.
+          // brightness modulated by real HR + PPG phase. Same signal
+          // VitalLens already extracts — we just paint its spatial map.
+          // Real by default is ~1% skin colour change (honest). Amplify
+          // gains up the same signal so it reads at arm's length; the
+          // waveform and BPM stay honest either way.
+          // mirror: false because the video + canvas share one CSS scaleX(-1)
+          // (same fix as mesh overlay). Amplify raises alpha + warmth without
+          // touching phase, so it's the real pulse, just louder visually.
           const ppgPhase = computePpgPhase(senseState.ppg);
+          const amp = pulseAmplify;
           drawPulseOverlay(
             senseCtx, f, vlDisplayedHr, ppgPhase, vv, vh, w, h,
-            { mirror: true, alpha: 0.60, warmth: 1.05, showLegend: false }
+            {
+              mirror: false,
+              alpha:   amp ? 0.85 : 0.42,
+              warmth:  amp ? 1.15 : 0.95,
+              showLegend: false
+            }
           );
-          // Also show the bounding box so face location is obvious.
-          drawMeshOverlay(senseCtx, f, vv, vh, w, h, {
-            mirror: false, showBox: true, showMesh: false, showContours: false,
-            showIris: false, showGaze: false, showAxes: false, showRoi: false,
-            labelEvery: 0,
-          });
         } else if (meshMode !== 'off') {
           drawMeshOverlay(senseCtx, f, vv, vh, w, h, {
             mirror: false,
@@ -2595,8 +2702,12 @@
         }
       }
       // 3) Heart rate
+      // Also mirror BPM into the pulse-mode caption (over the self-view).
+      const pulseBpmEl = document.getElementById('pulseCaptionBpm');
       if (vlDisplayedHr != null) {
-        hrBpmEl.textContent = vlDisplayedHr.toFixed(0);
+        const bpmTxt = vlDisplayedHr.toFixed(0);
+        hrBpmEl.textContent = bpmTxt;
+        if (pulseBpmEl) pulseBpmEl.textContent = bpmTxt;
         if (vlBaseline != null) {
           const d = vlDisplayedHr - vlBaseline;
           hrDeltaEl.textContent = (d >= 0 ? 'Δ+' : 'Δ') + d.toFixed(1);
@@ -2609,6 +2720,7 @@
         }
       } else {
         hrBpmEl.textContent = '—';
+        if (pulseBpmEl) pulseBpmEl.textContent = '—';
         hrDeltaEl.textContent = '—';
         hrDeltaEl.className = 'hr-block__delta';
       }
