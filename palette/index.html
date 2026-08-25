@@ -590,6 +590,138 @@
       text-transform: uppercase;
       color: rgba(238, 236, 231, 0.45);
       margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    /* Mesh overlay mode toggle: three-state pill (off / mesh / labels) */
+    .sense-mesh-toggle {
+      display: inline-flex;
+      border: 1px solid rgba(238, 236, 231, 0.14);
+      border-radius: 999px;
+      padding: 2px;
+      background: rgba(15, 12, 10, 0.5);
+    }
+    .sense-mesh-toggle button {
+      font-family: var(--ea-font-mono);
+      font-size: 9.5px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(238, 236, 231, 0.55);
+      background: transparent;
+      border: 0;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: color 160ms ease, background 160ms ease;
+    }
+    .sense-mesh-toggle button:hover { color: rgba(238, 236, 231, 0.85); }
+    .sense-mesh-toggle button.on {
+      color: rgba(15, 12, 10, 0.95);
+      background: rgba(238, 236, 231, 0.9);
+    }
+
+    /* Face chips (age, distance, real/live) overlaid on the self-view */
+    .sense-selfview__chips {
+      position: absolute; left: 8px; bottom: 8px; right: 8px;
+      display: flex; flex-wrap: wrap; gap: 4px;
+      pointer-events: none;
+    }
+    .sense-selfview__chip {
+      font-family: var(--ea-font-mono);
+      font-size: 9.5px;
+      letter-spacing: 0.08em;
+      color: rgba(238, 236, 231, 0.92);
+      background: rgba(15, 12, 10, 0.72);
+      border: 1px solid rgba(238, 236, 231, 0.16);
+      padding: 3px 7px;
+      border-radius: 4px;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .sense-selfview__chip.ok  { border-color: rgba(120, 220, 120, 0.55); color: rgba(210, 245, 210, 0.98); }
+    .sense-selfview__chip.warn { border-color: rgba(232, 180, 90, 0.55); color: rgba(250, 220, 170, 0.98); }
+
+    /* Stats grid below self-view: signal quality + head pose */
+    .sense-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .sense-stats-cell {
+      border: 1px solid rgba(238, 236, 231, 0.10);
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .sense-stats-cell .k {
+      font-family: var(--ea-font-mono);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(238, 236, 231, 0.42);
+    }
+    .sense-stats-cell .v {
+      font-family: var(--ea-font-mono);
+      font-size: 15px;
+      color: rgba(238, 236, 231, 0.94);
+      font-variant-numeric: tabular-nums;
+    }
+    .sense-stats-cell .u {
+      font-family: var(--ea-font-mono);
+      font-size: 9.5px;
+      color: rgba(238, 236, 231, 0.45);
+      margin-left: 4px;
+    }
+
+    /* HRV row (three metrics in a strip) */
+    .sense-hrv-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .sense-hrv-row__item {
+      border: 1px solid rgba(238, 236, 231, 0.10);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-family: var(--ea-font-mono);
+      font-size: 12px;
+      color: rgba(238, 236, 231, 0.9);
+      font-variant-numeric: tabular-nums;
+      display: flex; align-items: baseline; gap: 6px;
+    }
+    .sense-hrv-row__item .k {
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(238, 236, 231, 0.42);
+    }
+    .sense-hrv-row__item .u { color: rgba(238, 236, 231, 0.42); font-size: 9.5px; margin-left: auto; }
+
+    /* Posture row (2 metrics) */
+    .sense-posture-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .sense-posture-row__item {
+      border: 1px solid rgba(238, 236, 231, 0.10);
+      border-radius: 6px;
+      padding: 8px 12px;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .sense-posture-row__item .k {
+      font-family: var(--ea-font-mono);
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(238, 236, 231, 0.42);
+    }
+    .sense-posture-row__item .v {
+      font-family: var(--ea-font-mono);
+      font-size: 15px;
+      color: rgba(238, 236, 231, 0.94);
+      font-variant-numeric: tabular-nums;
     }
 
     /* Self-view panel — sized to fit the camera stream (portrait on iPhone) */
@@ -969,14 +1101,23 @@
   <!-- Sensing view: the mechanism, made visible -->
   <div class="sensing" id="sensing" aria-hidden="true">
     <div class="sensing__inner">
-      <div class="sensing__caption">How the machine is <em>sensing</em> you.</div>
+      <div class="sensing__caption">How the machine is sensing you.</div>
 
       <section class="sense-panel">
-        <div class="sense-panel__label">Camera · face landmarks · pulse ROI</div>
+        <div class="sense-panel__label">
+          <span>Camera signal</span>
+          <span class="sense-mesh-toggle" id="meshToggle" role="group" aria-label="Mesh overlay mode">
+            <button type="button" data-mesh-mode="off">Off</button>
+            <button type="button" data-mesh-mode="mesh" class="on">Mesh</button>
+            <button type="button" data-mesh-mode="labels">Labels</button>
+          </span>
+        </div>
         <div class="sense-selfview">
           <video id="senseVideo" autoplay muted playsinline></video>
           <canvas id="senseOverlay" width="320" height="240"></canvas>
+          <div class="sense-selfview__chips" id="faceChips"></div>
         </div>
+        <div class="sense-stats-grid" id="senseStatsGrid"></div>
       </section>
 
       <section class="sense-panel">
@@ -985,7 +1126,7 @@
       </section>
 
       <section class="sense-panel">
-        <div class="sense-panel__label">Heart rate · VitalLens (rPPG)</div>
+        <div class="sense-panel__label">Heart rhythm · rPPG</div>
         <div class="hr-block">
           <span class="hr-block__bpm" id="hrBpm">—</span>
           <span class="hr-block__unit">bpm</span>
@@ -993,6 +1134,25 @@
         </div>
         <div class="hr-baseline" id="hrBaseline">baseline learning…</div>
         <canvas class="rppg-canvas" id="rppgCanvas" width="600" height="92"></canvas>
+        <div class="sense-hrv-row" id="hrvRow">
+          <div class="sense-hrv-row__item"><span class="k">SDNN</span><span id="hrvSdnn">—</span> <span class="u">ms</span></div>
+          <div class="sense-hrv-row__item"><span class="k">RMSSD</span><span id="hrvRmssd">—</span> <span class="u">ms</span></div>
+          <div class="sense-hrv-row__item"><span class="k">Resp</span><span id="respRate">—</span> <span class="u">br/min</span></div>
+        </div>
+      </section>
+
+      <section class="sense-panel">
+        <div class="sense-panel__label">Posture · body pose</div>
+        <div class="sense-posture-row">
+          <div class="sense-posture-row__item">
+            <span class="k">Shoulder tilt</span>
+            <span class="v" id="postureShoulder">—</span>
+          </div>
+          <div class="sense-posture-row__item">
+            <span class="k">Neck tilt</span>
+            <span class="v" id="postureNeck">—</span>
+          </div>
+        </div>
       </section>
 
       <section class="sense-panel">
@@ -1166,15 +1326,24 @@
       cacheSensitivity: 0.7,
       face: {
         enabled: true,
-        detector: { rotation: false, maxDetected: 1, minConfidence: 0.4, return: false },
-        mesh: { enabled: false },
-        iris: { enabled: false },
-        description: { enabled: false },
+        // rotation ON so we get face.rotation.angle (yaw/pitch/roll) + face.rotation.gaze
+        detector: { rotation: true, maxDetected: 1, minConfidence: 0.4, return: false },
+        // 468-point mesh + annotations (silhouette, lips, eyes, brows, iris groups)
+        mesh: { enabled: true },
+        // iris landmarks (10 extra) + gaze bearing/strength via face.rotation.gaze
+        iris: { enabled: true },
+        // age + gender + descriptor (embedding).
+        // We use age/gender in the sensing view; embedding is available for later.
+        description: { enabled: true },
         emotion: { enabled: true, minConfidence: 0.1 },
-        antispoof: { enabled: false },
-        liveness: { enabled: false },
+        // Anti-spoof + liveness give real/live confidence scores per face
+        antispoof: { enabled: true },
+        liveness: { enabled: true },
       },
-      body: { enabled: false }, hand: { enabled: false }, object: { enabled: false },
+      // MoveNet 17-keypoint body pose: nose/eyes/ears/shoulders/elbows/
+      // wrists/hips/knees/ankles. We use shoulders + ears for posture tilt.
+      body: { enabled: true, modelPath: 'movenet-lightning.json' },
+      hand: { enabled: false }, object: { enabled: false },
       gesture: { enabled: false }, segmentation: { enabled: false },
     };
     const EMO_VA = {
@@ -1235,23 +1404,100 @@
       if (!mid.length) return null;
       return mid.reduce((a, b) => a + b, 0) / mid.length;
     }
+    // Compute HRV (SDNN, RMSSD in ms) from a rolling PPG waveform buffer.
+    // Peak-detect over a normalized trace, convert intervals to ms using
+    // the ~30 fps sampling of VitalLens, and produce standard HRV stats.
+    // Cheap and local. Not medical grade, but useful as a signal.
+    function computeHrvFromPpg(samples) {
+      const N = samples.length;
+      if (N < 90) return { sdnn: null, rmssd: null }; // need ~3s of data
+      // Detrend by rolling mean subtraction
+      let sum = 0; for (let i = 0; i < N; i++) sum += samples[i];
+      const mean = sum / N;
+      const s = new Array(N);
+      for (let i = 0; i < N; i++) s[i] = samples[i] - mean;
+      // Peak detect: local max with min distance ~250ms (@ 30fps that is 8 samples)
+      const MIN_DIST = 8;
+      const peaks = [];
+      for (let i = 2; i < N - 2; i++) {
+        if (s[i] > s[i-1] && s[i] > s[i-2] && s[i] > s[i+1] && s[i] > s[i+2] && s[i] > 0) {
+          if (peaks.length === 0 || i - peaks[peaks.length - 1] >= MIN_DIST) {
+            peaks.push(i);
+          } else if (s[i] > s[peaks[peaks.length - 1]]) {
+            peaks[peaks.length - 1] = i;
+          }
+        }
+      }
+      if (peaks.length < 5) return { sdnn: null, rmssd: null };
+      // Intervals in ms (assume ~30 fps sampling rate)
+      const FS = 30;
+      const rr = [];
+      for (let i = 1; i < peaks.length; i++) rr.push((peaks[i] - peaks[i-1]) * 1000 / FS);
+      // SDNN: standard deviation of RR intervals
+      const rrMean = rr.reduce((a,b) => a + b, 0) / rr.length;
+      let sqSum = 0; for (const v of rr) sqSum += (v - rrMean) ** 2;
+      const sdnn = Math.sqrt(sqSum / rr.length);
+      // RMSSD: root mean square of successive differences
+      let diffSq = 0, dN = 0;
+      for (let i = 1; i < rr.length; i++) { diffSq += (rr[i] - rr[i-1]) ** 2; dN++; }
+      const rmssd = dN ? Math.sqrt(diffSq / dN) : null;
+      return { sdnn, rmssd };
+    }
+
     function onVitals(result) {
       vlEventCount++;
-      // Feed rPPG waveform into the sensing view (best-effort — shape varies)
+      // VitalLens payload can be shaped as either the modern schema
+      //   { face, vital_signs: { heart_rate, respiratory_rate,
+      //     ppg_waveform, respiratory_waveform }, time, fps, estFps }
+      // or a legacy shape with top-level vitals + waveforms. Read both.
+      const vitals = result?.vital_signs || result?.vitals || {};
+      const waveforms = result?.waveforms || {};
+      const ppgWf = vitals.ppg_waveform || waveforms.ppg_waveform;
+      const respWf = vitals.respiratory_waveform || waveforms.respiratory_waveform;
+      // Real processing FPS reported by VitalLens.
+      if (typeof result?.fps === 'number') senseState.vlFps = result.fps;
+      if (typeof result?.estFps === 'number') senseState.vlEstFps = result.estFps;
+      // PPG waveform samples (rolling buffer + per-sample confidence).
       try {
-        const wf = result?.waveforms?.ppg_waveform;
-        const arr = Array.isArray(wf) ? wf
-                  : Array.isArray(wf?.data) ? wf.data
-                  : Array.isArray(wf?.values) ? wf.values
-                  : null;
-        if (arr && arr.length) {
-          for (const s of arr) if (typeof s === 'number' && isFinite(s)) senseState.ppg.push(s);
-          // Keep last ~10s at 30fps = 300 samples worth of headroom
+        const data = Array.isArray(ppgWf) ? ppgWf
+                   : Array.isArray(ppgWf?.data) ? ppgWf.data
+                   : Array.isArray(ppgWf?.values) ? ppgWf.values
+                   : null;
+        const conf = Array.isArray(ppgWf?.confidence) ? ppgWf.confidence : null;
+        if (data && data.length) {
+          for (let i = 0; i < data.length; i++) {
+            const s = data[i];
+            if (typeof s === 'number' && isFinite(s)) {
+              senseState.ppg.push(s);
+              senseState.ppgConf.push(conf ? Number(conf[i] ?? 0) : 1);
+            }
+          }
           const KEEP = 512;
-          if (senseState.ppg.length > KEEP) senseState.ppg.splice(0, senseState.ppg.length - KEEP);
+          if (senseState.ppg.length > KEEP) {
+            senseState.ppg.splice(0, senseState.ppg.length - KEEP);
+            senseState.ppgConf.splice(0, senseState.ppgConf.length - KEEP);
+          }
+          // Recompute HRV locally from PPG peaks (SDNN + RMSSD).
+          senseState.hrv = computeHrvFromPpg(senseState.ppg);
         }
       } catch (e) { /* keep going */ }
-      const hr = result?.vitals?.heart_rate;
+      // Respiratory rate + waveform (cloud method only; both may be absent).
+      const rr = vitals.respiratory_rate;
+      if (rr && typeof rr.value === 'number' && isFinite(rr.value)) {
+        senseState.respRate = rr.value;
+        senseState.respConf = typeof rr.confidence === 'number' ? rr.confidence : null;
+      }
+      try {
+        const rdata = Array.isArray(respWf) ? respWf
+                    : Array.isArray(respWf?.data) ? respWf.data
+                    : null;
+        if (rdata && rdata.length) {
+          for (const s of rdata) if (typeof s === 'number' && isFinite(s)) senseState.resp.push(s);
+          const KEEP = 256;
+          if (senseState.resp.length > KEEP) senseState.resp.splice(0, senseState.resp.length - KEEP);
+        }
+      } catch (e) { /* keep going */ }
+      const hr = vitals.heart_rate;
       const now = performance.now();
       const hrRaw = hr?.value, hrConf = hr?.confidence;
       if (typeof hrRaw === 'number' && typeof hrConf === 'number'
@@ -1333,9 +1579,17 @@
       if (face && face.emotion && face.emotion.length) {
         updateHumanSmoothing(face.emotion);
         humanLastVA = computeVA();
-        // Feed the sensing view
+        // Feed the sensing view with the full FaceResult so the overlay can
+        // draw mesh, iris, gaze, head-pose, and read distance/age/gender/
+        // real/live confidence.
         senseState.face = face;
         senseState.emotions = face.emotion.slice();
+      }
+      // Body pose (MoveNet 17-keypoint). Used for shoulder/neck tilt.
+      const body = result.body && result.body[0];
+      if (body && body.keypoints) {
+        senseState.body = body;
+        senseState.posture = computePostureTilt(body.keypoints);
       }
       humanFrameCount++;
       const now = performance.now();
@@ -1394,6 +1648,10 @@
     // Copy dictionary + emotion tips + install() at boot.
     const { installTooltips, showEmotionTip, setTooltipDebug } =
       await import('./v2-ports/ui/tooltips.js');
+    // Face mesh + iris + gaze + head-pose overlay, MediaPipe 468 verts +
+    // TRI468 triangulation, drawn in the vitalsign.ai visual language.
+    const { drawMeshOverlay, drawBodySkeleton, computePostureTilt } =
+      await import('./v2-ports/face/mesh-overlay.js');
     setTooltipDebug((action, extra) => log('event', `tooltip ${action}`, extra || {}));
     installTooltips();
     log('event', 'tooltips installed');
@@ -1650,9 +1908,17 @@
 
     // ── SENSING VIEW state + rendering ─────────────────────────────────
     const senseState = {
-      face: null,
-      emotions: [],   // [{ emotion, score }...]
-      ppg: [],        // rolling waveform samples
+      face: null,      // full FaceResult: box, mesh, annotations, iris, rotation, distance, age, gender, real, live, emotion...
+      body: null,      // full BodyResult: keypoints, box, score
+      posture: { shoulderTilt: null, neckTilt: null },
+      emotions: [],    // [{ emotion, score }...]
+      ppg: [],         // rolling PPG waveform samples
+      ppgConf: [],     // per-sample PPG confidence (VitalLens waveforms.ppg_waveform.confidence)
+      resp: [],        // rolling respiratory waveform samples (cloud method only)
+      respRate: null,  // breaths per minute (cloud method only)
+      respConf: null,
+      hrv: { sdnn: null, rmssd: null }, // computed locally from PPG peaks
+      vlFps: null, vlEstFps: null,
       uV: [], uA: [], uP: [], uI: [],
     };
     let sensingOpen = false;
@@ -1725,45 +1991,101 @@
       ctx.stroke();
     }
 
+    // Mesh overlay mode. 'off' | 'mesh' | 'labels'. Default 'mesh'.
+    // Wired to the .sense-mesh-toggle pill in the sensing view.
+    let meshMode = 'mesh';
+    (function initMeshToggle() {
+      const wrap = document.getElementById('meshToggle');
+      if (!wrap) return;
+      wrap.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-mesh-mode]');
+        if (!btn) return;
+        meshMode = btn.dataset.meshMode;
+        for (const b of wrap.querySelectorAll('button')) {
+          b.classList.toggle('on', b.dataset.meshMode === meshMode);
+        }
+        log('event', 'mesh mode', { mode: meshMode });
+      });
+    })();
+
+    // Sensing view overlay: 468-vertex mesh + iris + gaze + head-pose
+    // + body skeleton. Draws in vitalsign.ai / ARKit-editorial style.
     function drawSenseOverlay() {
-      // Match overlay canvas size to the video's native resolution so
-      // Human's mesh/box coords land pixel-perfect regardless of CSS scaling.
       const vv = senseVideo.videoWidth || 640, vh = senseVideo.videoHeight || 480;
       if (senseOverlay.width !== vv || senseOverlay.height !== vh) {
         senseOverlay.width = vv;
         senseOverlay.height = vh;
       }
       const w = senseOverlay.width, h = senseOverlay.height;
-      senseCtx.clearRect(0, 0, w, h);
       const f = senseState.face;
-      if (!f) return;
-      // face.box is [x, y, w, h] in source video coords; senseVideo mirrors X (scaleX(-1))
-      const box = f.box; // [x,y,w,h]
-      if (box && box.length === 4) {
-        // Mirror X to match the flipped video display
-        const [bx, by, bw, bh] = box;
-        const mx = vv - (bx + bw);
-        const sx = mx / vv * w, sy = by / vh * h, sw = bw / vv * w, sh = bh / vh * h;
-        // Face box — hairline
-        senseCtx.strokeStyle = 'rgba(232,90,60,0.9)';
-        senseCtx.lineWidth = 1.5;
-        senseCtx.strokeRect(sx, sy, sw, sh);
-        // Forehead ROI (approx: top 25% of face box, middle 60% horizontally) — what VitalLens likely samples
-        const rx = sx + sw * 0.20, ry = sy + sh * 0.05, rw = sw * 0.60, rh = sh * 0.22;
-        senseCtx.strokeStyle = 'rgba(232,90,60,0.6)';
-        senseCtx.setLineDash([3, 3]);
-        senseCtx.strokeRect(rx, ry, rw, rh);
-        senseCtx.setLineDash([]);
-        // Landmarks — tiny ink dots (mesh is large; sample every 5th)
-        if (f.mesh && f.mesh.length) {
-          senseCtx.fillStyle = 'rgba(27,21,18,0.55)';
-          for (let i = 0; i < f.mesh.length; i += 5) {
-            const p = f.mesh[i];
-            const px = (vv - p[0]) / vv * w, py = p[1] / vh * h;
-            senseCtx.fillRect(px - 0.5, py - 0.5, 1, 1);
-          }
-        }
+      const body = senseState.body;
+      // Draw body first so face mesh sits on top.
+      senseCtx.clearRect(0, 0, w, h);
+      if (body && body.keypoints) {
+        drawBodySkeleton(senseCtx, body.keypoints, vv, vh, w, h, { mirror: true });
       }
+      if (f) {
+        const showMesh = meshMode !== 'off';
+        drawMeshOverlay(senseCtx, f, vv, vh, w, h, {
+          mirror: true,
+          showBox: true,
+          showMesh: showMesh,
+          showContours: showMesh,
+          showIris: showMesh,
+          showGaze: showMesh,
+          showAxes: showMesh,
+          showRoi: false,
+          // Labels every 10th vertex (~47 visible) when in labels mode
+          labelEvery: meshMode === 'labels' ? 10 : 0,
+        });
+      }
+    }
+
+    // Populate the face chips row overlaid on the self-view, and the 3x1
+    // stats grid below it (signal quality + head pose + performance).
+    const faceChipsEl = document.getElementById('faceChips');
+    const senseStatsGridEl = document.getElementById('senseStatsGrid');
+    const hrvSdnnEl = document.getElementById('hrvSdnn');
+    const hrvRmssdEl = document.getElementById('hrvRmssd');
+    const respRateEl = document.getElementById('respRate');
+    const postureShoulderEl = document.getElementById('postureShoulder');
+    const postureNeckEl = document.getElementById('postureNeck');
+    function fmt(v, d = 0) { return (v == null || !isFinite(v)) ? '—' : v.toFixed(d); }
+    function renderSenseStats() {
+      const f = senseState.face;
+      // Face chips overlay
+      const chips = [];
+      if (f) {
+        if (typeof f.age === 'number' && isFinite(f.age)) chips.push({ t: `AGE ${f.age.toFixed(0)}`, cls: '' });
+        if (f.gender) chips.push({ t: `${f.gender.toUpperCase()} ${f.genderScore ? Math.round(f.genderScore*100)+'%' : ''}`.trim(), cls: '' });
+        if (typeof f.distance === 'number' && isFinite(f.distance)) chips.push({ t: `${f.distance.toFixed(0)} CM`, cls: '' });
+        if (typeof f.real === 'number') chips.push({ t: `REAL ${(f.real*100).toFixed(0)}%`, cls: f.real > 0.75 ? 'ok' : 'warn' });
+        if (typeof f.live === 'number') chips.push({ t: `LIVE ${(f.live*100).toFixed(0)}%`, cls: f.live > 0.75 ? 'ok' : 'warn' });
+      }
+      faceChipsEl.innerHTML = chips.map(c => `<span class="sense-selfview__chip ${c.cls}">${c.t}</span>`).join('');
+      // Stats grid: signal quality + head pose + fps
+      const cells = [];
+      // Signal quality: faceScore, meshScore
+      const fs = f && (f.faceScore ?? f.score);
+      const ms = f && f.meshScore;
+      cells.push(`<div class="sense-stats-cell"><span class="k">Face score</span><span><span class="v">${fs != null ? (fs*100).toFixed(0) : '—'}</span><span class="u">%</span></span></div>`);
+      cells.push(`<div class="sense-stats-cell"><span class="k">Mesh score</span><span><span class="v">${ms != null ? (ms*100).toFixed(0) : '—'}</span><span class="u">%</span></span></div>`);
+      // Head pose
+      const r = f && f.rotation && f.rotation.angle;
+      const yaw = r ? (r.yaw   * 180 / Math.PI) : null;
+      const pitch = r ? (r.pitch * 180 / Math.PI) : null;
+      const roll  = r ? (r.roll  * 180 / Math.PI) : null;
+      const poseTxt = r ? `Y ${fmt(yaw,0)}° · P ${fmt(pitch,0)}° · R ${fmt(roll,0)}°` : '—';
+      cells.push(`<div class="sense-stats-cell"><span class="k">Head pose</span><span class="v" style="font-size:11px">${poseTxt}</span></div>`);
+      senseStatsGridEl.innerHTML = cells.join('');
+      // HRV row
+      hrvSdnnEl.textContent = fmt(senseState.hrv.sdnn, 0);
+      hrvRmssdEl.textContent = fmt(senseState.hrv.rmssd, 0);
+      respRateEl.textContent = fmt(senseState.respRate, 0);
+      // Posture row
+      const p = senseState.posture || {};
+      postureShoulderEl.textContent = p.shoulderTilt != null ? `${p.shoulderTilt.toFixed(1)}°` : '—';
+      postureNeckEl.textContent     = p.neckTilt     != null ? `${p.neckTilt.toFixed(1)}°` : '—';
     }
 
     // Circumplex labels come from v1's 19-emotion palette — same names,
@@ -1938,8 +2260,9 @@
     }
 
     function updateSensing() {
-      // 1) Self-view overlay
+      // 1) Self-view overlay + chips + head-pose/quality strip
       drawSenseOverlay();
+      renderSenseStats();
       // 2) Emotion bars (raw scores from Human)
       if (senseState.emotions.length) {
         // Build a top-emotion lookup
