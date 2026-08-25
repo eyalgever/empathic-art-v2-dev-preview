@@ -792,6 +792,9 @@
       -webkit-tap-highlight-color: transparent;
     }
     .feeling.hidden { display: none; }
+    /* When map overlay is on, hide the bottom feeling word bar so the
+       overlay's own caption (larger, colored) is the only word onscreen. */
+    body.map-open .feeling { opacity: 0; pointer-events: none; transition: opacity 240ms ease; }
     .feeling__word {
       display: inline-block;
       font-family: var(--ea-font-display);
@@ -824,18 +827,81 @@
        the full circumplex lives in the Sensing view; a stripped-down one
        on the art felt like a broken control). Kept in DOM so trail
        state keeps ticking. ────────────────────────────────────── */
-    /* Map overlay — fullscreen, semi-transparent, on top of the art. */
+    /* Map overlay — fullscreen, semi-transparent, on top of the art.
+       Tap anywhere to hide (pointer-events on when .on). */
     .map-overlay {
       position: fixed; inset: 0; z-index: 8;
       pointer-events: none;
       opacity: 0;
       transition: opacity 320ms ease;
+      background: radial-gradient(ellipse at center,
+        rgba(15, 12, 10, 0.20) 0%,
+        rgba(15, 12, 10, 0.45) 60%,
+        rgba(15, 12, 10, 0.62) 100%);
     }
-    .map-overlay.on { opacity: 1; }
-    .map-overlay canvas {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
+    .map-overlay.on { opacity: 1; pointer-events: auto; cursor: pointer; }
+    .map-overlay__wheel {
+      position: absolute;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: min(88vw, 88vh, 720px);
+      height: min(88vw, 88vh, 720px);
       display: block;
+    }
+    /* Feathered self-view: circular window at the wheel centre, radially
+       masked from ~100% opaque at the centre to fully transparent at edge. */
+    .map-overlay__face {
+      position: absolute;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: min(38vw, 38vh, 300px);
+      height: min(38vw, 38vh, 300px);
+      border-radius: 50%;
+      overflow: hidden;
+      -webkit-mask-image: radial-gradient(circle at 50% 50%,
+        rgba(0,0,0,1) 0%,
+        rgba(0,0,0,1) 45%,
+        rgba(0,0,0,0.75) 70%,
+        rgba(0,0,0,0) 100%);
+              mask-image: radial-gradient(circle at 50% 50%,
+        rgba(0,0,0,1) 0%,
+        rgba(0,0,0,1) 45%,
+        rgba(0,0,0,0.75) 70%,
+        rgba(0,0,0,0) 100%);
+      pointer-events: none;
+    }
+    .map-overlay__face video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      display: block;
+    }
+    /* Caption: two lines, small hint + large emotion word. Word colour set
+       inline based on the live v1 emotion palette. */
+    .map-overlay__caption {
+      position: absolute;
+      left: 50%; bottom: calc(env(safe-area-inset-bottom, 0) + 32px);
+      transform: translateX(-50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    .map-overlay__hint {
+      font-family: var(--ea-font-mono);
+      font-size: 11px;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+      color: rgba(238, 236, 231, 0.60);
+      margin-bottom: 8px;
+    }
+    .map-overlay__word {
+      font-family: var(--ea-font-display);
+      font-weight: 300;
+      font-size: 40px;
+      letter-spacing: -0.01em;
+      line-height: 1.05;
+      color: rgba(238, 236, 231, 0.94);
+      transition: color 320ms ease;
+    }
+    @media (min-width: 768px) {
+      .map-overlay__word { font-size: 56px; }
     }
     /* Legacy miniplot: kept as invisible trail bookkeeping. */
     .miniplot { display: none !important; }
@@ -1199,9 +1265,18 @@
   </div>
 
   <!-- Fullscreen semi-transparent Map overlay on top of the artwork.
-       Toggled by the Map button. Chapel shader keeps painting underneath. -->
+       Toggled by the Map button. Underlying shader keeps painting.
+       Layers, bottom to top: circumplex wheel canvas, feathered self-view
+       (masked to a soft radial), and two lines of type. Tap anywhere to hide. -->
   <div class="map-overlay" id="mapOverlay" aria-hidden="true">
-    <canvas id="mapCanvas"></canvas>
+    <canvas class="map-overlay__wheel" id="mapCanvas"></canvas>
+    <div class="map-overlay__face">
+      <video id="mapFaceVideo" autoplay muted playsinline></video>
+    </div>
+    <div class="map-overlay__caption">
+      <div class="map-overlay__hint">sensing you now:</div>
+      <div class="map-overlay__word" id="mapWord">breathing in</div>
+    </div>
   </div>
 
   <!-- Controls (hidden while gate is showing) -->
@@ -1316,36 +1391,48 @@
     });
 
     // ── HUMAN CONFIG (from Engine 1 final tuning) ────────────────────
-    const HUMAN_CONFIG = {
+    // Mobile Safari runs face inference at 1-5 fps when EVERY module is on
+    // (mesh + iris + description + antispoof + liveness + body all together
+    // is ~250-300ms per detect on iPhone). We keep the core visual pipeline
+    // (mesh, iris, rotation, emotion) always on. Age/gender/anti-spoof/
+    // liveness/body are heavy and shown only when the Sensing view is open;
+    // we hot-swap the config through human.reset(). Default = light.
+    const HUMAN_LIGHT_CONFIG = {
       backend: 'webgl',
       modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/models/',
       wasmPlatformFetch: false,
       wasmPath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/dist/',
       debug: false,
       warmup: 'none',
-      cacheSensitivity: 0.7,
+      cacheSensitivity: 0.75,
+      filter: { enabled: false },
       face: {
         enabled: true,
-        // rotation ON so we get face.rotation.angle (yaw/pitch/roll) + face.rotation.gaze
-        detector: { rotation: true, maxDetected: 1, minConfidence: 0.4, return: false },
-        // 468-point mesh + annotations (silhouette, lips, eyes, brows, iris groups)
+        detector: { rotation: true, maxDetected: 1, minConfidence: 0.4, return: false, skipFrames: 15, skipTime: 250 },
         mesh: { enabled: true },
-        // iris landmarks (10 extra) + gaze bearing/strength via face.rotation.gaze
         iris: { enabled: true },
-        // age + gender + descriptor (embedding).
-        // We use age/gender in the sensing view; embedding is available for later.
-        description: { enabled: true },
-        emotion: { enabled: true, minConfidence: 0.1 },
-        // Anti-spoof + liveness give real/live confidence scores per face
-        antispoof: { enabled: true },
-        liveness: { enabled: true },
+        description: { enabled: false },
+        emotion: { enabled: true, minConfidence: 0.1, skipFrames: 30, skipTime: 300 },
+        antispoof: { enabled: false },
+        liveness: { enabled: false },
       },
-      // MoveNet 17-keypoint body pose: nose/eyes/ears/shoulders/elbows/
-      // wrists/hips/knees/ankles. We use shoulders + ears for posture tilt.
-      body: { enabled: true, modelPath: 'movenet-lightning.json' },
+      body: { enabled: false },
       hand: { enabled: false }, object: { enabled: false },
       gesture: { enabled: false }, segmentation: { enabled: false },
     };
+    // Full pipeline: enabled when the user opens the Sensing view.
+    const HUMAN_FULL_CONFIG = {
+      ...HUMAN_LIGHT_CONFIG,
+      face: {
+        ...HUMAN_LIGHT_CONFIG.face,
+        description: { enabled: true, skipFrames: 60, skipTime: 500 },
+        antispoof: { enabled: true, skipFrames: 60, skipTime: 500 },
+        liveness: { enabled: true, skipFrames: 60, skipTime: 500 },
+      },
+      body: { enabled: true, modelPath: 'movenet-lightning.json', maxDetected: 1, skipFrames: 30, skipTime: 400 },
+    };
+    // Legacy alias (init call uses this name)
+    const HUMAN_CONFIG = HUMAN_LIGHT_CONFIG;
     const EMO_VA = {
       happy:    { v:  0.85, a:  0.55 }, sad:      { v: -0.75, a: -0.40 },
       angry:    { v: -0.65, a:  0.75 }, fear:     { v: -0.60, a:  0.80 },
@@ -1373,6 +1460,9 @@
     let human = null, vl = null, running = false, mediaStream = null;
     let sessionStartMs = 0;
     let humanFrameCount = 0, humanInferSamples = [], humanRecentFps = 0, humanLastFpsAt = 0;
+    // Latest detect() result (used by the sensing loop to call human.next()
+    // for interpolated 60fps mesh tracking between real inference calls).
+    let humanLastResult = null;
     let humanLastVA = { v: null, a: null };
     let nextInferenceEarliestAt = 0;
     let vlBaseline = null, vlHrHist = [], vlRecentSmoothed = [];
@@ -1575,17 +1665,17 @@
       if (humanInferSamples.length > 60) humanInferSamples.shift();
       nextInferenceEarliestAt = performance.now() + infMs * (1 - INFERENCE_DUTY) / INFERENCE_DUTY;
 
+      // Store raw result so the sensing render loop can call human.next()
+      // to interpolate between detections. This is what makes the mesh
+      // track head motion smoothly at ~60fps even when detect() is 3-5 fps.
+      humanLastResult = result;
       const face = result.face && result.face[0];
       if (face && face.emotion && face.emotion.length) {
         updateHumanSmoothing(face.emotion);
         humanLastVA = computeVA();
-        // Feed the sensing view with the full FaceResult so the overlay can
-        // draw mesh, iris, gaze, head-pose, and read distance/age/gender/
-        // real/live confidence.
         senseState.face = face;
         senseState.emotions = face.emotion.slice();
       }
-      // Body pose (MoveNet 17-keypoint). Used for shoulder/neck tilt.
       const body = result.body && result.body[0];
       if (body && body.keypoints) {
         senseState.body = body;
@@ -2010,6 +2100,8 @@
 
     // Sensing view overlay: 468-vertex mesh + iris + gaze + head-pose
     // + body skeleton. Draws in vitalsign.ai / ARKit-editorial style.
+    // Uses human.next() to interpolate face position between detects for
+    // smooth 60fps tracking when the model is inferring at 3-5fps.
     function drawSenseOverlay() {
       const vv = senseVideo.videoWidth || 640, vh = senseVideo.videoHeight || 480;
       if (senseOverlay.width !== vv || senseOverlay.height !== vh) {
@@ -2017,11 +2109,19 @@
         senseOverlay.height = vh;
       }
       const w = senseOverlay.width, h = senseOverlay.height;
-      const f = senseState.face;
-      const body = senseState.body;
+      // Ask Human for an interpolated result. Falls back to last raw face.
+      let f = senseState.face;
+      let body = senseState.body;
+      if (human && humanLastResult) {
+        try {
+          const interp = human.next(humanLastResult);
+          if (interp && interp.face && interp.face[0]) f = interp.face[0];
+          if (interp && interp.body && interp.body[0]) body = interp.body[0];
+        } catch (e) { /* fall back to last face */ }
+      }
       // Draw body first so face mesh sits on top.
       senseCtx.clearRect(0, 0, w, h);
-      if (body && body.keypoints) {
+      if (body && body.keypoints && meshMode !== 'off') {
         drawBodySkeleton(senseCtx, body.keypoints, vv, vh, w, h, { mirror: true });
       }
       if (f) {
@@ -2122,43 +2222,59 @@
       const S = 640, cx = S/2, cy = S/2, R = S * 0.34; // leave room outside ring for labels
       bigPlotCtx.clearRect(0, 0, S, S);
 
-      // v1 EMOTIONAL COLOUR RING — the 19 anchors from v1's emotion palette
-      // drawn as thin arcs around the outside of the ring. Each anchor emotion
-      // sits at its angle with its saturated hex. This is the visual language
-      // Eyal signed off in v1 (Love=#C46E54, Fear=#802826, Sadness=#3A4C76,
-      // Serenity=#608A68, …). Painters, not psychologists.
-      const ringWidth = 34;
-      const ringInner = R - 2;
-      const ringOuter = R + ringWidth;
+      // v1 EMOTIONAL COLOUR WHEEL — a continuous full-disc emotion palette
+      // (not a thin outer ring). We paint the wheel by sampling every 1°
+      // and blending between adjacent v1 anchor hexes, then fade the fill
+      // toward the centre so the trail and YOU dot stay legible.
+      // Kept saturated toward the rim, low-value toward the middle.
       bigPlotCtx.save();
-      bigPlotCtx.globalAlpha = 0.55;
-      for (let i = 0; i < V1_EMOTIONS.length; i++) {
-        const e = V1_EMOTIONS[i];
-        const eNext = V1_EMOTIONS[(i + 1) % V1_EMOTIONS.length];
-        // Angle in radians, negated for canvas y-down
-        let a0 = (e.angle * Math.PI) / 180;
-        let a1 = (eNext.angle * Math.PI) / 180;
-        // Handle wrap
-        if (a1 <= a0) a1 += Math.PI * 2;
-        // Convert to canvas convention (start at right, ccw)
-        const startAng = -a1;
-        const endAng   = -a0;
-        // Fill wedge
-        bigPlotCtx.fillStyle = e.hex;
+      // Off-screen wheel builder: paint 1° wedges from the sorted v1 palette.
+      const anchors = V1_EMOTIONS.slice().sort((a, b) => a.angle - b.angle);
+      const N = anchors.length;
+      function lerpHex(hexA, hexB, t) {
+        const a = parseInt(hexA.slice(1), 16), b = parseInt(hexB.slice(1), 16);
+        const ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255;
+        const br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
+        return `rgb(${Math.round(ar+(br-ar)*t)},${Math.round(ag+(bg-ag)*t)},${Math.round(ab+(bb-ab)*t)})`;
+      }
+      // Paint the full disc as many thin wedges, each a lerp between the
+      // two neighbouring anchors on the sorted palette.
+      const STEP = 2; // degrees per wedge
+      for (let d = 0; d < 360; d += STEP) {
+        // Which two anchors bracket this angle
+        let i0 = 0;
+        for (let i = 0; i < N; i++) {
+          const cur = anchors[i].angle;
+          const nxt = anchors[(i + 1) % N].angle + ((i + 1 === N) ? 360 : 0);
+          if (d >= cur && d < nxt) { i0 = i; break; }
+        }
+        const i1 = (i0 + 1) % N;
+        const a0 = anchors[i0].angle;
+        const a1 = anchors[i1].angle + (anchors[i1].angle < a0 ? 360 : 0);
+        const t = (d - a0) / (a1 - a0);
+        const col = lerpHex(anchors[i0].hex, anchors[i1].hex, t);
+        // Canvas y-down: negate angle
+        const startAng = -((d + STEP) * Math.PI / 180);
+        const endAng   = -(d * Math.PI / 180);
         bigPlotCtx.beginPath();
-        bigPlotCtx.arc(cx, cy, ringOuter, startAng, endAng);
-        bigPlotCtx.arc(cx, cy, ringInner, endAng, startAng, true);
+        bigPlotCtx.moveTo(cx, cy);
+        bigPlotCtx.arc(cx, cy, R, startAng, endAng);
         bigPlotCtx.closePath();
+        bigPlotCtx.fillStyle = col;
         bigPlotCtx.fill();
       }
-      bigPlotCtx.restore();
-
-      // Soft inner disc (very dark, so trail dots pop)
-      const g = bigPlotCtx.createRadialGradient(cx, cy, 0, cx, cy, R);
-      g.addColorStop(0, 'rgba(20,17,15,0.55)');
-      g.addColorStop(1, 'rgba(20,17,15,0.15)');
-      bigPlotCtx.fillStyle = g;
+      // Fade centre toward dark so trail + YOU dot pop; keep rim saturated.
+      const centerFade = bigPlotCtx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      centerFade.addColorStop(0.00, 'rgba(20,17,15,0.72)');
+      centerFade.addColorStop(0.55, 'rgba(20,17,15,0.28)');
+      centerFade.addColorStop(1.00, 'rgba(20,17,15,0.00)');
+      bigPlotCtx.fillStyle = centerFade;
       bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.fill();
+      bigPlotCtx.restore();
+      // Legacy geometry variables used by the labels + trail code below.
+      const ringWidth = 0;
+      const ringInner = R;
+      const ringOuter = R;
 
       // Ring outline — hair line
       bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.35)';
@@ -2259,7 +2375,15 @@
       rppgCtx.stroke();
     }
 
+    // Track the last time we pushed a point to the emotion trail so both
+    // the mini and big plots share one time-throttled sampling cadence.
+    let lastTrailPushAt = 0;
     function updateSensing() {
+      // Advance fusion every frame so the trail is responsive at render
+      // rate (60fps) instead of Human inference rate (1-5fps on mobile).
+      // HR modulates arousal at 20+ Hz through VitalLens; head EMA also
+      // updates through humanLastVA as smoothed emotion converges.
+      resolveFusion();
       // 1) Self-view overlay + chips + head-pose/quality strip
       drawSenseOverlay();
       renderSenseStats();
@@ -2329,8 +2453,25 @@
       updateSensing();
       _sensingRaf = requestAnimationFrame(_sensingTick);
     }
+    // Hot-swap Human config between light (artwork) and full (sensing).
+    // Cuts iPhone Safari inference from ~250-300ms to ~70-120ms in artwork
+    // mode. Falls back gracefully if human hasn't loaded yet.
+    async function setHumanProfile(profile) {
+      if (!human || !human.load) return;
+      try {
+        const cfg = profile === 'full' ? HUMAN_FULL_CONFIG : HUMAN_LIGHT_CONFIG;
+        await human.reset(cfg);
+        await human.load(cfg);
+        log('event', 'human profile', { profile });
+      } catch (e) {
+        log('err', 'human profile swap failed', { message: e.message });
+      }
+    }
+
     function setSensing(open) {
       sensingOpen = !!open;
+      // Swap Human module set for the mode we're entering.
+      setHumanProfile(sensingOpen ? 'full' : 'light');
       sensingEl.classList.toggle('open', sensingOpen);
       sensingEl.setAttribute('aria-hidden', String(!sensingOpen));
       senseBtn.classList.toggle('active', sensingOpen);
@@ -2453,10 +2594,11 @@
       miniCtx.moveTo(cx,cy-R); miniCtx.lineTo(cx,cy+R);
       miniCtx.stroke();
 
-      // Record trail
+      // Record trail (throttled to ~10 Hz so the tail is dense but bounded)
       const now = performance.now();
-      if (lastFused.v != null) {
+      if (lastFused.v != null && (now - lastTrailPushAt) > 100) {
         miniTrail.push({ t: now, v: lastFused.v, a: lastFused.a });
+        lastTrailPushAt = now;
         const cutoff = now - MINI_TRAIL_MS;
         while (miniTrail.length && miniTrail[0].t < cutoff) miniTrail.shift();
       }
@@ -2607,15 +2749,150 @@
     const miniplot = document.getElementById('miniplot');
     const btnPlot = document.getElementById('btnPlot');
     const btnClean = document.getElementById('btnClean');
-    // Map = show mini circumplex plot
-    btnPlot.addEventListener('click', () => {
-      miniplot.classList.toggle('hidden');
-      const visible = !miniplot.classList.contains('hidden');
-      btnPlot.classList.toggle('active', visible);
-      if (visible) btnClean.classList.remove('active');
-    });
-    // Clean = feeling word only
+    // Fullscreen semi-transparent Map overlay: coloured circumplex wheel +
+    // feathered face video + 'sensing you now:' caption. Tap the overlay
+    // itself to hide (returns to pure artwork).
+    const mapOverlayEl = document.getElementById('mapOverlay');
+    const mapCanvasEl = document.getElementById('mapCanvas');
+    const mapCtx = mapCanvasEl.getContext('2d');
+    const mapWordEl = document.getElementById('mapWord');
+    const mapFaceVideo = document.getElementById('mapFaceVideo');
+    let mapOverlayOpen = false;
+    let _mapRaf = null;
+
+    function drawMapWheel() {
+      const rect = mapCanvasEl.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const S = Math.max(1, Math.round(rect.width * dpr));
+      if (mapCanvasEl.width !== S || mapCanvasEl.height !== S) {
+        mapCanvasEl.width = S;
+        mapCanvasEl.height = S;
+      }
+      const cx = S/2, cy = S/2, R = S * 0.46;
+      mapCtx.clearRect(0, 0, S, S);
+      // Continuous colour wheel (same anchors as the sensing view plot).
+      const anchors = V1_EMOTIONS.slice().sort((a, b) => a.angle - b.angle);
+      const N = anchors.length;
+      function lerpHex(hexA, hexB, t) {
+        const a = parseInt(hexA.slice(1), 16), b = parseInt(hexB.slice(1), 16);
+        const ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255;
+        const br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
+        return `rgb(${Math.round(ar+(br-ar)*t)},${Math.round(ag+(bg-ag)*t)},${Math.round(ab+(bb-ab)*t)})`;
+      }
+      mapCtx.globalAlpha = 0.72;
+      for (let d = 0; d < 360; d += 2) {
+        let i0 = 0;
+        for (let i = 0; i < N; i++) {
+          const cur = anchors[i].angle;
+          const nxt = anchors[(i + 1) % N].angle + ((i + 1 === N) ? 360 : 0);
+          if (d >= cur && d < nxt) { i0 = i; break; }
+        }
+        const i1 = (i0 + 1) % N;
+        const a0 = anchors[i0].angle;
+        const a1 = anchors[i1].angle + (anchors[i1].angle < a0 ? 360 : 0);
+        const t = (d - a0) / (a1 - a0);
+        const col = lerpHex(anchors[i0].hex, anchors[i1].hex, t);
+        const startAng = -((d + 2) * Math.PI / 180);
+        const endAng   = -(d * Math.PI / 180);
+        mapCtx.beginPath();
+        mapCtx.moveTo(cx, cy);
+        mapCtx.arc(cx, cy, R, startAng, endAng);
+        mapCtx.closePath();
+        mapCtx.fillStyle = col;
+        mapCtx.fill();
+      }
+      mapCtx.globalAlpha = 1;
+      // Fade centre transparent so the feathered face reads through.
+      const fade = mapCtx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      fade.addColorStop(0.00, 'rgba(15,12,10,0.85)');
+      fade.addColorStop(0.35, 'rgba(15,12,10,0.20)');
+      fade.addColorStop(0.75, 'rgba(15,12,10,0.00)');
+      fade.addColorStop(1.00, 'rgba(15,12,10,0.00)');
+      mapCtx.fillStyle = fade;
+      mapCtx.beginPath(); mapCtx.arc(cx, cy, R, 0, Math.PI*2); mapCtx.fill();
+      // Hairline ring outline.
+      mapCtx.strokeStyle = 'rgba(238,236,231,0.42)';
+      mapCtx.lineWidth = 1.25 * dpr;
+      mapCtx.beginPath(); mapCtx.arc(cx, cy, R, 0, Math.PI*2); mapCtx.stroke();
+      // Emotion tags around the ring.
+      mapCtx.font = `500 ${13 * dpr}px "Space Grotesk", ui-sans-serif, system-ui`;
+      mapCtx.textAlign = 'center'; mapCtx.textBaseline = 'middle';
+      const LR = R + 22 * dpr;
+      for (const t of CIRCUMPLEX_TAGS) {
+        const tx = cx + Math.cos(t.a) * LR;
+        const ty = cy - Math.sin(t.a) * LR;
+        mapCtx.fillStyle = 'rgba(238,236,231,0.72)';
+        mapCtx.fillText(t.label, tx, ty);
+      }
+      // Emotional trail (shared miniTrail buffer).
+      const nowT = performance.now();
+      for (const p of miniTrail) {
+        const age = (nowT - p.t) / 8000;
+        if (age >= 1) continue;
+        const c = v1EmotionToColor(p.v, p.a, 0.5);
+        const alpha = (1 - age) * 0.70;
+        const size  = (2 + (1 - age) * 4) * dpr;
+        mapCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},${alpha})`;
+        mapCtx.beginPath();
+        mapCtx.arc(cx + p.v * R * 0.86, cy - p.a * R * 0.86, size, 0, Math.PI*2);
+        mapCtx.fill();
+      }
+      // YOU dot.
+      if (lastFused.v != null) {
+        const dx = cx + smV * R * 0.86;
+        const dy = cy - smA * R * 0.86;
+        const c = v1EmotionToColor(smV, smA, 0.5);
+        mapCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},0.22)`;
+        mapCtx.beginPath(); mapCtx.arc(dx, dy, 22 * dpr, 0, Math.PI*2); mapCtx.fill();
+        mapCtx.fillStyle = c.hex;
+        mapCtx.beginPath(); mapCtx.arc(dx, dy, 9 * dpr, 0, Math.PI*2); mapCtx.fill();
+        mapCtx.strokeStyle = 'rgba(255,255,255,0.9)';
+        mapCtx.lineWidth = 2 * dpr;
+        mapCtx.stroke();
+      }
+    }
+
+    function updateMapCaption() {
+      if (lastFused.v != null) {
+        const label = v1EmotionToLabel(smV, smA);
+        const c = v1EmotionToColor(smV, smA, 0.5);
+        if (mapWordEl.textContent !== label) mapWordEl.textContent = label;
+        mapWordEl.style.color = liftForLegibility(c.hex);
+      }
+    }
+
+    function mapLoop() {
+      if (!mapOverlayOpen) { _mapRaf = null; return; }
+      drawMapWheel();
+      updateMapCaption();
+      _mapRaf = requestAnimationFrame(mapLoop);
+    }
+
+    async function setMapOverlay(open) {
+      mapOverlayOpen = !!open;
+      mapOverlayEl.classList.toggle('on', mapOverlayOpen);
+      mapOverlayEl.setAttribute('aria-hidden', String(!mapOverlayOpen));
+      document.body.classList.toggle('map-open', mapOverlayOpen);
+      btnPlot.classList.toggle('active', mapOverlayOpen);
+      if (mapOverlayOpen) {
+        if (mediaStream && mapFaceVideo.srcObject !== mediaStream) {
+          mapFaceVideo.srcObject = mediaStream;
+          try { await mapFaceVideo.play(); } catch (_) { /* iOS autoplay quirk */ }
+        }
+        if (!_mapRaf) _mapRaf = requestAnimationFrame(mapLoop);
+        log('event', 'map overlay open');
+      } else {
+        if (_mapRaf) { cancelAnimationFrame(_mapRaf); _mapRaf = null; }
+        log('event', 'map overlay close');
+      }
+    }
+
+    btnPlot.addEventListener('click', () => setMapOverlay(!mapOverlayOpen));
+    // Tap the overlay itself to hide.
+    mapOverlayEl.addEventListener('click', () => { if (mapOverlayOpen) setMapOverlay(false); });
+    // Clean = feeling word only (also closes map overlay).
     btnClean.addEventListener('click', () => {
+      setMapOverlay(false);
       miniplot.classList.add('hidden');
       feeling.classList.remove('expanded');
       btnPlot.classList.remove('active');
