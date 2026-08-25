@@ -493,25 +493,25 @@
       margin: -2px 0 -6px;
     }
 
-    /* ── HEADER (v1 style, cream on artwork) ───────────────────────── */
+    /* ── HEADER (dark, professional — v1 original) ────────────────── */
     .ea-header {
       position: fixed; top: 0; left: 0; right: 0; z-index: 25;
       height: calc(56px + env(safe-area-inset-top, 0));
       padding: env(safe-area-inset-top, 0) 20px 0;
       display: grid; grid-template-columns: 40px 1fr 60px;
       align-items: center;
-      background: rgba(251, 246, 236, 0.86);
+      background: rgba(12, 10, 9, 0.72);
       backdrop-filter: saturate(140%) blur(14px);
       -webkit-backdrop-filter: saturate(140%) blur(14px);
-      border-bottom: 1px solid var(--ea-line);
-      color: var(--ea-ink);
+      border-bottom: 1px solid rgba(238, 236, 231, 0.08);
+      color: rgba(238, 236, 231, 0.92);
     }
     .ea-header.hidden { display: none; }
     .ea-header__back {
       width: 40px; height: 40px;
       background: transparent; border: 0;
       display: flex; align-items: center; justify-content: center;
-      color: var(--ea-ink); cursor: pointer; -webkit-appearance: none;
+      color: rgba(238, 236, 231, 0.92); cursor: pointer; -webkit-appearance: none;
       margin-left: -8px;
     }
     .ea-header__brand {
@@ -521,7 +521,7 @@
     }
     .ea-header__time {
       font-family: var(--ea-font-mono);
-      font-size: 11px; color: var(--ea-ink-3);
+      font-size: 11px; color: rgba(238, 236, 231, 0.55);
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
@@ -529,36 +529,36 @@
     .ea-header--sensing { grid-template-columns: 40px 1fr auto 60px; column-gap: 12px; }
     .ea-header__sense-btn {
       background: transparent;
-      border: 1px solid var(--ea-line);
+      border: 1px solid rgba(238, 236, 231, 0.18);
       border-radius: 999px;
       padding: 5px 11px;
       font-family: var(--ea-font-mono);
       font-size: 10px;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: var(--ea-ink-2);
+      color: rgba(238, 236, 231, 0.72);
       cursor: pointer;
       -webkit-appearance: none;
       transition: background 140ms, color 140ms, border-color 140ms;
     }
-    .ea-header__sense-btn:active { background: var(--ea-surface-2); }
+    .ea-header__sense-btn:active { background: rgba(238, 236, 231, 0.08); }
     .ea-header__sense-btn.active {
       background: var(--ea-accent);
       border-color: var(--ea-accent);
-      color: var(--ea-surface);
+      color: #0c0a09;
     }
 
-    /* ── SENSING VIEW ── the mechanism, visible ───────────────────── */
+    /* ── SENSING VIEW ── dark, professional (v1 original look) ────── */
     .sensing {
       position: fixed;
       top: calc(56px + env(safe-area-inset-top, 0));
       left: 0; right: 0;
       bottom: calc(56px + env(safe-area-inset-bottom, 0));
       z-index: 15;
-      background: rgba(251, 246, 236, 0.94);
+      background: rgba(12, 10, 9, 0.96);
       backdrop-filter: saturate(140%) blur(24px);
       -webkit-backdrop-filter: saturate(140%) blur(24px);
-      color: var(--ea-ink);
+      color: rgba(238, 236, 231, 0.92);
       overflow-y: auto;
       opacity: 0;
       pointer-events: none;
@@ -569,17 +569,16 @@
     .sensing__inner { padding: 20px 20px 40px; max-width: 520px; margin: 0 auto; }
     .sensing__caption {
       font-family: var(--ea-font-display);
-      font-style: italic;
       font-weight: 300;
       font-size: 22px;
-      color: var(--ea-ink);
+      color: rgba(238, 236, 231, 0.92);
       margin: 4px 0 20px;
       line-height: 1.25;
     }
-    .sensing__caption em { color: var(--ea-accent); font-style: italic; }
+    .sensing__caption em { color: var(--ea-accent); font-style: normal; }
 
     .sense-panel {
-      border-top: 1px solid var(--ea-line);
+      border-top: 1px solid rgba(238, 236, 231, 0.08);
       padding: 16px 0;
     }
     .sense-panel:first-of-type { border-top: 0; padding-top: 0; }
@@ -588,18 +587,19 @@
       font-size: 10px;
       letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: var(--ea-ink-3);
+      color: rgba(238, 236, 231, 0.45);
       margin-bottom: 10px;
     }
 
-    /* Self-view panel */
+    /* Self-view panel — MUCH bigger (was 200px) */
     .sense-selfview {
       position: relative;
-      width: 200px; aspect-ratio: 4/3;
-      border-radius: 6px;
+      width: 100%; max-width: 480px; aspect-ratio: 4/3;
+      border-radius: 8px;
       overflow: hidden;
       background: #000;
-      border: 1px solid var(--ea-line);
+      border: 1px solid rgba(238, 236, 231, 0.12);
+      margin: 0 auto;
     }
     .sense-selfview video, .sense-selfview canvas {
       position: absolute; inset: 0;
@@ -610,28 +610,28 @@
 
     /* Emotion bars */
     .emo-row { display: grid; grid-template-columns: 76px 1fr 44px; align-items: center; gap: 10px; padding: 3px 0; }
-    .emo-row__k { font-family: var(--ea-font-mono); font-size: 10.5px; color: var(--ea-ink-2); text-transform: lowercase; letter-spacing: 0.04em; }
-    .emo-row__bar { height: 4px; background: var(--ea-surface-2); border-radius: 2px; overflow: hidden; position: relative; }
-    .emo-row__fill { position: absolute; inset: 0 auto 0 0; background: var(--ea-ink-2); border-radius: 2px; transition: width 180ms ease; }
+    .emo-row__k { font-family: var(--ea-font-mono); font-size: 10.5px; color: rgba(238, 236, 231, 0.72); text-transform: lowercase; letter-spacing: 0.04em; }
+    .emo-row__bar { height: 4px; background: rgba(238, 236, 231, 0.08); border-radius: 2px; overflow: hidden; position: relative; }
+    .emo-row__fill { position: absolute; inset: 0 auto 0 0; background: rgba(238, 236, 231, 0.6); border-radius: 2px; transition: width 180ms ease; }
     .emo-row.top .emo-row__fill { background: var(--ea-accent); }
-    .emo-row__v { font-family: var(--ea-font-mono); font-size: 10.5px; color: var(--ea-ink); text-align: right; font-variant-numeric: tabular-nums; }
+    .emo-row__v { font-family: var(--ea-font-mono); font-size: 10.5px; color: rgba(238, 236, 231, 0.92); text-align: right; font-variant-numeric: tabular-nums; }
 
     /* HR block */
     .hr-block { display: flex; align-items: baseline; gap: 12px; }
-    .hr-block__bpm { font-family: var(--ea-font-display); font-weight: 300; font-size: 44px; line-height: 1; color: var(--ea-ink); font-variant-numeric: tabular-nums; }
-    .hr-block__unit { font-family: var(--ea-font-mono); font-size: 11px; color: var(--ea-ink-3); }
-    .hr-block__delta { margin-left: auto; font-family: var(--ea-font-mono); font-size: 11px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--ea-line); color: var(--ea-ink-2); font-variant-numeric: tabular-nums; }
-    .hr-block__delta.up { color: var(--ea-accent); border-color: rgba(232,90,60,0.35); }
-    .hr-block__delta.down { color: #6B7BA8; border-color: rgba(107,123,168,0.35); }
-    .hr-baseline { font-family: var(--ea-font-mono); font-size: 10.5px; color: var(--ea-ink-3); margin-top: 4px; letter-spacing: 0.06em; }
+    .hr-block__bpm { font-family: var(--ea-font-display); font-weight: 300; font-size: 44px; line-height: 1; color: rgba(238, 236, 231, 0.92); font-variant-numeric: tabular-nums; }
+    .hr-block__unit { font-family: var(--ea-font-mono); font-size: 11px; color: rgba(238, 236, 231, 0.45); }
+    .hr-block__delta { margin-left: auto; font-family: var(--ea-font-mono); font-size: 11px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(238, 236, 231, 0.18); color: rgba(238, 236, 231, 0.72); font-variant-numeric: tabular-nums; }
+    .hr-block__delta.up { color: var(--ea-accent); border-color: rgba(232,90,60,0.5); }
+    .hr-block__delta.down { color: #8BA0D0; border-color: rgba(139,160,208,0.4); }
+    .hr-baseline { font-family: var(--ea-font-mono); font-size: 10.5px; color: rgba(238, 236, 231, 0.45); margin-top: 4px; letter-spacing: 0.06em; }
 
     /* rPPG waveform */
     .rppg-canvas { width: 100%; height: 46px; display: block; background: transparent; }
 
     /* Big circumplex */
-    .big-plot { position: relative; width: 220px; height: 220px; margin: 6px auto; }
+    .big-plot { position: relative; width: 260px; height: 260px; margin: 6px auto; }
     .big-plot canvas { width: 100%; height: 100%; display: block; }
-    .big-plot__label { position: absolute; font-family: var(--ea-font-mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ea-ink-3); }
+    .big-plot__label { position: absolute; font-family: var(--ea-font-mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(238, 236, 231, 0.55); }
     .big-plot__label.q1 { top: 6px; right: 6px; }
     .big-plot__label.q2 { top: 6px; left: 6px; }
     .big-plot__label.q3 { bottom: 6px; left: 6px; }
@@ -639,13 +639,13 @@
 
     /* Uniforms grid */
     .uni-row { display: grid; grid-template-columns: 60px 60px 1fr; align-items: center; gap: 12px; padding: 6px 0; }
-    .uni-row__k { font-family: var(--ea-font-mono); font-size: 11px; color: var(--ea-ink-2); }
-    .uni-row__v { font-family: var(--ea-font-mono); font-size: 11px; color: var(--ea-ink); font-variant-numeric: tabular-nums; text-align: right; }
+    .uni-row__k { font-family: var(--ea-font-mono); font-size: 11px; color: rgba(238, 236, 231, 0.72); }
+    .uni-row__v { font-family: var(--ea-font-mono); font-size: 11px; color: rgba(238, 236, 231, 0.92); font-variant-numeric: tabular-nums; text-align: right; }
     .uni-row__spark { height: 20px; }
     .uni-row__spark canvas { width: 100%; height: 100%; display: block; }
 
     /* Perf line */
-    .perf-line { font-family: var(--ea-font-mono); font-size: 10.5px; color: var(--ea-ink-3); letter-spacing: 0.06em; line-height: 1.7; }
+    .perf-line { font-family: var(--ea-font-mono); font-size: 10.5px; color: rgba(238, 236, 231, 0.45); letter-spacing: 0.06em; line-height: 1.7; }
 
     /* ── FEELING WORD (bottom-center of artwork) ───────────────────── */
     .feeling {
@@ -662,7 +662,6 @@
     .feeling__word {
       display: inline-block;
       font-family: var(--ea-font-display);
-      font-style: italic;
       font-weight: 300;
       font-size: clamp(32px, 8vw, 48px);
       line-height: 1;
@@ -688,12 +687,12 @@
     .feeling.expanded .feeling__stats { display: flex; }
     .feeling__stats .k { color: rgba(251, 246, 236, 0.55); text-transform: uppercase; letter-spacing: 0.1em; margin-right: 4px; }
 
-    /* ── CIRCUMPLEX MINI (top-right, Open-style cream hairline) ──── */
+    /* ── CIRCUMPLEX MINI (top-right, larger for legibility) ────── */
     .miniplot {
       position: fixed;
       top: calc(env(safe-area-inset-top, 0px) + 72px);
       right: 16px;
-      width: 116px; height: 116px;
+      width: 180px; height: 180px;
       z-index: 10;
       pointer-events: none;
     }
