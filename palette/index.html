@@ -496,14 +496,14 @@
     /* ── HEADER (dark, professional — v1 original) ────────────────── */
     .ea-header {
       position: fixed; top: 0; left: 0; right: 0; z-index: 25;
-      height: calc(56px + env(safe-area-inset-top, 0));
+      height: calc(64px + env(safe-area-inset-top, 0));
       padding: env(safe-area-inset-top, 0) 20px 0;
-      display: grid; grid-template-columns: 40px 1fr 60px;
+      display: grid; grid-template-columns: 44px 1fr 44px;
       align-items: center;
-      background: rgba(12, 10, 9, 0.72);
-      backdrop-filter: saturate(140%) blur(14px);
-      -webkit-backdrop-filter: saturate(140%) blur(14px);
-      border-bottom: 1px solid rgba(238, 236, 231, 0.08);
+      background: rgba(12, 10, 9, 0.86);
+      backdrop-filter: saturate(140%) blur(18px);
+      -webkit-backdrop-filter: saturate(140%) blur(18px);
+      border-bottom: 1px solid rgba(238, 236, 231, 0.10);
       color: rgba(238, 236, 231, 0.92);
     }
     .ea-header.hidden { display: none; }
@@ -515,28 +515,29 @@
       margin-left: -8px;
     }
     .ea-header__brand {
-      font-family: var(--ea-font-mono);
-      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
-      color: var(--ea-accent); text-align: center;
+      font-family: var(--ea-font-ui);
+      font-size: 18px; font-weight: 500;
+      letter-spacing: 0.01em;
+      color: rgba(238, 236, 231, 0.95); text-align: center;
     }
     .ea-header__time {
       font-family: var(--ea-font-mono);
-      font-size: 11px; color: rgba(238, 236, 231, 0.55);
+      font-size: 12px; color: rgba(238, 236, 231, 0.55);
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
-    /* SENSING chip in header — right-aligned, tiny mono */
-    .ea-header--sensing { grid-template-columns: 40px 1fr auto 60px; column-gap: 12px; }
+    /* SENSING chip in header — right-aligned */
+    .ea-header--sensing { grid-template-columns: 44px 1fr auto 44px; column-gap: 12px; }
     .ea-header__sense-btn {
       background: transparent;
-      border: 1px solid rgba(238, 236, 231, 0.18);
+      border: 1px solid rgba(238, 236, 231, 0.22);
       border-radius: 999px;
-      padding: 5px 11px;
-      font-family: var(--ea-font-mono);
-      font-size: 10px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: rgba(238, 236, 231, 0.72);
+      padding: 7px 14px;
+      font-family: var(--ea-font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      color: rgba(238, 236, 231, 0.82);
       cursor: pointer;
       -webkit-appearance: none;
       transition: background 140ms, color 140ms, border-color 140ms;
@@ -629,7 +630,7 @@
     .rppg-canvas { width: 100%; height: 46px; display: block; background: transparent; }
 
     /* Big circumplex */
-    .big-plot { position: relative; width: 320px; height: 320px; max-width: 92vw; max-height: 92vw; margin: 14px auto; }
+    .big-plot { position: relative; width: 340px; height: 340px; max-width: 92vw; max-height: 92vw; margin: 14px auto; }
     .big-plot canvas { width: 100%; height: 100%; display: block; }
     .big-plot__label { position: absolute; font-family: var(--ea-font-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(238, 236, 231, 0.55); }
     .big-plot__label.q1 { top: 8px; right: 8px; }
@@ -691,9 +692,22 @@
        the full circumplex lives in the Sensing view; a stripped-down one
        on the art felt like a broken control). Kept in DOM so trail
        state keeps ticking. ────────────────────────────────────── */
-    .miniplot { display: none; }
+    /* Map overlay — fullscreen, semi-transparent, on top of the art. */
+    .map-overlay {
+      position: fixed; inset: 0; z-index: 8;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 320ms ease;
+    }
+    .map-overlay.on { opacity: 1; }
+    .map-overlay canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+    }
+    /* Legacy miniplot: kept as invisible trail bookkeeping. */
+    .miniplot { display: none !important; }
     .miniplot canvas { width: 100%; height: 100%; display: block; }
-    .miniplot.hidden { display: none; }
 
     /* ── CIRCUMPLEX LARGE (inside Sensing view) ──────────────────── */
     .circumplex-large {
@@ -742,34 +756,40 @@
     /* ── CONTROLS BAR (v1 chip band, cream) ────────────────────────── */
     .ctrls {
       position: fixed; bottom: 0; left: 0; right: 0;
-      padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0));
-      background: rgba(251, 246, 236, 0.90);
-      backdrop-filter: saturate(140%) blur(14px);
-      -webkit-backdrop-filter: saturate(140%) blur(14px);
-      border-top: 1px solid var(--ea-line);
-      display: flex; gap: 8px; align-items: center;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
+      background: rgba(12, 10, 9, 0.88);
+      backdrop-filter: saturate(140%) blur(18px);
+      -webkit-backdrop-filter: saturate(140%) blur(18px);
+      border-top: 1px solid rgba(238, 236, 231, 0.10);
+      display: flex; gap: 10px; align-items: center;
       z-index: 20;
       font-family: var(--ea-font-ui);
     }
     .ctrls button {
       background: transparent;
-      border: 1px solid var(--ea-line);
+      border: 1px solid rgba(238, 236, 231, 0.20);
       border-radius: 999px;
-      padding: 7px 14px;
-      font-size: 13px;
+      padding: 9px 16px;
+      font-size: 14px;
       font-weight: 500;
-      color: var(--ea-ink-2);
+      color: rgba(238, 236, 231, 0.85);
       cursor: pointer;
       -webkit-appearance: none;
       font-family: var(--ea-font-ui);
+      letter-spacing: 0.01em;
       transition: background 140ms, color 140ms, border-color 140ms;
     }
-    .ctrls button:active { background: var(--ea-surface-2); }
+    .ctrls button:active { background: rgba(238, 236, 231, 0.10); }
     .ctrls button.active {
-      background: var(--ea-ink);
-      border-color: var(--ea-ink);
-      color: var(--ea-surface);
+      background: rgba(238, 236, 231, 0.95);
+      border-color: rgba(238, 236, 231, 0.95);
+      color: #0c0a09;
     }
+    .ctrls .btn-end {
+      color: rgba(232, 90, 60, 0.95);
+      border-color: rgba(232, 90, 60, 0.55);
+    }
+    .ctrls .btn-end:active { background: rgba(232, 90, 60, 0.12); }
     .ctrls .spacer { flex: 1; }
     .ctrls .badge {
       font-family: var(--ea-font-mono);
@@ -831,6 +851,66 @@
     .logdrawer .body .k-perf { color: #7a6bc4; }
     .logdrawer .body .k-warn { color: #b8802a; }
     .logdrawer .body .k-err { color: var(--ea-rec, #D42C1F); }
+
+    /* Tooltip surface. One node in body, positioned by JS.
+       Space Grotesk title, JetBrains Mono signature. No serif. */
+    .ea-tip {
+      position: fixed;
+      z-index: 500;
+      max-width: 320px;
+      min-width: 180px;
+      padding: 12px 14px 14px;
+      border-radius: 12px;
+      background: rgba(15, 12, 10, 0.94);
+      color: rgba(238, 236, 231, 0.92);
+      border: 1px solid rgba(238, 236, 231, 0.14);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(16px) saturate(1.2);
+      -webkit-backdrop-filter: blur(16px) saturate(1.2);
+      font-family: var(--ea-font-ui);
+      opacity: 0;
+      transform: translateY(3px);
+      transition: opacity 180ms ease, transform 180ms ease;
+      pointer-events: none;
+      --ea-tip-accent: rgba(238, 236, 231, 0.85);
+    }
+    .ea-tip[aria-hidden="false"] { opacity: 1; transform: translateY(0); }
+    .ea-tip[data-has-accent="1"] { border-color: var(--ea-tip-accent); }
+    .ea-tip__title {
+      font-family: var(--ea-font-ui);
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.005em;
+      color: var(--ea-tip-accent);
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+    .ea-tip__body {
+      font-size: 13px;
+      line-height: 1.5;
+      color: rgba(238, 236, 231, 0.88);
+      white-space: pre-wrap;
+    }
+    .ea-tip__sig[hidden], .ea-tip__science[hidden] { display: none; }
+    .ea-tip__sig {
+      font-family: var(--ea-font-mono);
+      font-size: 10.5px;
+      color: rgba(238, 236, 231, 0.62);
+      margin-top: 9px;
+      letter-spacing: 0.02em;
+      line-height: 1.6;
+    }
+    .ea-tip__science {
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: rgba(238, 236, 231, 0.58);
+      margin-top: 9px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(238, 236, 231, 0.10);
+      letter-spacing: 0.01em;
+    }
+    /* Info-glyph affordance: subtle dot in the corner of any tip anchor. */
+    [data-ea-tip] { position: relative; }
   </style>
 </head>
 <body class="gate-open">
@@ -882,7 +962,7 @@
       </svg>
     </button>
     <div class="ea-header__brand" id="headerBrand">Feelings</div>
-    <button class="ea-header__sense-btn" id="senseBtn" aria-pressed="false">Sensing</button>
+    <button class="ea-header__sense-btn" id="senseBtn" data-ea-tip="sensing" aria-pressed="false">Sensing</button>
     <div class="ea-header__time" id="headerTime">—</div>
   </header>
 
@@ -919,10 +999,6 @@
         <div class="sense-panel__label">Fused feeling · circumplex of affect</div>
         <div class="big-plot">
           <canvas id="bigPlot" width="640" height="640"></canvas>
-          <span class="big-plot__label q1">energized</span>
-          <span class="big-plot__label q2">tense</span>
-          <span class="big-plot__label q3">tired</span>
-          <span class="big-plot__label q4">at ease</span>
         </div>
       </section>
 
@@ -945,7 +1021,7 @@
 
   <!-- Feeling word (bottom-center) - tap to expand stats -->
   <div class="feeling hidden" id="feeling">
-    <span class="feeling__word" id="feelingWord">breathing in</span>
+    <span class="feeling__word" id="feelingWord" data-ea-tip="emotion-map">breathing in</span>
     <div class="feeling__stats">
       <span><span class="k">V</span><span id="ovV">—</span></span>
       <span><span class="k">A</span><span id="ovA">—</span></span>
@@ -957,14 +1033,21 @@
   <span id="ovMode" style="display:none"></span>
 
   <!-- Mini circumplex plot -->
-  <div class="miniplot hidden" id="miniplot">
+  <!-- Trail bookkeeping only — canvas never drawn to screen. -->
+  <div class="miniplot hidden" id="miniplot" aria-hidden="true">
     <canvas id="circumplex" width="240" height="240"></canvas>
+  </div>
+
+  <!-- Fullscreen semi-transparent Map overlay on top of the artwork.
+       Toggled by the Map button. Chapel shader keeps painting underneath. -->
+  <div class="map-overlay" id="mapOverlay" aria-hidden="true">
+    <canvas id="mapCanvas"></canvas>
   </div>
 
   <!-- Controls (hidden while gate is showing) -->
   <div class="ctrls" id="ctrlsBar">
-    <button id="btnPlot">Map</button>
-    <button id="btnClean" class="active">Clean</button>
+    <button id="btnPlot" data-ea-tip="map">Map</button>
+    <button id="btnClean" data-ea-tip="clean" class="active">Clean</button>
     <div class="spacer"></div>
     <button id="btnEnd" class="btn-end">End</button>
     <button id="logToggle">Log</button>
@@ -1297,6 +1380,23 @@
     // Choose / Surprise Me from per-user session history).
     const { StyleRegistry } = await import('./v1-mirror/src/visuals/index.js');
     const { SessionStoreV2 } = await import('./session-store-v2.js');
+    // v1's 19-emotion palette — EACH point on the circumplex maps to a
+    // saturated anchor hex (Love, Excitement, Joy, Awe, Fear, Anger,
+    // Sadness, Melancholy, Contemplation, Serenity, Calm, Peace, …).
+    // This is what we hand-tuned in v1 for the Rothko-adjacent feel.
+    const { EMOTIONS: V1_EMOTIONS, emotionToColor: v1EmotionToColor, emotionToLabel: v1EmotionToLabel, nearestEmotions: v1NearestEmotions } =
+      await import('./v1-mirror/src/palette/emotion-palette.js');
+    // Legibility helper: keeps the feeling word and map labels readable
+    // over any live shader field. Hue is preserved so the label still
+    // reads chromatically as the emotion.
+    const { liftForLegibility } = await import('./v2-ports/palette/color-legibility.js');
+    // Delegated tooltip system. One tip surface, all anchors point to it.
+    // Copy dictionary + emotion tips + install() at boot.
+    const { installTooltips, showEmotionTip, setTooltipDebug } =
+      await import('./v2-ports/ui/tooltips.js');
+    setTooltipDebug((action, extra) => log('event', `tooltip ${action}`, extra || {}));
+    installTooltips();
+    log('event', 'tooltips installed');
     const store = new SessionStoreV2();
     log('event', 'session store loaded', { count: store.sessionCount, last: store.lastSession ? { seq: store.lastSession.seq, styleName: store.lastSession.styleName } : null });
     const canvas = document.getElementById('art');
@@ -1666,118 +1766,154 @@
       }
     }
 
-    // Russell circumplex emotion tags — (angle in radians, label)
-    // 0 rad = +V (right); PI/2 = +A (up)
-    const CIRCUMPLEX_TAGS = [
-      { a:   0,             label: 'happy' },
-      { a:   Math.PI * 0.25, label: 'excited' },
-      { a:   Math.PI * 0.5,  label: 'alert' },
-      { a:   Math.PI * 0.75, label: 'tense' },
-      { a:   Math.PI,        label: 'sad' },
-      { a:  -Math.PI * 0.75, label: 'depressed' },
-      { a:  -Math.PI * 0.5,  label: 'tired' },
-      { a:  -Math.PI * 0.25, label: 'calm' },
-    ];
+    // Circumplex labels come from v1's 19-emotion palette — same names,
+    // same anchor hex colours, same angles as the shader palette. This
+    // means the ring, the trail, and the shader tint are all speaking
+    // the same colour language (Rothko-lineage).
+    // Angle convention: canvas y is flipped so we draw at (cos, -sin).
+    // Take a legible subset of 12 emotions around the wheel so labels
+    // do not overlap on a 320px display.
+    const CIRCUMPLEX_TAGS = (() => {
+      const wanted = ['Love','Excitement','Joy','Awe','Fear','Anger','Sadness','Melancholy','Boredom','Contemplation','Calm','Peace'];
+      return V1_EMOTIONS
+        .filter(e => wanted.includes(e.name))
+        .map(e => ({
+          a: (e.angle * Math.PI) / 180,
+          label: e.name.toLowerCase(),
+          hex: e.hex,
+        }));
+    })();
+
+    // Small helper: hex -> {r,g,b}
+    function _hex2rgb(hex) {
+      const h = hex.replace('#', '');
+      return {
+        r: parseInt(h.slice(0, 2), 16),
+        g: parseInt(h.slice(2, 4), 16),
+        b: parseInt(h.slice(4, 6), 16),
+      };
+    }
 
     function drawBigPlot() {
       // Canvas is 640×640 rendering into a 320px CSS box (2x DPR-equivalent).
       // Everything below is authored in canvas pixels; halve them mentally for on-screen size.
-      const S = 640, cx = S/2, cy = S/2, R = S * 0.36; // leave room outside ring for labels
+      const S = 640, cx = S/2, cy = S/2, R = S * 0.34; // leave room outside ring for labels
       bigPlotCtx.clearRect(0, 0, S, S);
 
-      // Quadrant tints — Russell wheel colours, gently visible on dark bg
+      // v1 EMOTIONAL COLOUR RING — the 19 anchors from v1's emotion palette
+      // drawn as thin arcs around the outside of the ring. Each anchor emotion
+      // sits at its angle with its saturated hex. This is the visual language
+      // Eyal signed off in v1 (Love=#C46E54, Fear=#802826, Sadness=#3A4C76,
+      // Serenity=#608A68, …). Painters, not psychologists.
+      const ringWidth = 34;
+      const ringInner = R - 2;
+      const ringOuter = R + ringWidth;
       bigPlotCtx.save();
-      bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.clip();
-      const tints = [
-        { x: cx, y: 0,  w: cx, h: cy, c: 'rgba(232,90,60,0.08)'  }, // TR excited/happy
-        { x: 0,  y: 0,  w: cx, h: cy, c: 'rgba(139,160,208,0.09)' }, // TL tense/alert
-        { x: 0,  y: cy, w: cx, h: cy, c: 'rgba(90,90,120,0.09)'   }, // BL depressed/sad
-        { x: cx, y: cy, w: cx, h: cy, c: 'rgba(180,150,110,0.08)' }, // BR calm
-      ];
-      for (const t of tints) { bigPlotCtx.fillStyle = t.c; bigPlotCtx.fillRect(t.x, t.y, t.w, t.h); }
+      bigPlotCtx.globalAlpha = 0.55;
+      for (let i = 0; i < V1_EMOTIONS.length; i++) {
+        const e = V1_EMOTIONS[i];
+        const eNext = V1_EMOTIONS[(i + 1) % V1_EMOTIONS.length];
+        // Angle in radians, negated for canvas y-down
+        let a0 = (e.angle * Math.PI) / 180;
+        let a1 = (eNext.angle * Math.PI) / 180;
+        // Handle wrap
+        if (a1 <= a0) a1 += Math.PI * 2;
+        // Convert to canvas convention (start at right, ccw)
+        const startAng = -a1;
+        const endAng   = -a0;
+        // Fill wedge
+        bigPlotCtx.fillStyle = e.hex;
+        bigPlotCtx.beginPath();
+        bigPlotCtx.arc(cx, cy, ringOuter, startAng, endAng);
+        bigPlotCtx.arc(cx, cy, ringInner, endAng, startAng, true);
+        bigPlotCtx.closePath();
+        bigPlotCtx.fill();
+      }
       bigPlotCtx.restore();
 
-      // Main ring — stronger cream stroke
-      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.55)';
-      bigPlotCtx.lineWidth = 2;
+      // Soft inner disc (very dark, so trail dots pop)
+      const g = bigPlotCtx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      g.addColorStop(0, 'rgba(20,17,15,0.55)');
+      g.addColorStop(1, 'rgba(20,17,15,0.15)');
+      bigPlotCtx.fillStyle = g;
+      bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.fill();
+
+      // Ring outline — hair line
+      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.35)';
+      bigPlotCtx.lineWidth = 1.5;
       bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.stroke();
+      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.22)';
+      bigPlotCtx.lineWidth = 1;
+      bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, ringOuter, 0, Math.PI*2); bigPlotCtx.stroke();
 
       // Cross-hairs
-      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.18)';
+      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.14)';
       bigPlotCtx.lineWidth = 1;
       bigPlotCtx.beginPath();
       bigPlotCtx.moveTo(cx-R,cy); bigPlotCtx.lineTo(cx+R,cy);
       bigPlotCtx.moveTo(cx,cy-R); bigPlotCtx.lineTo(cx,cy+R);
       bigPlotCtx.stroke();
 
-      // Axis labels (VALENCE / AROUSAL) — tiny caps on the axes
-      bigPlotCtx.fillStyle = 'rgba(238,236,231,0.35)';
-      bigPlotCtx.font = '600 18px "JetBrains Mono", ui-monospace, monospace';
+      // Emotion NAMES around the ring — painted OUTSIDE the coloured ring
+      // so both the colour band and the words are legible.
+      bigPlotCtx.font = '500 22px "Space Grotesk", ui-sans-serif, system-ui';
       bigPlotCtx.textAlign = 'center'; bigPlotCtx.textBaseline = 'middle';
-      bigPlotCtx.fillText('AROUSAL',   cx, cy - R - 44);
-      bigPlotCtx.fillText('− AROUSAL', cx, cy + R + 44);
-      bigPlotCtx.save();
-      bigPlotCtx.translate(cx - R - 44, cy); bigPlotCtx.rotate(-Math.PI/2);
-      bigPlotCtx.fillText('− VALENCE', 0, 0);
-      bigPlotCtx.restore();
-      bigPlotCtx.save();
-      bigPlotCtx.translate(cx + R + 44, cy); bigPlotCtx.rotate(-Math.PI/2);
-      bigPlotCtx.fillText('VALENCE', 0, 0);
-      bigPlotCtx.restore();
-
-      // Emotion tags around the ring — 26px canvas → ~13px on-screen. Readable.
-      bigPlotCtx.fillStyle = 'rgba(238,236,231,0.85)';
-      bigPlotCtx.font = '500 24px "Space Grotesk", ui-sans-serif, system-ui';
-      bigPlotCtx.textAlign = 'center'; bigPlotCtx.textBaseline = 'middle';
-      const LR = R + 22;
+      const LR = ringOuter + 26;
       for (const t of CIRCUMPLEX_TAGS) {
         const tx = cx + Math.cos(t.a) * LR;
         const ty = cy - Math.sin(t.a) * LR;
-        // Small tick from ring toward label
-        bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.28)';
-        bigPlotCtx.lineWidth = 1;
-        bigPlotCtx.beginPath();
-        bigPlotCtx.moveTo(cx + Math.cos(t.a) * R, cy - Math.sin(t.a) * R);
-        bigPlotCtx.lineTo(cx + Math.cos(t.a) * (R + 8), cy - Math.sin(t.a) * (R + 8));
-        bigPlotCtx.stroke();
         bigPlotCtx.fillStyle = 'rgba(238,236,231,0.82)';
         bigPlotCtx.fillText(t.label, tx, ty);
       }
 
-      // Emotional trail — fading dots (v1 style: many tiny points)
+      // Emotional trail — each dot coloured by ITS OWN (v,a) via v1 palette.
+      // This is the v1 signature: the trail is a chromatic memory of where
+      // your feeling has been on the wheel, not a monochrome breadcrumb.
       const now = performance.now();
       for (const p of miniTrail) {
-        const age = (now - p.t) / 6000;
+        const age = (now - p.t) / 8000;
         if (age >= 1) continue;
-        const alpha = (1 - age) * 0.6;
+        const c = v1EmotionToColor(p.v, p.a, 0.5);
+        const alpha = (1 - age) * 0.75;
         const size  = 3 + (1 - age) * 5;
-        bigPlotCtx.fillStyle = `rgba(232,90,60,${alpha})`;
+        bigPlotCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},${alpha})`;
         bigPlotCtx.beginPath();
         bigPlotCtx.arc(cx + p.v * R, cy - p.a * R, size, 0, Math.PI*2);
         bigPlotCtx.fill();
       }
 
-      // Current dot — always draw a soft neutral "YOU" indicator so the
-      // user sees the plot is live even before V/A fuse. When a fused
-      // value exists, colour it accent red and add a halo.
+      // Current YOU dot — coloured by v1 palette, with matching halo.
       const haveVA = lastFused.v != null;
       const dx = cx + (haveVA ? smV : 0) * R;
       const dy = cy - (haveVA ? smA : 0) * R;
+      let currentHex = '#EEECE7';
+      let currentName = 'awaiting signal';
       if (haveVA) {
-        bigPlotCtx.fillStyle = 'rgba(232,90,60,0.20)';
-        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 26, 0, Math.PI*2); bigPlotCtx.fill();
-        bigPlotCtx.fillStyle = '#E85A3C';
-        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 12, 0, Math.PI*2); bigPlotCtx.fill();
+        const c = v1EmotionToColor(smV, smA, 0.5);
+        currentHex  = c.hex;
+        currentName = v1EmotionToLabel(smV, smA);
+        const {r, g: gg, b} = c;
+        bigPlotCtx.fillStyle = `rgba(${r},${gg},${b},0.20)`;
+        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 34, 0, Math.PI*2); bigPlotCtx.fill();
+        bigPlotCtx.fillStyle = c.hex;
+        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 14, 0, Math.PI*2); bigPlotCtx.fill();
+        bigPlotCtx.strokeStyle = 'rgba(255,255,255,0.85)';
+        bigPlotCtx.lineWidth = 2;
+        bigPlotCtx.stroke();
       } else {
         bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.55)';
         bigPlotCtx.lineWidth = 2;
-        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 10, 0, Math.PI*2); bigPlotCtx.stroke();
+        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 12, 0, Math.PI*2); bigPlotCtx.stroke();
       }
 
-      // YOU caption under the center (v1 flavour)
-      bigPlotCtx.fillStyle = 'rgba(238,236,231,0.38)';
-      bigPlotCtx.font = '600 14px "JetBrains Mono", ui-monospace, monospace';
-      bigPlotCtx.fillText(haveVA ? 'YOU' : 'awaiting signal', cx, cy + R + 20);
+      // Live emotion name caption under the wheel, big and coloured.
+      // liftForLegibility keeps the label readable when the anchor hue
+      // itself sits on top of a same-hue shader field (e.g. Melancholy
+      // label over Melancholy fluid).
+      bigPlotCtx.fillStyle = liftForLegibility(currentHex);
+      bigPlotCtx.font = '500 28px "Space Grotesk", ui-sans-serif, system-ui';
+      bigPlotCtx.textAlign = 'center'; bigPlotCtx.textBaseline = 'middle';
+      bigPlotCtx.fillText(currentName, cx, cy + ringOuter + 78);
     }
 
     function drawRppg() {
@@ -1878,9 +2014,12 @@
       if (sensingOpen && !_sensingRaf) _sensingRaf = requestAnimationFrame(_sensingTick);
       if (!sensingOpen && _sensingRaf) { cancelAnimationFrame(_sensingRaf); _sensingRaf = null; }
       senseBtn.setAttribute('aria-pressed', String(sensingOpen));
-      // Update header title
+      // Header title & tab label. Never duplicate the same word twice.
+      // On the artwork: title 'Feelings', right-chip 'Sensing' (opens).
+      // On sensing:    title 'Sensing',  right-chip 'Artwork'  (returns).
       const brand = document.getElementById('headerBrand');
       if (brand) brand.textContent = sensingOpen ? 'Sensing' : 'Feelings';
+      senseBtn.textContent = sensingOpen ? 'Artwork' : 'Sensing';
       if (sensingOpen) updateSensing();
     }
     senseBtn.addEventListener('click', () => setSensing(!sensingOpen));
@@ -1955,6 +2094,14 @@
       ovFps.textContent = humanRecentFps.toFixed(1) + '/' + renderFps.toFixed(0);
       const label = feelingLabel(lastFused.v, lastFused.a, lastFused.mode);
       if (feelingWord && feelingWord.textContent !== label) feelingWord.textContent = label;
+      // Tint the feeling word with the current emotion hex, lifted for
+      // legibility so it stays readable against a same-hue shader field.
+      if (feelingWord && lastFused.v != null && lastFused.a != null) {
+        try {
+          const c = v1EmotionToColor(lastFused.v, lastFused.a, 0.5);
+          feelingWord.style.color = liftForLegibility(c.hex);
+        } catch (_) { /* keep default cream */ }
+      }
     }
     const miniCanvas = document.getElementById('circumplex');
     const miniCtx = miniCanvas.getContext('2d');
