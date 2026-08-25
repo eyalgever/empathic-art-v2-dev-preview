@@ -629,13 +629,13 @@
     .rppg-canvas { width: 100%; height: 46px; display: block; background: transparent; }
 
     /* Big circumplex */
-    .big-plot { position: relative; width: 260px; height: 260px; margin: 6px auto; }
+    .big-plot { position: relative; width: 320px; height: 320px; max-width: 92vw; max-height: 92vw; margin: 14px auto; }
     .big-plot canvas { width: 100%; height: 100%; display: block; }
-    .big-plot__label { position: absolute; font-family: var(--ea-font-mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(238, 236, 231, 0.55); }
-    .big-plot__label.q1 { top: 6px; right: 6px; }
-    .big-plot__label.q2 { top: 6px; left: 6px; }
-    .big-plot__label.q3 { bottom: 6px; left: 6px; }
-    .big-plot__label.q4 { bottom: 6px; right: 6px; }
+    .big-plot__label { position: absolute; font-family: var(--ea-font-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(238, 236, 231, 0.55); }
+    .big-plot__label.q1 { top: 8px; right: 8px; }
+    .big-plot__label.q2 { top: 8px; left: 8px; }
+    .big-plot__label.q3 { bottom: 8px; left: 8px; }
+    .big-plot__label.q4 { bottom: 8px; right: 8px; }
 
     /* Uniforms grid */
     .uni-row { display: grid; grid-template-columns: 60px 60px 1fr; align-items: center; gap: 12px; padding: 6px 0; }
@@ -918,7 +918,7 @@
       <section class="sense-panel">
         <div class="sense-panel__label">Fused feeling · circumplex of affect</div>
         <div class="big-plot">
-          <canvas id="bigPlot" width="440" height="440"></canvas>
+          <canvas id="bigPlot" width="640" height="640"></canvas>
           <span class="big-plot__label q1">energized</span>
           <span class="big-plot__label q2">tense</span>
           <span class="big-plot__label q3">tired</span>
@@ -1336,35 +1336,49 @@
       if (style && typeof style.destroy === 'function') {
         try { style.destroy(); } catch (e) { log('err', 'style destroy', { err: String(e) }); }
       }
+      // Belt-and-braces: verify WebGL2 is actually available before we
+      // ask the style to compile shaders. If not, throw with a clear msg.
+      const testGl = canvas.getContext('webgl2', { alpha: false, depth: false, stencil: false });
+      if (!testGl) throw new Error('WebGL2 unavailable on this canvas');
       style = new cls(canvas);
       style.setEmotion(0, 0, 0.5, 'neutral');
       style.start();
     }
-    // Try the chosen style; if it fails to init, fall back to Chapel, then
-    // to any working style in the safeCatalog. Never leave the canvas empty.
+    // Try the chosen style; if it fails, fall back to nerves (proven-safe
+    // on iOS Safari 26), then chapel, then any other style. Log everything;
+    // do NOT alert (user cannot see console; alert is not the answer either).
     function instantiateWithFallback(cls) {
-      try {
-        instantiateStyle(cls);
-        return cls;
-      } catch (e) {
-        log('err', 'style init failed, trying fallback', { id: cls.id, err: String(e) });
-        IOS_BROKEN.add(cls.id);
-        // Try Chapel first if not already tried
-        if (chapel && cls.id !== chapel.id) {
-          try { instantiateStyle(chapel); return chapel; }
-          catch (e2) { log('err', 'chapel fallback failed', { err: String(e2) }); }
+      const tried = new Set();
+      const attempt = (c) => {
+        if (!c || tried.has(c.id)) return null;
+        tried.add(c.id);
+        try {
+          instantiateStyle(c);
+          log('event', 'style init ok', { id: c.id });
+          return c;
+        } catch (e) {
+          log('err', 'style init failed', { id: c.id, err: String(e && e.message || e) });
+          return null;
         }
-        // Try any remaining safe style
-        for (const c of safeCatalog) {
-          if (c.id === cls.id || IOS_BROKEN.has(c.id)) continue;
-          try { instantiateStyle(c); return c; }
-          catch (e3) { log('err', 'fallback failed', { id: c.id, err: String(e3) }); IOS_BROKEN.add(c.id); }
-        }
-        alert('No visual style could initialize on this device.');
-        throw new Error('all styles failed');
+      };
+      let result = attempt(cls);
+      if (result) return result;
+      const nerves = safeCatalog.find(c => c.id === 'nerves');
+      result = attempt(nerves);
+      if (result) return result;
+      result = attempt(chapel);
+      if (result) return result;
+      for (const c of safeCatalog) {
+        result = attempt(c);
+        if (result) return result;
       }
+      log('err', 'all styles failed to initialize', {});
+      return null;
     }
-    StyleCls = instantiateWithFallback(StyleCls);
+    // LAZY init: do NOT instantiate at top-level. The canvas may not have
+    // dimensions yet, and any failure blocks the entire UI (gate, sensing,
+    // logs). We defer until the user taps Begin.
+    log('event', 'style pending (lazy init on Begin)', { id: StyleCls.id });
 
     // Update gate meta with current style pick.
     const gateStyleEl = document.getElementById('gate-style-name');
@@ -1666,61 +1680,104 @@
     ];
 
     function drawBigPlot() {
-      const S = 440, cx = S/2, cy = S/2, R = S * 0.40;
+      // Canvas is 640×640 rendering into a 320px CSS box (2x DPR-equivalent).
+      // Everything below is authored in canvas pixels; halve them mentally for on-screen size.
+      const S = 640, cx = S/2, cy = S/2, R = S * 0.36; // leave room outside ring for labels
       bigPlotCtx.clearRect(0, 0, S, S);
-      // Dark backdrop for the circle (very subtle so quadrant tints show)
-      bigPlotCtx.fillStyle = 'rgba(238, 236, 231, 0.03)';
-      bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.fill();
-      // Faint quadrant tints (Russell: TL=distress, TR=excitement, BL=depression, BR=serenity)
+
+      // Quadrant tints — Russell wheel colours, gently visible on dark bg
       bigPlotCtx.save();
       bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.clip();
       const tints = [
-        { x: cx,    y: 0,     w: R,   h: R,   c: 'rgba(232,90,60,0.05)'  }, // TR excited/happy
-        { x: 0,     y: 0,     w: cx,  h: R,   c: 'rgba(139,160,208,0.06)' }, // TL tense
-        { x: 0,     y: cy,    w: cx,  h: R,   c: 'rgba(90,90,120,0.06)'   }, // BL depressed
-        { x: cx,    y: cy,    w: R,   h: R,   c: 'rgba(180,150,110,0.05)' }, // BR calm
+        { x: cx, y: 0,  w: cx, h: cy, c: 'rgba(232,90,60,0.08)'  }, // TR excited/happy
+        { x: 0,  y: 0,  w: cx, h: cy, c: 'rgba(139,160,208,0.09)' }, // TL tense/alert
+        { x: 0,  y: cy, w: cx, h: cy, c: 'rgba(90,90,120,0.09)'   }, // BL depressed/sad
+        { x: cx, y: cy, w: cx, h: cy, c: 'rgba(180,150,110,0.08)' }, // BR calm
       ];
       for (const t of tints) { bigPlotCtx.fillStyle = t.c; bigPlotCtx.fillRect(t.x, t.y, t.w, t.h); }
       bigPlotCtx.restore();
-      // Cream hairline circle + cross (was ink)
-      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.35)';
-      bigPlotCtx.lineWidth = 1.5;
+
+      // Main ring — stronger cream stroke
+      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.55)';
+      bigPlotCtx.lineWidth = 2;
       bigPlotCtx.beginPath(); bigPlotCtx.arc(cx, cy, R, 0, Math.PI*2); bigPlotCtx.stroke();
-      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.12)';
+
+      // Cross-hairs
+      bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.18)';
       bigPlotCtx.lineWidth = 1;
       bigPlotCtx.beginPath();
       bigPlotCtx.moveTo(cx-R,cy); bigPlotCtx.lineTo(cx+R,cy);
       bigPlotCtx.moveTo(cx,cy-R); bigPlotCtx.lineTo(cx,cy+R);
       bigPlotCtx.stroke();
-      // Emotion tags around the ring
-      bigPlotCtx.fillStyle = 'rgba(238,236,231,0.55)';
-      bigPlotCtx.font = '10.5px "JetBrains Mono", ui-monospace, monospace';
-      bigPlotCtx.textAlign = 'center';
-      bigPlotCtx.textBaseline = 'middle';
+
+      // Axis labels (VALENCE / AROUSAL) — tiny caps on the axes
+      bigPlotCtx.fillStyle = 'rgba(238,236,231,0.35)';
+      bigPlotCtx.font = '600 18px "JetBrains Mono", ui-monospace, monospace';
+      bigPlotCtx.textAlign = 'center'; bigPlotCtx.textBaseline = 'middle';
+      bigPlotCtx.fillText('AROUSAL',   cx, cy - R - 44);
+      bigPlotCtx.fillText('− AROUSAL', cx, cy + R + 44);
+      bigPlotCtx.save();
+      bigPlotCtx.translate(cx - R - 44, cy); bigPlotCtx.rotate(-Math.PI/2);
+      bigPlotCtx.fillText('− VALENCE', 0, 0);
+      bigPlotCtx.restore();
+      bigPlotCtx.save();
+      bigPlotCtx.translate(cx + R + 44, cy); bigPlotCtx.rotate(-Math.PI/2);
+      bigPlotCtx.fillText('VALENCE', 0, 0);
+      bigPlotCtx.restore();
+
+      // Emotion tags around the ring — 26px canvas → ~13px on-screen. Readable.
+      bigPlotCtx.fillStyle = 'rgba(238,236,231,0.85)';
+      bigPlotCtx.font = '500 24px "Space Grotesk", ui-sans-serif, system-ui';
+      bigPlotCtx.textAlign = 'center'; bigPlotCtx.textBaseline = 'middle';
       const LR = R + 22;
       for (const t of CIRCUMPLEX_TAGS) {
         const tx = cx + Math.cos(t.a) * LR;
         const ty = cy - Math.sin(t.a) * LR;
+        // Small tick from ring toward label
+        bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.28)';
+        bigPlotCtx.lineWidth = 1;
+        bigPlotCtx.beginPath();
+        bigPlotCtx.moveTo(cx + Math.cos(t.a) * R, cy - Math.sin(t.a) * R);
+        bigPlotCtx.lineTo(cx + Math.cos(t.a) * (R + 8), cy - Math.sin(t.a) * (R + 8));
+        bigPlotCtx.stroke();
+        bigPlotCtx.fillStyle = 'rgba(238,236,231,0.82)';
         bigPlotCtx.fillText(t.label, tx, ty);
       }
-      // Trail
+
+      // Emotional trail — fading dots (v1 style: many tiny points)
       const now = performance.now();
       for (const p of miniTrail) {
         const age = (now - p.t) / 6000;
-        const alpha = Math.max(0, 1 - age) * 0.55;
-        const size = 2 + (1 - age) * 4;
+        if (age >= 1) continue;
+        const alpha = (1 - age) * 0.6;
+        const size  = 3 + (1 - age) * 5;
         bigPlotCtx.fillStyle = `rgba(232,90,60,${alpha})`;
         bigPlotCtx.beginPath();
         bigPlotCtx.arc(cx + p.v * R, cy - p.a * R, size, 0, Math.PI*2);
         bigPlotCtx.fill();
       }
-      if (lastFused.v != null) {
-        const x = cx + smV * R, y = cy - smA * R;
-        bigPlotCtx.fillStyle = 'rgba(232,90,60,0.22)';
-        bigPlotCtx.beginPath(); bigPlotCtx.arc(x, y, 18, 0, Math.PI*2); bigPlotCtx.fill();
+
+      // Current dot — always draw a soft neutral "YOU" indicator so the
+      // user sees the plot is live even before V/A fuse. When a fused
+      // value exists, colour it accent red and add a halo.
+      const haveVA = lastFused.v != null;
+      const dx = cx + (haveVA ? smV : 0) * R;
+      const dy = cy - (haveVA ? smA : 0) * R;
+      if (haveVA) {
+        bigPlotCtx.fillStyle = 'rgba(232,90,60,0.20)';
+        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 26, 0, Math.PI*2); bigPlotCtx.fill();
         bigPlotCtx.fillStyle = '#E85A3C';
-        bigPlotCtx.beginPath(); bigPlotCtx.arc(x, y, 8, 0, Math.PI*2); bigPlotCtx.fill();
+        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 12, 0, Math.PI*2); bigPlotCtx.fill();
+      } else {
+        bigPlotCtx.strokeStyle = 'rgba(238,236,231,0.55)';
+        bigPlotCtx.lineWidth = 2;
+        bigPlotCtx.beginPath(); bigPlotCtx.arc(dx, dy, 10, 0, Math.PI*2); bigPlotCtx.stroke();
       }
+
+      // YOU caption under the center (v1 flavour)
+      bigPlotCtx.fillStyle = 'rgba(238,236,231,0.38)';
+      bigPlotCtx.font = '600 14px "JetBrains Mono", ui-monospace, monospace';
+      bigPlotCtx.fillText(haveVA ? 'YOU' : 'awaiting signal', cx, cy + R + 20);
     }
 
     function drawRppg() {
@@ -1977,6 +2034,16 @@
 
     // ── START ────────────────────────────────────────────────────────
     async function start() {
+      // LAZY init: instantiate the shader now (canvas is definitely sized).
+      if (!style) {
+        const picked = instantiateWithFallback(StyleCls);
+        if (!picked) {
+          alert('Could not initialize any visual style. Please reload.');
+          return;
+        }
+        StyleCls = picked;
+        log('event', 'style live (from Begin)', { id: StyleCls.id });
+      }
       let stream;
       try {
         // Hoist camera stream so End can stop it later
