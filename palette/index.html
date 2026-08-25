@@ -885,19 +885,26 @@
     .map-overlay__face {
       position: absolute;
       left: 50%; top: 50%; transform: translate(-50%, -50%);
-      width: min(38vw, 38vh, 300px);
-      height: min(38vw, 38vh, 300px);
+      width: min(46vw, 46vh, 360px);
+      height: min(46vw, 46vh, 360px);
       border-radius: 50%;
       overflow: hidden;
+      /* Long, gentle falloff: 100% opaque only at the very centre,
+         then a wide feather all the way out so the face blends into
+         the wheel colours instead of ending in a hard circle. */
       -webkit-mask-image: radial-gradient(circle at 50% 50%,
         rgba(0,0,0,1) 0%,
-        rgba(0,0,0,1) 45%,
-        rgba(0,0,0,0.75) 70%,
+        rgba(0,0,0,1) 22%,
+        rgba(0,0,0,0.85) 42%,
+        rgba(0,0,0,0.55) 62%,
+        rgba(0,0,0,0.25) 80%,
         rgba(0,0,0,0) 100%);
               mask-image: radial-gradient(circle at 50% 50%,
         rgba(0,0,0,1) 0%,
-        rgba(0,0,0,1) 45%,
-        rgba(0,0,0,0.75) 70%,
+        rgba(0,0,0,1) 22%,
+        rgba(0,0,0,0.85) 42%,
+        rgba(0,0,0,0.55) 62%,
+        rgba(0,0,0,0.25) 80%,
         rgba(0,0,0,0) 100%);
       pointer-events: none;
     }
@@ -1428,14 +1435,15 @@
       hasWebGL2: !!document.createElement('canvas').getContext('webgl2'),
     });
 
-    // ── HUMAN CONFIG (from Engine 1 final tuning) ────────────────────
-    // Mobile Safari runs face inference at 1-5 fps when EVERY module is on
-    // (mesh + iris + description + antispoof + liveness + body all together
-    // is ~250-300ms per detect on iPhone). We keep the core visual pipeline
-    // (mesh, iris, rotation, emotion) always on. Age/gender/anti-spoof/
-    // liveness/body are heavy and shown only when the Sensing view is open;
-    // we hot-swap the config through human.reset(). Default = light.
-    const HUMAN_LIGHT_CONFIG = {
+    // ── HUMAN CONFIG ─────────────────────────────────────────────────
+    // Single Human config used everywhere. Previously we hot-swapped
+    // between a light (mesh+iris+emotion) profile on the artwork and a
+    // full (adds description/antispoof/liveness/body) profile in the
+    // Sensing view via human.reset() — that swap left iOS Safari's
+    // WebGL/WASM state permanently degraded (humanFps pinned at 1.49,
+    // p50 at 257ms). One config, always on, is measurably faster in
+    // practice: keeps steady 3-11fps inference on iPhone.
+    const HUMAN_CONFIG = {
       backend: 'webgl',
       modelBasePath: 'https://cdn.jsdelivr.net/npm/@vladmandic/human@3.3.5/models/',
       wasmPlatformFetch: false,
@@ -1449,28 +1457,18 @@
         detector: { rotation: true, maxDetected: 1, minConfidence: 0.4, return: false, skipFrames: 15, skipTime: 250 },
         mesh: { enabled: true },
         iris: { enabled: true },
-        description: { enabled: false },
+        // description is small and gives us age/gender chips — skip heavily
+        description: { enabled: true, skipFrames: 120, skipTime: 2000 },
         emotion: { enabled: true, minConfidence: 0.1, skipFrames: 30, skipTime: 300 },
-        antispoof: { enabled: false },
-        liveness: { enabled: false },
+        // antispoof + liveness are 20-30ms each on iPhone — skip very heavily
+        antispoof: { enabled: true, skipFrames: 240, skipTime: 4000 },
+        liveness: { enabled: true, skipFrames: 240, skipTime: 4000 },
       },
-      body: { enabled: false },
+      // MoveNet lightning body model, aggressive skipping keeps it cheap
+      body: { enabled: true, modelPath: 'movenet-lightning.json', maxDetected: 1, skipFrames: 60, skipTime: 800 },
       hand: { enabled: false }, object: { enabled: false },
       gesture: { enabled: false }, segmentation: { enabled: false },
     };
-    // Full pipeline: enabled when the user opens the Sensing view.
-    const HUMAN_FULL_CONFIG = {
-      ...HUMAN_LIGHT_CONFIG,
-      face: {
-        ...HUMAN_LIGHT_CONFIG.face,
-        description: { enabled: true, skipFrames: 60, skipTime: 500 },
-        antispoof: { enabled: true, skipFrames: 60, skipTime: 500 },
-        liveness: { enabled: true, skipFrames: 60, skipTime: 500 },
-      },
-      body: { enabled: true, modelPath: 'movenet-lightning.json', maxDetected: 1, skipFrames: 30, skipTime: 400 },
-    };
-    // Legacy alias (init call uses this name)
-    const HUMAN_CONFIG = HUMAN_LIGHT_CONFIG;
     const EMO_VA = {
       happy:    { v:  0.85, a:  0.55 }, sad:      { v: -0.75, a: -0.40 },
       angry:    { v: -0.65, a:  0.75 }, fear:     { v: -0.60, a:  0.80 },
@@ -1485,14 +1483,28 @@
     // ── VITALLENS CONFIG (from Engine 2 A/B winner) ──────────────────
     const VL_METHOD = 'pos';
     const VL_MEDIAN_WINDOW_MS = 10000;
-    const VL_OUTLIER_ABOVE_BPM = 15;
-    const VL_OUTLIER_BELOW_BPM = 8;
+    // Widened outlier gate to 20 bpm on both sides so real HR drift can
+    // still pass through the baseline filter and reach the smoother.
+    // Previous 15/8 asymmetric gate caused a permanent freeze whenever
+    // the true HR drifted below baseline−8 or above baseline+15.
+    const VL_OUTLIER_ABOVE_BPM = 20;
+    const VL_OUTLIER_BELOW_BPM = 20;
     const VL_LOCK_AGREEMENT_BPM = 3;
     const VL_LOCK_CONSECUTIVE_N = 3;
     const VL_HR_MIN = 35;
     const VL_HR_MAX = 200;
     const VL_MIN_CONF = 0.6;
     const VL_BASELINE_LOCK_MS = 60 * 1000;
+    // How long to hold the last locked HR before we treat the smoother
+    // as stale and release the lock, letting a new smoothed value or
+    // even a mildly-out-of-gate value be reflected in the display.
+    const VL_LOCK_STALE_MS = 8000;
+    // Slow drift of the baseline itself so long sessions keep tracking
+    // the user's actual physiology instead of being pinned to whatever
+    // the first minute happened to be. Applied only when the smoother
+    // is producing values (i.e. we're not in a freeze).
+    const VL_BASELINE_DRIFT_ALPHA = 0.02;
+    const VL_BASELINE_DRIFT_MIN_INTERVAL_MS = 5000;
 
     // ── STATE ────────────────────────────────────────────────────────
     let human = null, vl = null, running = false, mediaStream = null;
@@ -1505,6 +1517,7 @@
     let nextInferenceEarliestAt = 0;
     let vlBaseline = null, vlHrHist = [], vlRecentSmoothed = [];
     let vlSignalLocked = false, vlLastGoodDisplayedHr = null, vlDisplayedHr = null;
+    let vlLastGoodDisplayedAt = 0, vlLastBaselineDriftAt = 0;
     let vlEventCount = 0, vlSessionStartMs = 0;
     let lastFused = { v: 0, a: 0, mode: 'idle' };
     let lastFusionMode = 'idle';
@@ -1636,6 +1649,8 @@
       }
       const smoothed = vlRobustSmooth(now);
       let displayed = null;
+      const lockStale = vlLastGoodDisplayedAt > 0
+        && (now - vlLastGoodDisplayedAt) > VL_LOCK_STALE_MS;
       if (smoothed != null) {
         vlRecentSmoothed.push(smoothed);
         if (vlRecentSmoothed.length > VL_LOCK_CONSECUTIVE_N) vlRecentSmoothed.shift();
@@ -1644,13 +1659,42 @@
           if (spread <= VL_LOCK_AGREEMENT_BPM) {
             vlSignalLocked = true;
             vlLastGoodDisplayedHr = smoothed;
+            vlLastGoodDisplayedAt = now;
             displayed = smoothed;
-          } else if (vlLastGoodDisplayedHr != null) {
+          } else if (vlLastGoodDisplayedHr != null && !lockStale) {
             vlSignalLocked = false;
             displayed = vlLastGoodDisplayedHr;
-          } else displayed = smoothed;
-        } else if (vlLastGoodDisplayedHr != null) displayed = vlLastGoodDisplayedHr;
-      } else if (vlLastGoodDisplayedHr != null) displayed = vlLastGoodDisplayedHr;
+          } else {
+            // Either no lock ever, or the lock has gone stale. Fall
+            // through to the current smoothed value so the display
+            // keeps tracking real physiology instead of freezing.
+            vlSignalLocked = false;
+            displayed = smoothed;
+          }
+        } else if (vlLastGoodDisplayedHr != null && !lockStale) {
+          displayed = vlLastGoodDisplayedHr;
+        } else {
+          displayed = smoothed;
+        }
+        // Slow drift of the baseline whenever the smoother is producing
+        // values, so the outlier gate keeps tracking the user's actual
+        // physiology on long sessions.
+        if (vlBaseline != null
+            && (now - vlLastBaselineDriftAt) >= VL_BASELINE_DRIFT_MIN_INTERVAL_MS) {
+          vlBaseline = vlBaseline * (1 - VL_BASELINE_DRIFT_ALPHA)
+                     + smoothed * VL_BASELINE_DRIFT_ALPHA;
+          vlLastBaselineDriftAt = now;
+        }
+      } else if (vlLastGoodDisplayedHr != null && !lockStale) {
+        displayed = vlLastGoodDisplayedHr;
+      }
+      // If the smoother is starved AND the lock has gone stale, clear
+      // the agreement buffer so recovery is honest rather than masked
+      // by pre-freeze samples.
+      if (smoothed == null && lockStale && vlRecentSmoothed.length > 0) {
+        vlRecentSmoothed = [];
+        vlSignalLocked = false;
+      }
 
       vlDisplayedHr = displayed;
       const sessionMs = now - vlSessionStartMs;
@@ -1667,7 +1711,12 @@
         log('perf', 'vitals sample', {
           n: vlEventCount,
           hrDisplayed: displayed != null ? Number(displayed.toFixed(1)) : null,
+          hrRaw: typeof hrRaw === 'number' ? Number(hrRaw.toFixed(1)) : null,
+          hrSmoothed: smoothed != null ? Number(smoothed.toFixed(1)) : null,
           baseline: vlBaseline != null ? Number(vlBaseline.toFixed(1)) : null,
+          locked: vlSignalLocked,
+          lockStale,
+          histN: vlHrHist.length,
           fusedV: lastFused.v != null ? Number(lastFused.v.toFixed(2)) : null,
           fusedA: lastFused.a != null ? Number(lastFused.a.toFixed(2)) : null,
         });
@@ -2325,39 +2374,21 @@
       // toward the centre so the trail and YOU dot stay legible.
       // Kept saturated toward the rim, low-value toward the middle.
       bigPlotCtx.save();
-      // Off-screen wheel builder: paint 1° wedges from the sorted v1 palette.
-      const anchors = V1_EMOTIONS.slice().sort((a, b) => a.angle - b.angle);
-      const N = anchors.length;
-      function lerpHex(hexA, hexB, t) {
-        const a = parseInt(hexA.slice(1), 16), b = parseInt(hexB.slice(1), 16);
-        const ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255;
-        const br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
-        return `rgb(${Math.round(ar+(br-ar)*t)},${Math.round(ag+(bg-ag)*t)},${Math.round(ab+(bb-ab)*t)})`;
-      }
-      // Paint the full disc as many thin wedges, each a lerp between the
-      // two neighbouring anchors on the sorted palette.
-      const STEP = 2; // degrees per wedge
-      for (let d = 0; d < 360; d += STEP) {
-        // Which two anchors bracket this angle
-        let i0 = 0;
-        for (let i = 0; i < N; i++) {
-          const cur = anchors[i].angle;
-          const nxt = anchors[(i + 1) % N].angle + ((i + 1 === N) ? 360 : 0);
-          if (d >= cur && d < nxt) { i0 = i; break; }
-        }
-        const i1 = (i0 + 1) % N;
-        const a0 = anchors[i0].angle;
-        const a1 = anchors[i1].angle + (anchors[i1].angle < a0 ? 360 : 0);
-        const t = (d - a0) / (a1 - a0);
-        const col = lerpHex(anchors[i0].hex, anchors[i1].hex, t);
-        // Canvas y-down: negate angle
-        const startAng = -((d + STEP) * Math.PI / 180);
+      // Seamless: sample v1's emotionToColor at each degree along the rim.
+      // The palette function blends by angular distance to nearest anchor,
+      // so there is no wrap-around seam and no wedge boundaries.
+      for (let d = 0; d < 360; d += 1) {
+        const rad = d * Math.PI / 180;
+        const sv = Math.cos(rad) * 0.9;
+        const sa = Math.sin(rad) * 0.9;
+        const c = v1EmotionToColor(sv, sa, 0.5);
+        const startAng = -((d + 1) * Math.PI / 180);
         const endAng   = -(d * Math.PI / 180);
         bigPlotCtx.beginPath();
         bigPlotCtx.moveTo(cx, cy);
         bigPlotCtx.arc(cx, cy, R, startAng, endAng);
         bigPlotCtx.closePath();
-        bigPlotCtx.fillStyle = col;
+        bigPlotCtx.fillStyle = c.hex;
         bigPlotCtx.fill();
       }
       // Fade centre toward dark so trail + YOU dot pop; keep rim saturated.
@@ -2389,16 +2420,21 @@
       bigPlotCtx.moveTo(cx,cy-R); bigPlotCtx.lineTo(cx,cy+R);
       bigPlotCtx.stroke();
 
-      // Emotion NAMES around the ring — painted OUTSIDE the coloured ring
-      // so both the colour band and the words are legible.
-      bigPlotCtx.font = '500 22px "Space Grotesk", ui-sans-serif, system-ui';
+      // Emotion NAMES around the ring — EACH LABEL IN ITS OWN ANCHOR HEX,
+      // lifted for legibility. This is the v1 signature: the wheel and
+      // its legend speak in the same colour language.
+      bigPlotCtx.font = '600 22px "Space Grotesk", ui-sans-serif, system-ui';
       bigPlotCtx.textAlign = 'center'; bigPlotCtx.textBaseline = 'middle';
       const LR = ringOuter + 26;
       for (const t of CIRCUMPLEX_TAGS) {
         const tx = cx + Math.cos(t.a) * LR;
         const ty = cy - Math.sin(t.a) * LR;
-        bigPlotCtx.fillStyle = 'rgba(238,236,231,0.82)';
+        bigPlotCtx.save();
+        bigPlotCtx.shadowColor = 'rgba(0,0,0,0.55)';
+        bigPlotCtx.shadowBlur = 6;
+        bigPlotCtx.fillStyle = liftForLegibility(t.hex);
         bigPlotCtx.fillText(t.label, tx, ty);
+        bigPlotCtx.restore();
       }
 
       // Emotional trail — each dot coloured by ITS OWN (v,a) via v1 palette.
@@ -2550,25 +2586,8 @@
       updateSensing();
       _sensingRaf = requestAnimationFrame(_sensingTick);
     }
-    // Hot-swap Human config between light (artwork) and full (sensing).
-    // Cuts iPhone Safari inference from ~250-300ms to ~70-120ms in artwork
-    // mode. Falls back gracefully if human hasn't loaded yet.
-    async function setHumanProfile(profile) {
-      if (!human || !human.load) return;
-      try {
-        const cfg = profile === 'full' ? HUMAN_FULL_CONFIG : HUMAN_LIGHT_CONFIG;
-        await human.reset(cfg);
-        await human.load(cfg);
-        log('event', 'human profile', { profile });
-      } catch (e) {
-        log('err', 'human profile swap failed', { message: e.message });
-      }
-    }
-
     function setSensing(open) {
       sensingOpen = !!open;
-      // Swap Human module set for the mode we're entering.
-      setHumanProfile(sensingOpen ? 'full' : 'light');
       sensingEl.classList.toggle('open', sensingOpen);
       sensingEl.setAttribute('aria-hidden', String(!sensingOpen));
       senseBtn.classList.toggle('active', sensingOpen);
@@ -2857,6 +2876,45 @@
     let mapOverlayOpen = false;
     let _mapRaf = null;
 
+    // Cached painterly noise texture (small offscreen canvas we tile).
+    // Regenerated once per canvas size change; used to make the disc
+    // feel hand-painted like the reference circumplex (image 3).
+    let _mapNoise = null;
+    let _mapNoiseFor = 0;
+    function _buildNoiseTexture(size) {
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const cx = c.getContext('2d');
+      // Layered soft blobs at random positions, mixed with additive alpha.
+      cx.fillStyle = 'rgba(0,0,0,0)'; cx.fillRect(0, 0, size, size);
+      cx.globalCompositeOperation = 'lighter';
+      const N = 80;
+      for (let i = 0; i < N; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const r = 20 + Math.random() * 90;
+        const g = cx.createRadialGradient(x, y, 0, x, y, r);
+        const a = 0.02 + Math.random() * 0.06;
+        g.addColorStop(0, `rgba(255,255,255,${a})`);
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = g;
+        cx.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+      // Add darker blobs for painterly variance.
+      for (let i = 0; i < N / 2; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const r = 30 + Math.random() * 120;
+        const g = cx.createRadialGradient(x, y, 0, x, y, r);
+        const a = 0.03 + Math.random() * 0.06;
+        g.addColorStop(0, `rgba(0,0,0,${a})`);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        cx.fillStyle = g;
+        cx.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+      return c;
+    }
+
     function drawMapWheel() {
       const rect = mapCanvasEl.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -2865,88 +2923,177 @@
         mapCanvasEl.width = S;
         mapCanvasEl.height = S;
       }
-      const cx = S/2, cy = S/2, R = S * 0.46;
+      // Smaller disc than before so all 19 emotion labels + axis names
+      // fit OUTSIDE the colour field, matching the reference circumplex.
+      const cx = S/2, cy = S/2, R = S * 0.36;
       mapCtx.clearRect(0, 0, S, S);
-      // Continuous colour wheel (same anchors as the sensing view plot).
-      const anchors = V1_EMOTIONS.slice().sort((a, b) => a.angle - b.angle);
-      const N = anchors.length;
-      function lerpHex(hexA, hexB, t) {
-        const a = parseInt(hexA.slice(1), 16), b = parseInt(hexB.slice(1), 16);
-        const ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255;
-        const br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
-        return `rgb(${Math.round(ar+(br-ar)*t)},${Math.round(ag+(bg-ag)*t)},${Math.round(ab+(bb-ab)*t)})`;
-      }
-      mapCtx.globalAlpha = 0.72;
-      for (let d = 0; d < 360; d += 2) {
-        let i0 = 0;
-        for (let i = 0; i < N; i++) {
-          const cur = anchors[i].angle;
-          const nxt = anchors[(i + 1) % N].angle + ((i + 1 === N) ? 360 : 0);
-          if (d >= cur && d < nxt) { i0 = i; break; }
+
+      // 1) Painterly disc — sample v1 emotionToColor across the WHOLE disc
+      // (not just the rim). Each pixel angle + normalised radius gives
+      // a v/a coordinate, which we look up in the palette. Because
+      // emotionToColor blends by angular distance to nearest anchor,
+      // the field is seamless. Radius damps openness toward the centre
+      // so the middle reads softer (like image 3).
+      // Draw at a lower resolution then upscale for painterly softness.
+      const LOW = 96;
+      const off = document.createElement('canvas');
+      off.width = off.height = LOW;
+      const octx = off.getContext('2d');
+      const img = octx.createImageData(LOW, LOW);
+      const cxL = LOW / 2, cyL = LOW / 2, RL = LOW / 2;
+      for (let py = 0; py < LOW; py++) {
+        for (let px = 0; px < LOW; px++) {
+          const dx = (px - cxL) / RL;
+          const dy = (cyL - py) / RL; // arousal up = +
+          const rr = Math.hypot(dx, dy);
+          const idx = (py * LOW + px) * 4;
+          if (rr > 1.02) { img.data[idx+3] = 0; continue; }
+          // Radius-damped openness: rim saturated, centre softer.
+          const openness = 0.35 + 0.45 * rr;
+          const c = v1EmotionToColor(dx, dy, openness);
+          img.data[idx]   = c.r;
+          img.data[idx+1] = c.g;
+          img.data[idx+2] = c.b;
+          img.data[idx+3] = 255;
         }
-        const i1 = (i0 + 1) % N;
-        const a0 = anchors[i0].angle;
-        const a1 = anchors[i1].angle + (anchors[i1].angle < a0 ? 360 : 0);
-        const t = (d - a0) / (a1 - a0);
-        const col = lerpHex(anchors[i0].hex, anchors[i1].hex, t);
-        const startAng = -((d + 2) * Math.PI / 180);
-        const endAng   = -(d * Math.PI / 180);
-        mapCtx.beginPath();
-        mapCtx.moveTo(cx, cy);
-        mapCtx.arc(cx, cy, R, startAng, endAng);
-        mapCtx.closePath();
-        mapCtx.fillStyle = col;
-        mapCtx.fill();
       }
+      octx.putImageData(img, 0, 0);
+      // Upscale + slight blur for the watercolour bleed.
+      mapCtx.save();
+      mapCtx.beginPath(); mapCtx.arc(cx, cy, R, 0, Math.PI*2); mapCtx.clip();
+      mapCtx.filter = 'blur(' + (4 * dpr) + 'px)';
+      mapCtx.imageSmoothingEnabled = true;
+      mapCtx.imageSmoothingQuality = 'high';
+      mapCtx.globalAlpha = 0.92;
+      mapCtx.drawImage(off, cx - R, cy - R, R * 2, R * 2);
       mapCtx.globalAlpha = 1;
-      // Fade centre transparent so the feathered face reads through.
+      mapCtx.filter = 'none';
+
+      // 2) Painterly noise/cloud overlay for the hand-painted feel.
+      if (!_mapNoise || _mapNoiseFor !== S) {
+        _mapNoise = _buildNoiseTexture(Math.max(256, Math.round(R * 1.4)));
+        _mapNoiseFor = S;
+      }
+      mapCtx.globalCompositeOperation = 'overlay';
+      mapCtx.globalAlpha = 0.55;
+      mapCtx.drawImage(_mapNoise, cx - R, cy - R, R * 2, R * 2);
+      mapCtx.globalAlpha = 1;
+      mapCtx.globalCompositeOperation = 'source-over';
+      mapCtx.restore();
+
+      // 3) Central face fade — gentle roll-off so the face blends in.
       const fade = mapCtx.createRadialGradient(cx, cy, 0, cx, cy, R);
-      fade.addColorStop(0.00, 'rgba(15,12,10,0.85)');
-      fade.addColorStop(0.35, 'rgba(15,12,10,0.20)');
-      fade.addColorStop(0.75, 'rgba(15,12,10,0.00)');
+      fade.addColorStop(0.00, 'rgba(15,12,10,0.60)');
+      fade.addColorStop(0.30, 'rgba(15,12,10,0.32)');
+      fade.addColorStop(0.60, 'rgba(15,12,10,0.08)');
       fade.addColorStop(1.00, 'rgba(15,12,10,0.00)');
       mapCtx.fillStyle = fade;
       mapCtx.beginPath(); mapCtx.arc(cx, cy, R, 0, Math.PI*2); mapCtx.fill();
-      // Hairline ring outline.
-      mapCtx.strokeStyle = 'rgba(238,236,231,0.42)';
-      mapCtx.lineWidth = 1.25 * dpr;
+
+      // 4) Crosshair axes — valence horizontal, arousal vertical.
+      // A subtle line that extends slightly past the disc so it reads
+      // as an axis, not a wheel spoke.
+      const axisOver = 16 * dpr;
+      mapCtx.strokeStyle = 'rgba(238,236,231,0.35)';
+      mapCtx.lineWidth = 1 * dpr;
+      mapCtx.beginPath();
+      mapCtx.moveTo(cx - R - axisOver, cy); mapCtx.lineTo(cx + R + axisOver, cy);
+      mapCtx.moveTo(cx, cy - R - axisOver); mapCtx.lineTo(cx, cy + R + axisOver);
+      mapCtx.stroke();
+
+      // 5) Hairline disc outline.
+      mapCtx.strokeStyle = 'rgba(238,236,231,0.30)';
+      mapCtx.lineWidth = 1 * dpr;
       mapCtx.beginPath(); mapCtx.arc(cx, cy, R, 0, Math.PI*2); mapCtx.stroke();
-      // Emotion tags around the ring.
-      mapCtx.font = `500 ${13 * dpr}px "Space Grotesk", ui-sans-serif, system-ui`;
-      mapCtx.textAlign = 'center'; mapCtx.textBaseline = 'middle';
-      const LR = R + 22 * dpr;
-      for (const t of CIRCUMPLEX_TAGS) {
-        const tx = cx + Math.cos(t.a) * LR;
-        const ty = cy - Math.sin(t.a) * LR;
-        mapCtx.fillStyle = 'rgba(238,236,231,0.72)';
-        mapCtx.fillText(t.label, tx, ty);
+
+      // 6) Axis labels — VALENCE (close ← → open), AROUSAL (up / down).
+      // Mono, small, low-emphasis — they are guides, not the show.
+      mapCtx.font = `500 ${10 * dpr}px "JetBrains Mono", ui-monospace, monospace`;
+      mapCtx.fillStyle = 'rgba(238,236,231,0.62)';
+      // Valence ends
+      mapCtx.textAlign = 'right'; mapCtx.textBaseline = 'middle';
+      mapCtx.fillText('close ←', cx - R - 4 * dpr, cy - 12 * dpr);
+      mapCtx.textAlign = 'left';
+      mapCtx.fillText('→ open', cx + R + 4 * dpr, cy - 12 * dpr);
+      // valence axis title, tiny
+      mapCtx.textAlign = 'center';
+      mapCtx.fillStyle = 'rgba(238,236,231,0.46)';
+      mapCtx.font = `500 ${9 * dpr}px "JetBrains Mono", ui-monospace, monospace`;
+      mapCtx.fillText('valence', cx, cy - R - axisOver - 4 * dpr - 2 * dpr);
+      // Arousal ends
+      mapCtx.font = `500 ${10 * dpr}px "JetBrains Mono", ui-monospace, monospace`;
+      mapCtx.fillStyle = 'rgba(238,236,231,0.62)';
+      mapCtx.textBaseline = 'bottom';
+      mapCtx.fillText('activated ↑', cx + 12 * dpr, cy - R - 4 * dpr);
+      mapCtx.textBaseline = 'top';
+      mapCtx.fillText('↓ still',   cx + 12 * dpr, cy + R + 4 * dpr);
+      // arousal axis title, tiny — skip to avoid clutter on iPhone widths.
+
+      // 7) Emotion labels OUTSIDE the disc — all 19 v1 anchors, each
+      // with a small dot on the rim at its (cos, sin) position and
+      // the label placed just outside pointing outward. Reference:
+      // the classic Russell/Yik-style circumplex.
+      const anchorDotR = 3.5 * dpr;
+      const anchors = V1_EMOTIONS.slice();
+      // Font & shadow for the labels.
+      mapCtx.font = `600 ${11 * dpr}px "Space Grotesk", ui-sans-serif, system-ui`;
+      mapCtx.textBaseline = 'middle';
+      for (const e of anchors) {
+        const rad = (e.angle * Math.PI) / 180;
+        const ax = cx + Math.cos(rad) * R;
+        const ay = cy - Math.sin(rad) * R;
+        // Anchor dot on the rim.
+        mapCtx.fillStyle = e.hex;
+        mapCtx.beginPath();
+        mapCtx.arc(ax, ay, anchorDotR, 0, Math.PI*2);
+        mapCtx.fill();
+        mapCtx.strokeStyle = 'rgba(255,255,255,0.85)';
+        mapCtx.lineWidth = 1 * dpr;
+        mapCtx.stroke();
+        // Label just outside the rim, aligned by which side we're on.
+        const LR = R + 12 * dpr;
+        const lx = cx + Math.cos(rad) * LR;
+        const ly = cy - Math.sin(rad) * LR;
+        const isRight = Math.cos(rad) > 0.08;
+        const isLeft  = Math.cos(rad) < -0.08;
+        mapCtx.textAlign = isRight ? 'left' : isLeft ? 'right' : 'center';
+        mapCtx.save();
+        mapCtx.shadowColor = 'rgba(0,0,0,0.70)';
+        mapCtx.shadowBlur = 5 * dpr;
+        mapCtx.fillStyle = liftForLegibility(e.hex);
+        mapCtx.fillText(e.name.toLowerCase(), lx, ly);
+        mapCtx.restore();
       }
-      // Emotional trail (shared miniTrail buffer).
+
+      // 8) Emotional trail — chromatic breadcrumb inside the disc.
       const nowT = performance.now();
       for (const p of miniTrail) {
         const age = (nowT - p.t) / 8000;
         if (age >= 1) continue;
         const c = v1EmotionToColor(p.v, p.a, 0.5);
-        const alpha = (1 - age) * 0.70;
+        const alpha = (1 - age) * 0.85;
         const size  = (2 + (1 - age) * 4) * dpr;
         mapCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},${alpha})`;
         mapCtx.beginPath();
         mapCtx.arc(cx + p.v * R * 0.86, cy - p.a * R * 0.86, size, 0, Math.PI*2);
         mapCtx.fill();
       }
-      // YOU dot.
-      if (lastFused.v != null) {
-        const dx = cx + smV * R * 0.86;
-        const dy = cy - smA * R * 0.86;
-        const c = v1EmotionToColor(smV, smA, 0.5);
-        mapCtx.fillStyle = `rgba(${c.r},${c.g},${c.b},0.22)`;
-        mapCtx.beginPath(); mapCtx.arc(dx, dy, 22 * dpr, 0, Math.PI*2); mapCtx.fill();
-        mapCtx.fillStyle = c.hex;
-        mapCtx.beginPath(); mapCtx.arc(dx, dy, 9 * dpr, 0, Math.PI*2); mapCtx.fill();
-        mapCtx.strokeStyle = 'rgba(255,255,255,0.9)';
-        mapCtx.lineWidth = 2 * dpr;
-        mapCtx.stroke();
-      }
+
+      // 9) YOU dot — painted last, always on top. Origin fallback so
+      // it's visible before the first fusion tick lands.
+      const haveVA = lastFused.v != null;
+      const dv = haveVA ? smV : 0;
+      const da = haveVA ? smA : 0;
+      const ddx = cx + dv * R * 0.86;
+      const ddy = cy - da * R * 0.86;
+      const cd = v1EmotionToColor(dv, da, 0.5);
+      mapCtx.fillStyle = `rgba(${cd.r},${cd.g},${cd.b},${haveVA ? 0.30 : 0.16})`;
+      mapCtx.beginPath(); mapCtx.arc(ddx, ddy, 22 * dpr, 0, Math.PI*2); mapCtx.fill();
+      mapCtx.fillStyle = haveVA ? cd.hex : 'rgba(238,236,231,0.90)';
+      mapCtx.beginPath(); mapCtx.arc(ddx, ddy, 9 * dpr, 0, Math.PI*2); mapCtx.fill();
+      mapCtx.strokeStyle = 'rgba(255,255,255,0.95)';
+      mapCtx.lineWidth = 2 * dpr;
+      mapCtx.stroke();
     }
 
     function updateMapCaption() {
