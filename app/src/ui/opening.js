@@ -32,7 +32,17 @@ const SEQ = [
   // separator
   { kind: "rest", ms: 1600 },
 
-  // 2) Threshold
+  // 2) Question — the Age of Thinking Machines frame
+  { kind: "poem", hold: 1000, gap: 1600, lines: [
+    "In the age of thinking machines,",
+    "one question remains:",
+    "",
+    "what does it mean to be human?",
+  ]},
+
+  { kind: "rest", ms: 1800 },
+
+  // 3) Threshold
   { kind: "poem", hold: 900, gap: 1400, lines: [
     "This artwork asks for",
     "your presence.",
@@ -45,9 +55,17 @@ const SEQ = [
     "when it is ready.",
   ]},
 
+  { kind: "rest", ms: 1600 },
+
+  // 4) Wealth — citation register, quoted line, no attribution in-app
+  { kind: "poem", hold: 1100, gap: 1500, lines: [
+    "An unhurried sense of time",
+    "is itself a form of wealth.",
+  ]},
+
   { kind: "rest", ms: 1800 },
 
-  // 3) Creation
+  // 5) Creation
   { kind: "poem", hold: 900, gap: 1500, lines: [
     "The artwork listens to you.",
     "Your presence is what creates it.",
@@ -55,8 +73,9 @@ const SEQ = [
 
   { kind: "rest", ms: 2000 },
 
-  // 4) Body cues — bracketed, whole-line cadence, slower
+  // 6) Body cues — bracketed, whole-line cadence, slower
   { kind: "cues", hold: 2200, gap: 700, lines: [
+    "[Put the world down]",
     "[Find a quiet place]",
     "[Take a deep breath]",
     "[Exhale]",
@@ -68,7 +87,7 @@ const SEQ = [
 
   { kind: "rest", ms: 1200 },
 
-  // 5) Ready + countdown
+  // 7) Ready + countdown
   { kind: "ready" },
 ];
 
