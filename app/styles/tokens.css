@@ -35,10 +35,15 @@
   --ea-rec:            #D42C1F;
   --ea-rec-dim:        rgba(212, 44, 31, 0.15);
 
-  /* --- Type --- */
+  /* --- Type ---
+   * v2 pass (Aug 26, 2026): swapped Inter Tight -> Space Grotesk for UI/body.
+   * Reason: the opening sequence and the Age-of-Thinking-Machines reference
+   * decks share this typographic voice; the rest of the app should meet it
+   * without a font seam. Fraunces stays for the display slot; JetBrains Mono
+   * for data / captions. Loaded at the root of index.html. */
   --ea-font-display: "Fraunces", "Cormorant Garamond", "Georgia", serif;
-  --ea-font-ui:      "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --ea-font-body:    "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ea-font-ui:      "Space Grotesk", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ea-font-body:    "Space Grotesk", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --ea-font-mono:    "JetBrains Mono", "SF Mono", Menlo, monospace;
 
   /* Numeric display font — heavy, geometric, tabular. Mirrors the Boundless
