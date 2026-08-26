@@ -397,10 +397,13 @@ function onUnmount(name) {
   // WebGL context in the background.
   if (name === "before") {
     pauseCircumplexPreview();
-    // v2: also release the camera + Human.js model. Never let the green
-    // camera dot linger past the Before screen.
+    // v2: also release camera / Muse. Never let the green camera dot or
+    // an idle BLE connection linger past the Before screen.
     try {
       import("./sensing/human-sensing.js?v=2.0.1").then((m) => m.stopSensing?.());
+    } catch { /* noop */ }
+    try {
+      import("./sensing/muse-sensing.js?v=2.0.1").then((m) => m.stopMuseSensing?.());
     } catch { /* noop */ }
   }
 }

@@ -21,6 +21,13 @@ import {
   isSensingActive,
   setSensingOpenness,
 } from "../sensing/human-sensing.js";
+import {
+  startMuseSensing,
+  stopMuseSensing,
+  isMuseSensingActive,
+  setMuseSensingOpenness,
+  isMuseAvailable,
+} from "../sensing/muse-sensing.js";
 
 let _wired = false;
 let _waveCtx = null;
@@ -30,45 +37,66 @@ const WAVE_MAX = 96;
 
 export function wireSensingStrip() {
   if (_wired) return;
-  const chip   = document.getElementById("sense-chip-camera");
-  const strip  = document.getElementById("sensing-strip");
-  const slider = document.getElementById("openness");
-  const waveEl = document.getElementById("sensing-wave");
+  const chip     = document.getElementById("sense-chip-camera");
+  const museChip = document.getElementById("sense-chip-muse");
+  const strip    = document.getElementById("sensing-strip");
+  const slider   = document.getElementById("openness");
+  const waveEl   = document.getElementById("sensing-wave");
   if (!chip || !strip || !waveEl) return; // Before screen not mounted yet
   _wired = true;
+
+  // The Muse chip stays disabled unless the browser supports Web Bluetooth
+  // (iOS Safari does not; Bluefy / Chrome / Bluetooth-capable browsers do).
+  // The v1 flow used a wizard; from the sensing row we do a direct connect.
+  if (museChip && isMuseAvailable()) {
+    museChip.disabled = false;
+    museChip.removeAttribute("aria-disabled");
+    museChip.classList.remove("ea-sense-chip--disabled");
+  }
   // Wave canvas is sized lazily on first show — while strip is hidden,
   // getBoundingClientRect().width is 0 and the canvas would collapse.
 
-  // Mirror the openness slider into the sensing engine so the puck's
-  // openness stays in sync while sensing is driving V/A.
+  // Mirror the openness slider into both sensing engines so the puck's
+  // openness stays in sync while a sensor drives V/A. (Muse can compute
+  // its own openness from EEG, but if the user is actively dragging the
+  // slider they win — this is honored in muse-sensing when the flag is
+  // set. Human never computes openness.)
   if (slider) {
-    // The app writes .ea-slider__thumb.style.left; we re-read from the
-    // slider's aria-valuenow which app.js keeps updated.
     const readOpenness = () => {
       const v = Number(slider.getAttribute("aria-valuenow") || "50");
       setSensingOpenness(v / 100);
+      setMuseSensingOpenness(v / 100);
     };
     slider.addEventListener("pointerdown", () => setTimeout(readOpenness, 0));
     slider.addEventListener("pointermove", () => readOpenness());
-    // Also mirror the openness the app already wrote at init.
     readOpenness();
   }
 
+  const openStrip = () => {
+    strip.hidden = false;
+    if (!_waveInited) { _initWave(waveEl); _waveInited = true; }
+  };
+  const closeStrip = () => {
+    strip.hidden = true;
+    _resetWave();
+  };
+
+  // Only one source can drive the puck at a time. If a source is
+  // already active and the user taps the other chip, stop the first.
   chip.addEventListener("click", async () => {
     if (isSensingActive()) {
       stopSensing();
       chip.setAttribute("aria-pressed", "false");
       chip.removeAttribute("data-error");
-      strip.hidden = true;
-      _resetWave();
+      closeStrip();
       return;
     }
-    // Show strip synchronously so the user gets immediate feedback while
-    // the model + camera come up (~1-3s on first load).
+    if (isMuseSensingActive()) {
+      stopMuseSensing();
+      museChip?.setAttribute("aria-pressed", "false");
+    }
     chip.setAttribute("aria-pressed", "true");
-    strip.hidden = false;
-    // Now that the strip has real dimensions, size the wave canvas.
-    if (!_waveInited) { _initWave(waveEl); _waveInited = true; }
+    openStrip();
     _paintCaption("waking up");
     _paintBar("sensing-bar-v", 0);
     _paintBar("sensing-bar-a", 0);
@@ -79,10 +107,43 @@ export function wireSensingStrip() {
       chip.setAttribute("data-error", "true");
       _paintCaption("camera permission needed");
       setTimeout(() => {
-        if (!isSensingActive()) { strip.hidden = true; chip.removeAttribute("data-error"); }
+        if (!isSensingActive()) { closeStrip(); chip.removeAttribute("data-error"); }
       }, 2400);
     }
   });
+
+  // Muse chip — mirrors the camera chip's behavior. Uses Web Bluetooth
+  // pairing (opens the OS device picker on tap; the click IS the gesture).
+  if (museChip) {
+    museChip.addEventListener("click", async () => {
+      if (isMuseSensingActive()) {
+        stopMuseSensing();
+        museChip.setAttribute("aria-pressed", "false");
+        museChip.removeAttribute("data-error");
+        closeStrip();
+        return;
+      }
+      if (isSensingActive()) {
+        stopSensing();
+        chip.setAttribute("aria-pressed", "false");
+      }
+      museChip.setAttribute("aria-pressed", "true");
+      openStrip();
+      _paintCaption("pairing headband");
+      _paintBar("sensing-bar-v", 0);
+      _paintBar("sensing-bar-a", 0);
+
+      const ok = await startMuseSensing({ onFrame: _onFrame, useSliderOpenness: false });
+      if (!ok) {
+        museChip.setAttribute("aria-pressed", "false");
+        museChip.setAttribute("data-error", "true");
+        _paintCaption("pairing cancelled");
+        setTimeout(() => {
+          if (!isMuseSensingActive()) { closeStrip(); museChip.removeAttribute("data-error"); }
+        }, 2400);
+      }
+    });
+  }
 }
 
 function _onFrame({ active, v, a, top }) {
