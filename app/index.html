@@ -42,6 +42,7 @@
   <link rel="stylesheet" href="./styles/legal.css?v=1.4.3" />
   <link rel="stylesheet" href="./styles/polish.css?v=1.4.3" />
   <link rel="stylesheet" href="./styles/v163.css?v=1.6.4.37" />
+  <link rel="stylesheet" href="./styles/opening.css?v=2.0.0" />
 
   <!--
     Umami analytics (privacy-first, no cookies, no personal data).
@@ -815,5 +816,20 @@
   <script type="module" src="./src/ui/touch-to-open.js?v=1.4.3"></script>
   <script type="module" src="./src/app.js?v=1.6.4.37"></script>
   <script type="module" src="./src/ui/v163-layer.js?v=1.6.4.37"></script>
+
+  <!-- v2 opening sequence: quiet animated reading ahead of the shipped
+       Boundless flow. Sets body[data-opening=true] which hides all other
+       surfaces via opening.css until the sequence finishes. -->
+  <script type="module">
+    import { startOpening } from "./src/ui/opening.js?v=2.0.0";
+    // Set the attribute synchronously to avoid a flash of the before-screen.
+    document.body.setAttribute("data-opening", "true");
+    const boot = () => startOpening({ onDone: () => {} });
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", boot, { once: true });
+    } else {
+      boot();
+    }
+  </script>
 </body>
 </html>

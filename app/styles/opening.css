@@ -1,0 +1,138 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Empathic Art v2 — Opening Sequence
+   ─────────────────────────────────────────────────────────────────
+   Space Grotesk display, JetBrains Mono for brackets and countdown.
+   Cream on near-black. No accent colors. Slow, patient timing.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap');
+
+/* While opening is up, hide every other surface so nothing leaks through. */
+body[data-opening="true"] .ea-header,
+body[data-opening="true"] .ea-chips-band,
+body[data-opening="true"] .ea-screen,
+body[data-opening="true"] .ea-viewswitch,
+body[data-opening="true"] .ea-hint-band,
+body[data-opening="true"] .ea-emotion-reveal,
+body[data-opening="true"] .ea-summary,
+body[data-opening="true"] #summary-reveal {
+  visibility: hidden !important;
+}
+
+.ea-opening {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: #0A0A0A;
+  color: #EEECE7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(env(safe-area-inset-top, 0px), 24px) 28px max(env(safe-area-inset-bottom, 0px), 24px);
+  opacity: 1;
+  transition: opacity 700ms ease-out;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+.ea-opening--leaving { opacity: 0; }
+
+.ea-opening__stage {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  min-height: 40vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  text-align: center;
+}
+
+/* Poem line — Space Grotesk display, generous leading, letter-spaced open. */
+.ea-opening__line {
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 900ms ease-out,
+    transform 1200ms ease-out;
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: clamp(22px, 5.4vw, 30px);
+  line-height: 1.55;
+  letter-spacing: 0.012em;
+  color: #EEECE7;
+  padding: 0 4px;
+  will-change: opacity, transform;
+}
+.ea-opening__line.visible { opacity: 1; transform: translateY(0); }
+.ea-opening__line.leaving { opacity: 0; transform: translateY(-4px); transition: opacity 900ms ease-in, transform 1200ms ease-in; }
+
+/* Words inside a poem line — each fades in individually. */
+.ea-opening__word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 900ms ease-out,
+    transform 1100ms ease-out;
+  will-change: opacity, transform;
+}
+.ea-opening__word.visible { opacity: 1; transform: translateY(0); }
+
+/* Bracketed body cues — JetBrains Mono, dimmer cream, slower. */
+.ea-opening__line--cue {
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  font-weight: 400;
+  font-size: clamp(16px, 4.2vw, 22px);
+  letter-spacing: 0.02em;
+  color: rgba(238, 236, 231, 0.86);
+}
+
+/* Ready + numerals. */
+.ea-opening__line--ready {
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 300;
+  font-size: clamp(30px, 8vw, 42px);
+  letter-spacing: 0.08em;
+  color: #EEECE7;
+  text-transform: none;
+}
+.ea-opening__line--num {
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  font-weight: 300;
+  font-size: clamp(64px, 22vw, 140px);
+  letter-spacing: 0;
+  line-height: 1;
+  color: #EEECE7;
+  transition: opacity 700ms ease-out, transform 900ms ease-out;
+  transform: scale(1.02);
+}
+.ea-opening__line--num.visible { transform: scale(1); }
+.ea-opening__line--num.leaving { transform: scale(0.98); transition: opacity 500ms ease-in, transform 700ms ease-in; }
+
+/* Skip hint — appears late, very subtle. */
+.ea-opening__skip {
+  position: absolute;
+  left: 50%;
+  bottom: max(env(safe-area-inset-bottom, 0px), 22px);
+  transform: translateX(-50%);
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(238, 236, 231, 0.34);
+  opacity: 0;
+  transition: opacity 1200ms ease-out;
+  pointer-events: none;
+  text-transform: lowercase;
+}
+.ea-opening__skip.visible { opacity: 1; }
+
+/* Respect reduced motion — collapse animations to simple fades. */
+@media (prefers-reduced-motion: reduce) {
+  .ea-opening__line,
+  .ea-opening__word,
+  .ea-opening__line--num { transform: none !important; transition: opacity 600ms linear !important; }
+}
