@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0A0A0A" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <title>About — Empathic Art</title>
+  <meta name="description" content="Empathic Art — an artist statement by Eyal Gever." />
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    Empathic Art v2 · About page
+    ─────────────────────────────────────────────────────────────────────
+    Author   : Eyal Gever
+    Content  : docs/v2/ARTIST-STATEMENT.md (rendered as HTML)
+    Design   : same tokens as welcome.html; reading page, no canvas.
+    ═══════════════════════════════════════════════════════════════════════
+  -->
+
+  <style>
+    :root {
+      --bg: #0A0A0A;
+      --fg: #F5F1EA;
+      --fg-dim: #B8B4AC;
+      --accent: #E85D24;
+      --sans: 'Space Grotesk', 'Söhne', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'JetBrains Mono', 'Monument Grotesk Semi-Mono', 'IBM Plex Mono', ui-monospace, monospace;
+      --serif: var(--sans);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--sans);
+      font-weight: 400;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; }
+    a:hover { color: var(--accent); }
+
+    /* ── Top mark ─────────────────────────────────────────────────── */
+    .mark {
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      padding: 32px 8vw 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.15;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      color: var(--fg-dim);
+      z-index: 10;
+    }
+    .mark a { border: none; }
+    .mark .rule {
+      width: 24px;
+      height: 2px;
+      background: var(--accent);
+      display: inline-block;
+    }
+    .mark .back {
+      margin-left: auto;
+      color: var(--fg);
+    }
+    .mark .back .arrow { color: var(--accent); margin-right: 6px; }
+
+    /* ── Article ──────────────────────────────────────────────────── */
+    article {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 6vh 8vw 12vh;
+      font-size: clamp(1rem, 1.2vw, 1.15rem);
+      line-height: 1.75;
+    }
+    article h1 {
+      font-family: var(--sans);
+      font-weight: 400;
+      font-size: clamp(2.4rem, 5.4vw, 4.4rem);
+      line-height: 0.92;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+    article .byline {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      color: var(--fg-dim);
+      margin-bottom: 48px;
+    }
+    article h2 {
+      font-family: var(--mono);
+      font-weight: 400;
+      font-size: clamp(1.1rem, 1.5vw, 1.35rem);
+      line-height: 1.15;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      color: var(--fg);
+      margin: 3em 0 0.8em;
+    }
+    article p {
+      margin-bottom: 1.2em;
+      color: var(--fg);
+    }
+    article p + p { margin-top: 0; }
+    article hr {
+      border: 0;
+      border-top: 1px solid rgba(245,241,234,0.15);
+      margin: 4em 0;
+    }
+    article .end {
+      text-align: center;
+      color: var(--fg-dim);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      margin-top: 6em;
+    }
+
+    footer {
+      padding: 4vh 8vw 6vh;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      line-height: 1.15;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      color: var(--fg-dim);
+      border-top: 1px solid rgba(245,241,234,0.08);
+    }
+    footer a { border: none; }
+
+    @media (max-width: 780px) {
+      .mark { padding: 24px 6vw 20px; }
+      article { padding: 4vh 6vw 10vh; }
+      footer { flex-direction: column; align-items: flex-start; gap: 12px; padding: 4vh 6vw 6vh; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mark">
+    <span class="rule"></span>
+    <span>EMPATHIC&nbsp;ART</span>
+    <a class="back" href="/welcome.html"><span class="arrow">←</span> Back to the work</a>
+  </div>
+
+  <article>
+
+    <h1>Empathic Art</h1>
+    <div class="byline">An artist statement · Eyal Gever · 2026</div>
+
+    <h2>I. The lineage</h2>
+    <p>There is a lineage in modern and contemporary art that does not pass through style, medium, or movement, but through a single radical proposition: that art can bring into bodily presence something that is usually left abstract, conceptual, or merely named.</p>
+    <p>Richard Serra made space palpable. His Torqued Ellipses, his tilted arcs, his corridors of Cor-ten steel do not depict spatial experience. They produce it. They take the volume of a room and make it into something that presses back against the body.</p>
+    <p>James Turrell made perception palpable. In a Ganzfeld, the eye loses its reference points and vision begins to perceive itself. In a Skyspace, minutes pass and the sky flattens into a solid surface. Turrell said his medium is not light. His medium is perception. He wanted you to sense yourself sensing. To see yourself seeing.</p>
+    <p>Mark Rothko made emotion palpable. His paintings do not show you what sadness looks like. Hung at the eighteen inches he specified, they fill the visual field, dissolve their edges, and produce sadness — or ecstasy, or foreboding, or a nameless weight — as a physical fact in the body. The weeping that occurs at Rothko is not sentimentality. It is evidence.</p>
+    <p>None of these artists depicted their subject. They constructed the conditions under which the subject could be encountered as a physical fact — as pressures, durations, densities, and dislocations registered in the body before they were named by the mind. Their works do not refer to experience. They are experience.</p>
+
+    <h2>II. What is missing from the lineage</h2>
+    <p>There is a fourth term in this lineage that could not exist until recently, because the technical means did not exist.</p>
+    <p>Serra could make space palpable because he had steel and gravity. Turrell could make perception palpable because he had light and duration. Rothko could make emotion palpable because he had oil paint and the eighteen-inch viewing distance. All three worked on the viewer, but none of the works could work with the viewer. The steel could not know who was walking through it. The light could not sense the eye that was watching. The canvas could not answer the body that stood before it.</p>
+    <p>What was missing was the capacity for the artwork to register the person and respond to them in the same moment. The lineage had reached emotion, but emotion in the lineage was still a general condition — the condition of any body that entered the room. It was not yet the specific, moving, unrepeatable interior state of the particular person who was there.</p>
+    <p>Empathic Art is the extension of this lineage into that domain. It makes palpable something none of the earlier artists could reach: the interior movement of feeling in real time. Turrell said his work lets you see yourself seeing. Empathic Art lets you feel yourself feeling.</p>
+
+    <h2>III. What Empathic Art is</h2>
+    <p>Empathic Art is a dialogue between a person and an artwork. The person sits. A camera sees the light passing through the skin of their face — the pulse in their capillaries, the almost-invisible shift of breath, the movement of expression. Music enters. The music does not distract from the interior state; it widens the range of states the mind can occupy. As the mind widens, the artwork moves. As the artwork moves, the person moves with it. The loop tightens. What emerges on the screen is not a picture of feeling. It is a portrait of the specific movement of this particular interior life, in the last several minutes of its existence, made visible to itself.</p>
+    <p>Sound widens the range of states a mind can occupy. The artwork shows that widening on screen.</p>
+    <p>Every session is different, because every person is different every time they arrive. The artwork cannot repeat itself even if it wanted to. What is made in an Empathic Art session is not an image but an event — a co-authored trace of a single unrepeatable encounter between a person and a work that could sense them.</p>
+
+    <h2>IV. The extreme present</h2>
+    <p>The reason this work exists now, and not fifty years ago, is not only technical.</p>
+    <p>We are alive in a moment that has been engineered to prevent human beings from being present with themselves. The infinite feed, the notification, the dopamine loop, the twelve-second attention span, the pressure to appear well, the exhaustion of trying to be well — all of it is designed, whether intentionally or emergently, to keep the interior from settling. Sixty-one percent of people now report feeling pressure to appear well. Forty-five percent report the burnout of trying. The wellness industry answers this by offering more optimization: another app, another routine, another metric. But optimization is the disease dressed as the cure.</p>
+    <p>The most fundamental question an artist can ask in the extreme present is not "what is beautiful?" and not "what is true?" but "what does it mean to be human in this moment?" Empathic Art is one attempt at an answer.</p>
+    <p>It is not a medicine. It is not a treatment. It is not a mental health app. It is art, in the specific sense that Serra, Turrell, and Rothko meant when they made their works — a constructed condition under which something usually left abstract can arrive in the body as a physical fact. Three thousand studies confirm that engaging with art improves human health. But these numbers do not describe a product. They describe what art has always done. Empathic Art belongs to that tradition, not to the tradition of the wellness app.</p>
+    <p>It is not a place to be optimized. It is a place to be present.</p>
+
+    <h2>V. Duration and silence</h2>
+    <p>Two principles from the lineage carry into the work directly.</p>
+    <p>The first is duration. Turrell's Skyspaces work because the visitor sits for ten, fifteen, twenty minutes as the light changes. The nervous system slows. Perceptual habits dissolve. Bodily knowing is slower than conceptual recognition. Rothko demanded eighteen inches. Turrell demanded fifteen minutes. Empathic Art demands its own duration — long enough for the dialogue to take hold in the body. A three-minute session cannot do this work. Duration is not atmosphere. Duration is the mechanism.</p>
+    <p>The second is silence. Rothko said silence was accurate. The Rothko Chapel is fourteen canvases and no wall text. Turrell's Ganzfelds are light and no explanation. The postwar embodied lineage removes interpretive scaffolding because interpretation interferes with encounter. Empathic Art follows this principle. It does not congratulate. It does not score. It does not measure. It does not compare. It protects the user's silence with them. Everything the work does not do is part of what makes it art.</p>
+
+    <h2>VI. What this is not</h2>
+    <p>Empathic Art is not a medical-grade, doctor-approved product. It is an experiential art piece.</p>
+    <p>The signals it uses — pulse extracted from the light of the face, breath from the subtle motion of the shoulders, expression from the geometry of the eyes and mouth — are artistic inputs, not clinical measurements. They are the material through which the artwork constructs its response to the specific person present. They are the tools of an artistic dialogue, in the same way that Serra's steel is a tool for making space visible, or Rothko's pigment is a tool for making emotion physical.</p>
+    <p>If a person is in distress, they should reach out to a licensed professional. Empathic Art does not attempt to help them in that way, because that is not what art does. What art does is different. It offers a condition. It holds a space open. It does not guarantee. It invites.</p>
+
+    <h2>VII. What emerges</h2>
+    <p>What emerges from an Empathic Art session is a specific and unrepeatable object: a portrait of the last several minutes of a person's interior life, co-authored with an artwork that could sense them and respond. Some people will weep. Some will feel nothing. Some will notice their breath slowing halfway through. Some will discover that a color they did not choose has arrived on the screen and has, in some hard-to-name way, become the color of what they were feeling.</p>
+    <p>None of this is guaranteed. This is what art has always been. It offers a condition. What happens inside that condition belongs to the person.</p>
+    <p>Serra made space palpable. Turrell made perception palpable. Rothko made emotion palpable.</p>
+    <p>Empathic Art makes the interior movement of feeling palpable.</p>
+    <p>That is all it does. That is what it is for.</p>
+
+    <div class="end">— End —</div>
+
+  </article>
+
+  <footer>
+    <div>Empathic Art · Eyal Gever · 2026</div>
+    <div><a href="mailto:eyalgever@gmail.com">Contact</a></div>
+  </footer>
+
+</body>
+</html>

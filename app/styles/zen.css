@@ -1,0 +1,258 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Zen Mode styles
+   ─────────────────────────────────────────────────────────────────────
+   When body[data-zen="true"] is set:
+   - Hide all UI chrome, chips, plaques, headers, view switcher, debug
+   - Hide the device bezel entirely (PC/iPhone/Watch — the painting
+     becomes the whole surface)
+   - Keep the fluid canvas and the emotion word visible
+   - Show the "Exit Zen" pill briefly when the top-right hotspot dwells
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Exit Zen pill (chip near top-right, initially hidden) ─────────── */
+.ea-zen-exit-pill {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 99999;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.92);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 400ms ease, transform 400ms ease;
+  pointer-events: none;
+}
+.ea-zen-exit-pill[aria-hidden="false"] {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.ea-zen-exit-pill:hover {
+  background: rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* ─── Zen active — hide all UI chrome ─────────────────────────────── */
+body[data-zen="true"] .ea-header,
+body[data-zen="true"] .ea-chips-band,
+body[data-zen="true"] #btn-muse-data,
+body[data-zen="true"] #btn-immersive,
+body[data-zen="true"] #btn-session-stop,
+body[data-zen="true"] .ea-viewswitch,
+body[data-zen="true"] .ea-debug-overlay,
+body[data-zen="true"] #ea-debug,
+body[data-zen="true"] [aria-label="Open debug log"],
+body[data-zen="true"] #__debug_sheet,
+body[data-zen="true"] .ea-touch-hint,
+body[data-zen="true"] #touch-hint,
+body[data-zen="true"] .ea-hint,
+body[data-zen="true"] .ea-muse-vis,
+body[data-zen="true"] .ea-muse-panel,
+body[data-zen="true"] #muse-panel,
+body[data-zen="true"] .ea-muse-toggle,
+body[data-zen="true"] .ea-muse-waves,
+body[data-zen="true"] .ea-muse-progress,
+body[data-zen="true"] .ea-brainwaves,
+body[data-zen="true"] .ea-emotion-map,
+body[data-zen="true"] .ea-panel,
+body[data-zen="true"] #summary-reveal,
+body[data-zen="true"] .ea-summary,
+body[data-zen="true"] .ea-progress-strip,
+body[data-zen="true"] .ea-cta--session {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 600ms ease;
+}
+
+/* The session timer stays VISIBLE in Zen but nearly invisible —
+   the user shouldn't count seconds, but should be able to glance and know
+   the session is still running. Only the MM:SS glyph shows; the
+   "SESSION IN PROGRESS" eyebrow disappears entirely. */
+body[data-zen="true"] .ea-session-idle {
+  opacity: 0.14 !important;
+  pointer-events: none !important;
+  transition: opacity 800ms ease;
+  /* Reposition to bottom-center safe-area so the museum plaque (emotion word)
+     dominates the frame. */
+  top: auto !important;
+  bottom: calc(var(--ea-safe-bottom, 0px) + 20px) !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  width: max-content !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 30;
+}
+/* Hide the "SESSION IN PROGRESS" eyebrow — only the timer glyph remains. */
+body[data-zen="true"] .ea-session-idle__line:not(.ea-session-idle__line--big) {
+  display: none !important;
+}
+/* Shrink the timer glyph itself — becomes an ambient tick, not a countdown. */
+body[data-zen="true"] .ea-session-idle__line--big {
+  font-size: 10px !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.22em !important;
+  line-height: 1 !important;
+  opacity: 1 !important; /* the parent controls the fade */
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Keep the fluid painting and the emotion word fully visible */
+body[data-zen="true"] #fluid-canvas,
+body[data-zen="true"] .ea-fluid,
+body[data-zen="true"] #emotion-reveal,
+body[data-zen="true"] .ea-emotion-reveal,
+body[data-zen="true"] .ea-emotion-reveal__word,
+body[data-zen="true"] .ea-emotion-label {
+  opacity: 1 !important;
+}
+
+/* On the tiny Watch face, shrink the emotion word so it never clips */
+body[data-zen="true"][data-view="watch"] .ea-emotion-reveal__word,
+body[data-zen="true"][data-view="watch"] .ea-emotion-label {
+  font-size: clamp(14px, 6vmin, 20px) !important;
+  padding: 0 6px !important;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 90% !important;
+}
+
+/* ─── Zen on the PC view — dissolve the bezel ─────────────────────── */
+/* The iPhone/Watch bezels are rendered on body[data-view="iphone|watch"]
+   via the frame wrapper. In Zen we make the frame fully transparent
+   so the fluid canvas — which is inside .ea-app — appears to fill
+   the whole window. */
+body[data-zen="true"][data-view="iphone"] .ea-app,
+body[data-zen="true"][data-view="watch"] .ea-app {
+  /* Remove the box-shadow (titanium ring), rounded corners, background */
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+}
+
+/* The iPhone bezel Dynamic Island + side buttons live on body::before / ::after.
+   Fade them out entirely in Zen. */
+body[data-zen="true"][data-view="iphone"]::before,
+body[data-zen="true"][data-view="iphone"]::after,
+body[data-zen="true"][data-view="watch"]::before,
+body[data-zen="true"][data-view="watch"]::after {
+  opacity: 0 !important;
+  transition: opacity 600ms ease;
+  pointer-events: none !important;
+}
+
+/* Background outside the bezel also blends to black in Zen */
+body[data-zen="true"] {
+  background: #000 !important;
+}
+
+/* ─── Zen toggle button (visible in the chip cluster) ─────────────── */
+/* Uses the same base .ea-chip style. When pressed (zen active), the
+   button itself is hidden with the rest of the chrome, so its
+   "on" state is only briefly visible while entering. */
+.ea-chip--zen .ea-chip__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+}
+
+/* Emotion word centering & Zen overlays */
+/* ═══════════════════════════════════════════════════════════════════════
+   Centered Zen emotion word: color + vertical alignment
+   ─────────────────────────────────────────────────────────────────────
+   Two fixes for the centered emotion word overlay:
+
+   1. In the summary/replay Zen view (Emotion Map closed), the big
+      centered emotion word ("Contemplation") rendered white instead
+      of picking up the per-emotion hex color. Root cause: the CSS
+      `color` in components.css was hard-set to `var(--ea-cream)`, so
+      even though summary-playback.js set `--reveal-hue`, the color
+      declaration never referenced that variable. We override the
+      `color` to consume `--reveal-hue` first, falling back to cream.
+
+   2. On both the live session Zen view and the summary/replay Zen
+      view, the centered word sat too high (visually detached from
+      where the in-panel word appears below the circumplex). We
+      pull it down to ~60% so opening/closing the Emotion Map feels
+      like the word is transitioning between two nearby positions
+      instead of jumping.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Centered emotion word — colored per emotion ────────────────────
+   Applies to BOTH the live session (#emotion-reveal-word) and the
+   replay (#summary-reveal-word). The `--reveal-hue` custom property is
+   set inline by app.js (live) and summary-playback.js (replay) on each
+   emotion change.
+   ───────────────────────────────────────────────────────────────────── */
+.ea-emotion-reveal__word,
+#emotion-reveal-word,
+#summary-reveal-word {
+  color: var(--reveal-hue, var(--ea-cream)) !important;
+  transition: color 420ms var(--ea-ease-out, ease);
+}
+
+/* Keep the dark halo (text-shadow) intact — components.css already
+   applies it; we're only changing the fill color. */
+
+/* ─── Move centered word DOWN to align with in-panel word position ──
+   The in-panel word (below the circumplex, above brain-waves) sits
+   at roughly the vertical mid-lower band. When the map is closed
+   (Zen), the centered overlay word should land in the same region so
+   the two feel like the same element migrating — not jumping across
+   the viewport.
+   ───────────────────────────────────────────────────────────────────── */
+
+/* Live session — Zen / immersive (map closed) */
+.ea-emotion-reveal {
+  top: 62% !important;
+}
+body[data-emotion-map-open="true"] .ea-emotion-reveal {
+  /* When the map is open we hide the overlay entirely (see
+     components.css), so this rule is a no-op — but we leave the
+     position variable coherent in case the overlay-in-panel-open
+     state is re-enabled later. */
+  top: 62% !important;
+}
+
+/* Watch face is tiny — nudge slightly but keep clear of the panel */
+body[data-view="watch"] .ea-emotion-reveal {
+  top: 46% !important;
+}
+
+/* Summary / replay Zen — brings the word down to match the live
+   session so the two experiences read identically. */
+.ea-screen--summary #summary-reveal {
+  top: 60% !important;
+}
+body[data-view="desktop"] .ea-screen--summary #summary-reveal {
+  top: 58% !important;
+}
+/* Watch replay: overlay is already hidden via components.css, keep so. */
+
+/* ─── Belt-and-suspenders: also force color on the in-panel words
+   (they already worked, but make the rule uniform so any future path
+   picks up --reveal-hue automatically). */
+#muse-vis-name,
+.ea-muse-vis__name,
+#summary-panel-word-text {
+  color: var(--reveal-hue, var(--ea-ink)) !important;
+}

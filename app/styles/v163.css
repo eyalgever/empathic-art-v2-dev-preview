@@ -1,0 +1,2694 @@
+/* ═══════════════════════════════════════════════════════════════════
+   v1.6.3 layer, additive only.
+
+   Rules:
+     1. Every selector below is gated by a body-level data attribute
+        (data-v163-entropy, data-v163-replay, data-v163-zen). Nothing
+        in this file activates until src/ui/v163-layer.js writes one
+        of those attributes.
+     2. No em-dashes, no en-dashes, in any selector, string, or
+        comment. Commas, colons, or the double hyphen with spaces
+        (" -- ") are the only separators allowed.
+     3. This file never edits an existing selector. It adds new
+        selectors, sometimes with equal specificity plus the body
+        gate, sometimes with slightly higher specificity to override
+        a specific base rule that would otherwise leak through.
+     4. If a base rule ever wins over one of these, prefer to raise
+        the specificity here (add the body gate again, or add an
+        extra class) rather than reaching for !important.
+   ═══════════════════════════════════════════════════════════════════ */
+
+
+/* ───────────────────────────────────────────────────────────────────
+   Module 1, Entropy Mode.
+
+   Trigger: v163-layer.js writes body[data-v163-entropy="on"] the
+   moment the app enters the session screen.
+
+   What gets hidden: everything on the session screen except two
+   pills (Voice, End Session) and one top-left info glyph, on a
+   pure black backdrop.
+
+   What stays alive underneath: fluid engine, muse engine, voice
+   recorder, audio, palette. We only hide the visual layer.
+   ─────────────────────────────────────────────────────────────── */
+
+/* Section background goes pure black. The fluid canvas has its own
+   cream background token (styles/layout.css line 252) which we also
+   force transparent below, so the black shows through cleanly. */
+body[data-v163-entropy="on"] .ea-screen[data-screen="session"] {
+  background: #000;
+}
+
+/* The fluid canvas keeps drawing, but we hide the visual layer.
+   Two rules: force the CSS background transparent (kills the cream
+   default), and drop the canvas opacity to 0 so any drawn pixels
+   also disappear. Engine keeps running so state is warm when we
+   leave Entropy Mode. */
+body[data-v163-entropy="on"] .ea-screen[data-screen="session"] .ea-fluid,
+body[data-v163-entropy="on"] .ea-screen[data-screen="session"] #fluid-canvas {
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+/* Hide the timer HUD ("Session in progress" + "00:00" + inline
+   emotion label). This is the container that produced the "Joy"
+   bleed-through in the previous attempt. */
+body[data-v163-entropy="on"] .ea-screen[data-screen="session"] .ea-session-idle,
+body[data-v163-entropy="on"] .ea-screen[data-screen="session"] .ea-emotion-reveal {
+  display: none;
+}
+
+/* Hide the fullscreen toggle, the dim-on-stillness hint, and the
+   progress strip. Entropy Mode owns the whole screen.
+   Also hide the immersive-hidden overlay's own emotion-name and
+   "Tap to show map" hint. Both are body-level fixed elements that
+   render on top of Entropy Mode when data-immersive-hidden is set. */
+body[data-v163-entropy="on"] .ea-screen[data-screen="session"] #btn-immersive,
+body[data-v163-entropy="on"] .ea-screen[data-screen="session"] .ea-touch-hint,
+body[data-v163-entropy="on"] .ea-screen[data-screen="session"] .ea-progress-strip,
+body[data-v163-entropy="on"] .ea-immersive-emotion-name,
+body[data-v163-entropy="on"] .ea-immersive-hint,
+body[data-v163-entropy="on"] .ea-hint-band {
+  display: none !important;
+}
+
+/* Hide the Emotion Map panel. The base app opens it by default on
+   session start via _wireMuseToggle() > setOpen(true). Our JS also
+   forces it closed on entry as a belt-and-braces reset. */
+body[data-v163-entropy="on"] #muse-panel {
+  display: none;
+}
+
+/* Hide the chips band entirely. The (i) chip we want top-left is
+   the base app's own #chip-help-session, but the base places it
+   in a flex row with Voice + Emotion Map. In Entropy Mode we
+   position the (i) chip on its own, top-left, and re-parent
+   #chip-voice as the upper-center pill. Simpler than that: hide
+   the whole band and render dedicated v163 elements. */
+body[data-v163-entropy="on"] .ea-chips-band {
+  display: none;
+}
+
+/* Hide the base End Session button. The v163 layer replaces it
+   with its own pill (see .v163-end-session below) which sits on
+   the same vertical spine as the Voice pill. */
+body[data-v163-entropy="on"] .ea-cta--session {
+  display: none;
+}
+
+/* Hide the legal footer and the device switcher globally while
+   Entropy Mode is on. Both are absolutely-positioned overlays
+   that would otherwise sit on top of the black canvas.
+   Also hide the top header (Done chevron + "In Session" title +
+   time). The base app reveals it when data-voice-recording=1
+   goes on because voice notes normally open the emotion map;
+   in Entropy Mode we own the whole surface. */
+body[data-v163-entropy="on"] #ea-legal-mark,
+body[data-v163-entropy="on"] #viewswitch,
+body[data-v163-entropy="on"] .ea-header {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Keep the base tooltip panel closed while recording, so the
+   Voice note red-pulse pill is the only thing on screen. This
+   only hides the tooltip when data-v163-recording="true" is
+   set, so tapping the (i) chip or the pill's own (i) glyph in
+   Idle still surfaces context. */
+body[data-v163-entropy="on"][data-v163-recording="true"] .ea-tip {
+  display: none !important;
+}
+
+
+/* ─── v163 pills, shared shape ─────────────────────────────────── */
+
+/* Cream outline, transparent fill, breathing. All three v163
+   surface elements share this style. */
+.v163-pill {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-radius: 999px;
+  border: 1.25px solid rgba(251, 246, 236, 0.85);
+  background: transparent;
+  color: rgba(251, 246, 236, 0.92);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  animation: v163-breathe 5.2s ease-in-out infinite;
+  transition: border-color 220ms ease, color 220ms ease, background 220ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.v163-pill:hover {
+  border-color: rgba(251, 246, 236, 1);
+  color: rgba(251, 246, 236, 1);
+}
+
+@keyframes v163-breathe {
+  0%, 100% { opacity: 0.78; }
+  50%      { opacity: 1;    }
+}
+
+/* Voice pill: sits just above End Session on the same vertical
+   spine, close enough to read as a two-pill cluster (not two
+   separated objects). Gap between the two pills is roughly one
+   pill-height. Narrower than End Session for hierarchy: End
+   Session is the primary control, Voice pill is secondary.
+   Contains the inline (i) info glyph on its left inner edge as
+   a single cluster (Turn 15 rule). */
+.v163-voice-pill {
+  /* End Session pill bottom edge is at 13% (roughly 116px on a
+     896px viewport) and it is ~52px tall, so its top edge sits
+     near 168px from the bottom (~19%). Voice pill bottom at 21%
+     leaves a ~16px breathing gap above End Session.
+     v1.6.3.11: left padding pulled in and gap widened so the i
+     glyph feels separated from the label, not glued to it. */
+  bottom: 21%;
+  padding: 12px 22px 12px 12px;
+  font-size: 13.5px;
+  gap: 14px;
+  min-width: 168px;
+  justify-content: center;
+}
+.v163-voice-pill__label {
+  font-weight: 500;
+  letter-spacing: 0.015em;
+}
+
+/* Recording state: solid saturated red, distinct from Stop cream.
+   The whole pill fills with red so the user can never mistake
+   the recording indicator for the End Session control. */
+.v163-voice-pill[data-recording="true"] {
+  border-color: #c8342f;
+  color: #ffffff;
+  background: #c8342f;
+  animation: v163-pulse-red 5.2s ease-in-out infinite;
+}
+/* v1.6.3.9: Hide the info glyph while recording. The user cannot
+   activate the tooltip mid-capture, so the glyph is noise. Only
+   idle state shows the i. */
+.v163-voice-pill[data-recording="true"] .v163-voice-pill__info {
+  display: none !important;
+}
+@keyframes v163-pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 52, 47, 0.55); }
+  50%      { box-shadow: 0 0 0 14px rgba(200, 52, 47, 0);  }
+}
+
+/* End Session pill: bottom-center. Wider padding, slightly larger
+   type than Voice pill so the eye reads it as the primary control
+   in Entropy Mode. */
+.v163-end-session {
+  bottom: 13%;
+  padding: 16px 36px;
+  font-size: 14.5px;
+  letter-spacing: 0.03em;
+  min-width: 188px;
+  justify-content: center;
+}
+
+/* Recording state dims End Session but keeps it in the composition
+   so the pill layout does not shift under the user. Dimmed + not
+   interactive so a user reaching for End Recording cannot mis-tap
+   End Session. Restored to full opacity when recording stops.
+   The base .v163-pill rule runs a breathing animation on opacity;
+   we suspend it here so opacity holds steady at 0.28. */
+body[data-v163-recording="true"] .v163-end-session {
+  opacity: 0.28 !important;
+  pointer-events: none;
+  filter: saturate(0.6);
+  animation: none;
+  transition: opacity 300ms ease, filter 300ms ease;
+}
+.v163-end-session {
+  transition: opacity 300ms ease, filter 300ms ease;
+}
+
+/* Top-left info (i) chip. Uses the base app's .ea-chip--help
+   markup so the italic serif i glyph renders identically. We
+   override the base chip's cream fill and dark ink for Entropy
+   Mode's black canvas, and set our own position, size, breathing. */
+/* v1.6.3.9: .v163-info-chip retained for backward-compat with any
+   base-app markup that might still reference the class, but the
+   layer no longer creates the element. Hide it if it ever appears. */
+.v163-info-chip { display: none !important; }
+
+.v163-info-chip--legacy-styles {
+  position: absolute !important;
+  /* Below the iPhone Dynamic Island / status bar with generous
+     breathing room, matching the iOS Human Interface Guidelines
+     navigation-bar height (44pt status area + 44pt nav bar).
+     This is the industry-standard placement used by native iOS
+     apps on the same class of device. */
+  top: calc(max(env(safe-area-inset-top, 0px), 44px) + 44px);
+  left: 20px;
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  z-index: 10;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1.25px solid rgba(251, 246, 236, 0.55) !important;
+  animation: v163-breathe 5.2s ease-in-out infinite;
+}
+.v163-info-chip .ea-chip__info-glyph {
+  font-size: 15px;
+  color: rgba(251, 246, 236, 0.82);
+}
+.v163-info-chip:hover,
+.v163-info-chip:focus-visible {
+  background: rgba(251, 246, 236, 0.08) !important;
+  border-color: rgba(251, 246, 236, 0.9) !important;
+}
+
+/* Inline (i) glyph inside the voice pill. Same italic serif i as
+   the top-left chip, wrapped in a small circle flush at the pill's
+   left inner edge. Reads as a single cluster with the label. */
+.v163-voice-pill__info {
+  /* v1.6.3.11: enlarged tap target. Visible circle stays at 26px
+     for visual balance with the pill height, but an invisible 44px
+     tap surface is provided by a negative-margin ::before pseudo
+     that pads the hit area to iOS HIG minimum. Positioned relative
+     so the pseudo can size to it. */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 246, 236, 0.55);
+  background: transparent;
+  cursor: pointer;
+  flex: 0 0 auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  z-index: 2;
+}
+.v163-voice-pill__info::before {
+  /* Invisible 44x44 tap surface centred on the visible circle.
+     Ensures the whole glyph area is easy to hit on iPhone without
+     enlarging the visible mark. Also grabs the touch before the
+     pill body does, because pointer-events on the pseudo pass to
+     the parent naturally. */
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+}
+.v163-voice-pill__info:hover,
+.v163-voice-pill__info:focus-visible {
+  border-color: rgba(251, 246, 236, 0.95);
+  background: rgba(251, 246, 236, 0.08);
+  outline: none;
+}
+.v163-voice-pill__info .ea-chip__info-glyph {
+  /* Not inside .ea-chip--help, so the base italic serif rule
+     doesn't cascade in. Apply the same Fraunces italic here so
+     this glyph reads identical to every other info i in the app. */
+  font-family: var(--ea-font-serif, "Fraunces", Georgia, serif);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1;
+  color: rgba(251, 246, 236, 0.92);
+  opacity: 1;
+  position: relative;
+  z-index: 1;
+}
+
+/* Layer container. Fills the session screen, sits above the
+   fluid canvas, holds the three v163 elements. Only shows when
+   Entropy Mode is on. Pointer events pass through anywhere that
+   is not one of the three interactive elements. */
+.v163-entropy-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  display: none;
+}
+body[data-v163-entropy="on"] .v163-entropy-layer {
+  display: block;
+}
+.v163-entropy-layer > * {
+  pointer-events: auto;
+}
+
+
+/* ───────────────────────────────────────────────────────────────────
+   Module 2, Session Replay entry (map state).
+
+   Trigger: v163-layer.js writes body[data-v163-replay="on"] when
+   the app enters the summary screen. Layer also sets
+   body[data-v163-panel="open"|"closed"] mirroring the summary
+   panel state.
+
+   What we change vs base:
+     1. Nothing when the panel is OPEN. Base replay is unchanged.
+     2. When panel goes to CLOSED, Module 3 (Zen text) takes over.
+
+   No selector in Module 2 should reach into base styles. All the
+   real work happens in Module 3 below.
+   ─────────────────────────────────────────────────────────────── */
+
+/* Reserved for future replay-specific hooks. Kept as a documented
+   no-op so the isolation contract is explicit. */
+body[data-v163-replay="on"] {
+  /* No visual change on its own. Zen cycle handles visibility. */
+}
+
+/* ── Above-panel text cluster suppression (M2 + M3 empty) ──
+
+   Base app renders .ea-summary__head (eyebrow + title + meta) and
+   .ea-session-narrative in the empty space above the Emotion Map
+   panel. In v1.6.3 that entire cluster only appears in the M3 text
+   phase (14s window inside the Zen cycle). Everywhere else it is
+   hidden.
+
+   Default when Replay is on: hide the whole cluster. Then the M3
+   rules further down selectively reveal:
+     - Empty phase       -> only .ea-summary__title (emotion word)
+     - Text visible phase -> whole cluster (kicker + word + meta + narrative)
+
+   Using visibility (not display) so layout doesn't collapse when
+   items reappear during the text-phase fade-in. */
+body[data-v163-replay="on"] .ea-summary__head,
+body[data-v163-replay="on"] .ea-session-narrative {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 1200ms ease, visibility 1200ms ease;
+}
+
+/* Individual pieces of the cluster get their own fade envelopes
+   below so we can stagger them if needed. For now they inherit
+   the parent "hidden" state above; M3 will override selectively. */
+body[data-v163-replay="on"] .ea-summary__eyebrow,
+body[data-v163-replay="on"] .ea-summary__title,
+body[data-v163-replay="on"] .ea-summary__meta {
+  transition: opacity 1200ms ease, visibility 1200ms ease;
+}
+
+/* ── Top-right Emotion Map anchor state control (M2 + M3) ──
+
+   The base app renders a small waveform icon top-right that
+   toggles the Emotion Map panel. Spec (locked, 3-state morph):
+
+     State A  Map panel open      -> anchor hidden entirely
+     State B  Zen empty phase     -> icon only, breathing
+     State C  Zen text phase      -> horizontal Emotion Map,
+                                    label to LEFT of icon
+
+   State A here. States B and C live in the Zen block below.
+   The anchor element is #btn-summary-panel-toggle. We never
+   re-skin it, only toggle visibility and expand/collapse the
+   label span (#btn-summary-panel-toggle-label). */
+body[data-v163-replay="on"][data-v163-panel="open"] #btn-summary-panel-toggle {
+  opacity: 0 !important;
+  /* v1.6.3.12: hard-force pointer-events off. Without !important the
+     later .v163-zen="on" rule (or a base app rule) was winning and
+     leaving the invisible panel button interactable at rect x=14,
+     y=88, 54x48. That intercepted taps meant for .v163-panel-header__info
+     which sits UNDER it, so the info tooltip never opened. */
+  pointer-events: none !important;
+  visibility: hidden !important;
+  transition: opacity 300ms ease;
+}
+
+/* Emotion Map panel real-estate in Replay Mode. Default base
+   layout pushes the panel to the bottom of the flex column with a
+   82vh cap; that leaves the panel visually short and floating
+   near the bottom on tall phones. In Replay Mode we want the
+   panel to dominate the screen so the user can enjoy the data
+   (circumplex, voice notes, share, full Muse timeline), while the
+   fluid keeps animating in the visible margin at the top and
+   bottom edges.
+
+   The base layout uses margin-top: auto to push the panel to the
+   bottom of a flex column. We switch to absolute positioning so
+   the panel is not constrained by sibling content, and pin it to
+   a fixed top offset with a viewport-height sizing. */
+body[data-v163-replay="on"][data-v163-panel="open"] .ea-summary__panel {
+  position: fixed;
+  /* Full-frame panel with safe-area protection only. Top uses iOS
+     HIG standard (44pt safe + 44pt nav clearance = 88pt min) so the
+     panel never collides with the Dynamic Island / status pill.
+     Bottom clears the home indicator. Left / right hug the safe
+     area edges so the panel occupies the full width of the phone.
+     Semi-transparent + blur keep the fluid visible underneath. */
+  top: calc(max(env(safe-area-inset-top, 0px), 44px) + 44px);
+  bottom: calc(max(env(safe-area-inset-bottom, 0px), 20px) + 20px);
+  left: max(env(safe-area-inset-left, 0px), 0px);
+  right: max(env(safe-area-inset-right, 0px), 0px);
+  width: auto;
+  margin: 0;
+  max-height: none;
+  height: auto;
+  z-index: 5;
+  background: rgba(10, 8, 8, 0.62);
+  border: 1px solid rgba(251, 246, 236, 0.14);
+  border-radius: 0;
+  backdrop-filter: blur(22px) saturate(1.1);
+  -webkit-backdrop-filter: blur(22px) saturate(1.1);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  padding-top: 60px;
+}
+
+/* FIX A: X close button. iOS 44pt minimum tap target and z-index
+   above the parent nav so taps register. Baseline sizes the X at
+   ~20x22 (below iOS minimum) and the parent nav intercepts pointer
+   events, which is why the X felt unresponsive on real iPhone. */
+body[data-v163-replay="on"] #btn-summary-panel-close {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  z-index: 20 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  background: rgba(20, 16, 14, 0.55) !important;
+  border: 1px solid rgba(251, 246, 236, 0.22) !important;
+  color: rgba(251, 246, 236, 0.92) !important;
+  border-radius: 999px !important;
+  padding: 0 !important;
+}
+body[data-v163-replay="on"] #btn-summary-panel-close:hover,
+body[data-v163-replay="on"] #btn-summary-panel-close:focus-visible {
+  background: rgba(20, 16, 14, 0.75) !important;
+  border-color: rgba(251, 246, 236, 0.38) !important;
+}
+
+/* FIX B: v163 header row on the panel. Adds a timeline-back button
+   on the upper-left and a +NEW SESSION button on the upper-right
+   (immediately left of the X close). Injected by v163-layer.js into
+   #summary-panel as .v163-panel-header, so it sits inside the
+   dominant panel and is always visible without scrolling. Also acts
+   as the anchor for the info-i tooltip, which is no longer a
+   floating standalone chip in the corner. */
+body[data-v163-replay="on"] .v163-panel-header {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 60px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  z-index: 15;
+  pointer-events: none;
+}
+body[data-v163-replay="on"] .v163-panel-header > * {
+  pointer-events: auto;
+}
+body[data-v163-replay="on"] .v163-panel-header__back,
+body[data-v163-replay="on"] .v163-panel-header__new-session,
+body[data-v163-replay="on"] .v163-panel-header__info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(20, 16, 14, 0.55);
+  border: 1px solid rgba(251, 246, 236, 0.22);
+  color: rgba(251, 246, 236, 0.92);
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+body[data-v163-replay="on"] .v163-panel-header__info {
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+  text-transform: none;
+}
+/* Suppress the base tooltip discoverability pulsing dot on the
+   info button. The italic i glyph itself already signals "tap
+   for info", so the extra corner dot reads as visual noise. */
+body[data-v163-replay="on"] .v163-panel-header__info::after {
+  display: none !important;
+}
+body[data-v163-replay="on"] .v163-panel-header__back:hover,
+body[data-v163-replay="on"] .v163-panel-header__new-session:hover,
+body[data-v163-replay="on"] .v163-panel-header__info:hover,
+body[data-v163-replay="on"] .v163-panel-header__back:focus-visible,
+body[data-v163-replay="on"] .v163-panel-header__new-session:focus-visible,
+body[data-v163-replay="on"] .v163-panel-header__info:focus-visible {
+  background: rgba(20, 16, 14, 0.78);
+  border-color: rgba(251, 246, 236, 0.4);
+}
+
+/* FIX C: hide the floating upper-left info-i chip in Replay Mode
+   (base app #chip-help-summary that sits in .ea-summary__topbar).
+   The tooltip trigger now lives INSIDE the panel header as
+   .v163-panel-header__info, so the floating corner chip is
+   redundant. Keep the base element in the DOM so its tooltip data
+   attribute can still be reused; just hide it visually. */
+body[data-v163-replay="on"] #chip-help-summary {
+  display: none !important;
+}
+
+/* Also disable pointer events on the whole .ea-summary__topbar so
+   it never intercepts taps meant for the panel's X close button or
+   the .v163-panel-header buttons. The topbar's only two visible
+   controls (info-i chip + Emotion Map toggle) are already hidden
+   in Replay Mode (chip via FIX C above, toggle via the
+   [data-v163-panel="open"] rule that fades it out). Killing the
+   topbar's pointer events was the missing piece that made the
+   base X close button unresponsive on real iPhone. */
+body[data-v163-replay="on"] .ea-summary__topbar {
+  pointer-events: none !important;
+}
+body[data-v163-replay="on"] .ea-summary__topbar > * {
+  pointer-events: auto;
+}
+
+/* Hide the old + NEW SESSION button that lived at the bottom of
+   the scroll (below share row). Its replacement now lives in the
+   panel header row (.v163-panel-header__new-session) and is always
+   visible without scrolling. */
+body[data-v163-replay="on"] .v163-panel-new-session {
+  display: none !important;
+}
+
+/* FIX D: push .ea-toast (Voice note saved, etc.) higher during a
+   Live Session so it clears the End Session pill with clean
+   breathing room. Baseline places the toast ~36px above the safe
+   bottom, which overlaps the End Session pill row. Raise it above
+   the pill cluster with 24px gap when a session is active. */
+body[data-screen="session"] .ea-toast,
+body[data-v163-recording="true"] .ea-toast {
+  bottom: calc(max(env(safe-area-inset-bottom, 0px), 20px) + 220px) !important;
+}
+
+/* Bump the circumplex diameter in Replay Mode to reclaim visual
+   prominence inside the dominant panel. Baseline v1.5.6 spec is
+   260px in Muse-on mode; we push to 320px so the wheel reads as
+   the hero of the panel, matching the perceived size of prior
+   builds where the panel was narrower and 260px felt larger. All
+   downstream content (emotion word, scrubber, voice notes, Muse
+   brain waves with entropy, share row, +NEW SESSION) stays in
+   place below, unchanged. */
+body[data-v163-replay="on"] .ea-summary__circumplex {
+  max-width: 320px !important;
+}
+body[data-v163-replay="on"] .ea-summary__circumplex .ea-muse-vis__svg,
+body[data-v163-replay="on"] .ea-summary__circumplex > svg {
+  max-width: 320px !important;
+}
+
+/* Hide the base top bar (Timeline back button, Session Replay
+   title, time) in Replay Mode. v163 provides its own back path
+   (panel close X, tap-anywhere to leave Zen, +New Session pill).
+   Keep .ea-summary__head visible: it wraps the anchor word which
+   is used by M3. */
+body[data-v163-replay="on"] .ea-header {
+  display: none !important;
+}
+
+/* Hide the iPhone / Watch / PC device picker, the fullscreen
+   button, and the legal mark in Replay Mode. In Replay Mode the
+   panel dominates: no chrome below. The narrative / meta / title
+   cluster is handled by the Replay + M3 phase rules elsewhere in
+   this file; do not touch them here or the M3 text-visible
+   reveal breaks. */
+body[data-v163-replay="on"] #viewswitch,
+body[data-v163-replay="on"] .ea-immersive-btn--summary {
+  display: none !important;
+}
+
+/* v1.6.3.17 (Eyal Gever, 2026-07-18): keep the copyright mark visible
+   in Replay and Zen. The mark is re-styled below to inherit the same
+   adaptive-ink treatment as the pills, so it reads over any fluid
+   background without a hazy dark blob. */
+
+/* Blackout the summary section background in Replay Mode so the
+   old cream app background does not bleed through above and
+   below the panel. The fluid canvas paints beneath the panel; on
+   its own, the summary section frames it in cream by default. */
+body[data-v163-replay="on"] #ea-app,
+body[data-v163-replay="on"] .ea-screen[data-screen="summary"] {
+  background: #000 !important;
+}
+body[data-v163-replay="on"] #summary-fluid-canvas {
+  background: transparent !important;
+}
+
+/* Force .ea-summary (the summary section wrapper) to fill the
+   viewport in Replay Mode. Base layout has it as an
+   absolutely-positioned flex column that shrinks to content
+   height. When we pull the panel out with position:fixed the
+   wrapper collapses to just the anchor cluster (a few dozen px),
+   which breaks the fluid canvas, the anchor word position, and
+   the Zen whisper anchoring. Making the wrapper span the whole
+   viewport restores the frame.
+
+   IMPORTANT: The immediate parent .ea-screen--summary has
+   overflow:hidden with a shrink-to-fit height. In Replay it
+   collapses to ~92px and clips everything inside. Force it to
+   full viewport height so children render. */
+body[data-v163-replay="on"] .ea-screen--summary {
+  height: 100vh !important;
+  min-height: 100vh !important;
+}
+body[data-v163-replay="on"] .ea-summary {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+}
+
+/* State B and C (Zen mode). Anchor is a small horizontal chip in
+   the top-right corner. Base rendering has the waveform icon plus
+   a label. We reveal the anchor only when Zen is on. */
+/* Push the entire summary topbar (which contains the info-i chip
+   and the waveform anchor) below the iPhone Dynamic Island /
+   status bar with generous iOS HIG clearance. This positions both
+   chips together as a paired header row. Applied in Replay Mode
+   only so Timeline and other screens keep their default topbar
+   position. */
+body[data-v163-replay="on"] .ea-summary__topbar {
+  top: calc(max(env(safe-area-inset-top, 0px), 44px) + 44px) !important;
+  z-index: 11;
+}
+
+/* Push the summary head content (Serenity anchor + cluster) down
+   so it clears the absolutely-positioned topbar. Topbar bottom is
+   at (safe-area + 44 + 48px height) = ~136px on iPhone 14 Pro,
+   ~136px in Playwright. Give the head 148px padding-top so the
+   anchor word starts below with 12px breathing room. */
+body[data-v163-replay="on"] .ea-summary__head {
+  padding-top: calc(max(env(safe-area-inset-top, 0px), 44px) + 104px) !important;
+}
+body[data-v163-zen="on"] #btn-summary-panel-toggle {
+  /* v1.6.3.6: pin the Emotion Map anchor to the right edge of its
+     own topbar (.ea-summary__topbar), which already accounts for
+     safe-area padding at the viewport level. TIMELINE mounts into
+     the same topbar (see v163-layer.js) so both share this
+     coordinate frame and land on the same horizontal line. */
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  z-index: 11;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 246, 236, 0.35);
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(251, 246, 236, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 1;
+  pointer-events: auto;
+  animation: v163-breathe 5.2s ease-in-out infinite;
+  transition: gap 1200ms ease, padding 1200ms ease, background 1200ms ease, border-color 1200ms ease;
+}
+
+/* Label is a horizontal-collapsing element. In State B (empty)
+   the label collapses to width 0 and hides. In State C (text) it
+   unfurls to its natural width from the LEFT of the icon.
+
+   Layout note: the label is currently the SECOND child (after the
+   SVG icon). To make the label appear on the LEFT of the icon we
+   flip flex direction to row-reverse when Zen is on. Then the
+   label is visually left, the icon visually right. */
+body[data-v163-zen="on"] #btn-summary-panel-toggle {
+  flex-direction: row-reverse;
+}
+body[data-v163-zen="on"] #btn-summary-panel-toggle-label {
+  display: inline-block;
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  white-space: nowrap;
+  font-family: var(--ea-font-sans, "Inter Tight", system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(251, 246, 236, 0.85);
+  transition: max-width 1200ms ease, opacity 1200ms ease;
+}
+/* State C: label unfurls to natural width. */
+body[data-v163-zen-phase="fadein"] #btn-summary-panel-toggle-label,
+body[data-v163-zen-phase="visible"] #btn-summary-panel-toggle-label {
+  max-width: 160px;
+  opacity: 1;
+}
+/* State B (empty, fadeout tail): label hidden. */
+body[data-v163-zen-phase="empty"] #btn-summary-panel-toggle-label,
+body[data-v163-zen-phase="fadeout"] #btn-summary-panel-toggle-label {
+  max-width: 0;
+  opacity: 0;
+}
+/* Empty state: chip collapses to just the icon (no chip padding
+   or border), maintaining the icon breathing. */
+body[data-v163-zen-phase="empty"] #btn-summary-panel-toggle,
+body[data-v163-zen-phase="fadeout"] #btn-summary-panel-toggle {
+  gap: 0;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+}
+
+/* +NEW SESSION pill inside the Emotion Map panel. Sits at the
+   very bottom of the panel content, below the share row, so the
+   user can start over without leaving Replay. Cream outline on
+   dark panel field. Wide-tap. Named .v163-panel-new-session to
+   avoid collision with .v163-new-session (Zen M3 button). */
+.v163-panel-new-session {
+  display: block;
+  position: static;
+  margin: 20px auto 8px;
+  padding: 12px 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 246, 236, 0.55);
+  background: transparent;
+  color: rgba(251, 246, 236, 0.92);
+  font-family: var(--ea-font-sans, "Inter Tight", system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  min-width: 200px;
+  text-align: center;
+  align-self: center;
+  flex: 0 0 auto;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+.v163-panel-new-session:hover,
+.v163-panel-new-session:focus-visible {
+  background: rgba(251, 246, 236, 0.08);
+  border-color: rgba(251, 246, 236, 0.8);
+  outline: none;
+}
+
+
+/* ───────────────────────────────────────────────────────────────────
+   Module 3, Zen text cycle.
+
+   Trigger: v163-layer.js writes body[data-v163-zen="on"] when the
+   user closes the Emotion Map panel on the summary screen.
+
+   Behaviour:
+     1. Base emotion word (#summary-reveal / summary-panel-word)
+        keeps changing per palette. We do not touch it.
+     2. A single sentence ("Tap anywhere.") fades in and out on a
+        12s cycle underneath the base emotion word.
+     3. A New Session pill sits at the bottom of the screen, always
+        visible while Zen is on.
+     4. Tap on the fluid (anywhere not on base UI) starts a new
+        session. The layer catches that click in JS.
+   ─────────────────────────────────────────────────────────────── */
+
+/* Suppress the base app's ambient hint (.ea-replay-zen__hint).
+   The base renders this as fixed-position uppercase text at the
+   bottom edge to prompt the user to tap and reveal content.
+   v163 supplies its own whisper ("Tap anywhere.") via zenSentence
+   inside the Zen layer, so the base hint is redundant and would
+   overlap the New Session pill and the legal mark once the text
+   cluster fades in. */
+body[data-v163-zen="on"] .ea-replay-zen__hint,
+body[data-v163-zen="on"] .ea-replay-zen__hint--ambient,
+body[data-v163-zen="on"] .ea-replay-zen__hint--info {
+  display: none !important;
+}
+
+/* Zen layer container: fills the summary screen, sits ABOVE the
+   fluid but BELOW the base panel top bar and Emotion Map panel.
+   Pointer events pass through by default so the base UI (top-bar,
+   panel, fullscreen button) still works. The layer's own
+   interactive elements (New Session pill, sentence tap-target)
+   opt back in with pointer-events: auto. */
+.v163-zen-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  display: none;
+}
+body[data-v163-zen="on"] .v163-zen-layer {
+  display: block;
+  pointer-events: auto;
+}
+
+/* v1.6.3.12: When the Emotion Map panel is OPEN, the zen layer must
+   NOT catch taps. Otherwise its full-viewport click surface swallows
+   the panel header i button, +New, and any other in-panel controls
+   that overlap the zen layer's z-index. Setting pointer-events:none
+   on the layer container is safe because its interactive children
+   (New Session pill, sentence, TIMELINE pill) opt back in via their
+   own pointer-events:auto, AND the CSS above already display:none
+   TIMELINE when the panel is open, and .v163-new-session sits below
+   the panel's height at bottom:5.5%. */
+body[data-v163-zen="on"][data-v163-panel="open"] .v163-zen-layer {
+  pointer-events: none !important;
+}
+
+/* Zen mode hides base chrome so the frame is: fluid + emotion word +
+   (optional cluster) + Emotion Map anchor. Nothing else. We keep
+   the header in the layout (opacity 0, pointer-events none) so the
+   summary section keeps its normal box; the black background below
+   covers the invisible cream strip.
+
+   IMPORTANT: .ea-summary is NOT hidden here (v1.6.3 change). We
+   need .ea-summary__title (the emotion word) to remain visible as
+   the cluster anchor. The cluster's other pieces are hidden by
+   the Replay-level rule further up; M3 rules below reveal them
+   during the text-visible phase.
+
+   Also: #chip-help-summary (info-i chip top-left) stays visible in
+   Replay. It is only hidden in Live mode. */
+body[data-v163-zen="on"] .ea-header,
+body[data-v163-zen="on"] #viewswitch,
+body[data-v163-zen="on"] .ea-immersive-btn--summary {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Session screen background stays cream by default. In Zen mode we
+   push a black background all the way up so the invisible header
+   strip does not read as cream. The app container (#ea-app) is
+   what actually paints the cream on this screen, so we blackout
+   it plus the summary section plus the summary fluid canvas. */
+body[data-v163-zen="on"] {
+  background: #000 !important;
+}
+body[data-v163-zen="on"] #ea-app {
+  background: #000 !important;
+}
+body[data-v163-zen="on"] .ea-screen[data-screen="summary"] {
+  background: #000 !important;
+}
+body[data-v163-zen="on"] #summary-fluid-canvas {
+  background: transparent !important;
+}
+
+/* The base emotion word #summary-reveal is a separate element the
+   base app renders centered as the reveal on completion. In v163
+   Replay we do not use it as the anchor. Instead the anchor is
+   .ea-summary__title ("Serenity" / italic serif / left-aligned)
+   which the base app already renders in the head cluster. We hide
+   #summary-reveal in Zen so it does not compete. */
+body[data-v163-zen="on"] .ea-screen--summary #summary-reveal {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ── M3 cluster phase reveals ──
+
+   The anchor (.ea-summary__title) is always visible during Replay.
+   The rest of the cluster (eyebrow, meta, narrative) is hidden by
+   default (see Replay block above) and revealed here during the
+   text-visible + fadein + fadeout phases.
+
+   The whisper pill (.v163-zen-sentence) is visible during empty
+   phase and hidden otherwise.
+
+   The Zen New Session pill (.v163-new-session) fades with the
+   cluster. Hidden in empty phase, visible during text phase. */
+
+/* Anchor is always visible during Replay. Override the Replay
+   block's default hidden state. */
+body[data-v163-replay="on"] .ea-summary__title {
+  opacity: 1;
+  visibility: visible;
+}
+/* .ea-summary__head is the wrapper; keep it visible so its child
+   title stays in flow. The other children (eyebrow, meta) fade
+   independently below. */
+body[data-v163-replay="on"] .ea-summary__head {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Empty phase: only the emotion word. All cluster chrome hidden. */
+body[data-v163-zen-phase="empty"] .ea-summary__eyebrow,
+body[data-v163-zen-phase="empty"] .ea-summary__meta,
+body[data-v163-zen-phase="empty"] .ea-session-narrative,
+body[data-v163-zen-phase="empty"] .v163-new-session {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Text-visible phase: full cluster crossfaded in. */
+body[data-v163-zen-phase="fadein"] .ea-summary__eyebrow,
+body[data-v163-zen-phase="fadein"] .ea-summary__meta,
+body[data-v163-zen-phase="fadein"] .ea-session-narrative,
+body[data-v163-zen-phase="visible"] .ea-summary__eyebrow,
+body[data-v163-zen-phase="visible"] .ea-summary__meta,
+body[data-v163-zen-phase="visible"] .ea-session-narrative,
+body[data-v163-zen-phase="visible"] .v163-new-session,
+body[data-v163-zen-phase="fadein"] .v163-new-session {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Fadeout phase: reverse crossfade to empty. */
+body[data-v163-zen-phase="fadeout"] .ea-summary__eyebrow,
+body[data-v163-zen-phase="fadeout"] .ea-summary__meta,
+body[data-v163-zen-phase="fadeout"] .ea-session-narrative,
+body[data-v163-zen-phase="fadeout"] .v163-new-session {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Faster transition for fade phases (1.2s per spec). Empty and
+   visible phases have no active transition, they are steady states. */
+body[data-v163-zen-phase="fadein"] .ea-summary__eyebrow,
+body[data-v163-zen-phase="fadein"] .ea-summary__meta,
+body[data-v163-zen-phase="fadein"] .ea-session-narrative,
+body[data-v163-zen-phase="fadein"] .v163-new-session,
+body[data-v163-zen-phase="fadeout"] .ea-summary__eyebrow,
+body[data-v163-zen-phase="fadeout"] .ea-summary__meta,
+body[data-v163-zen-phase="fadeout"] .ea-session-narrative,
+body[data-v163-zen-phase="fadeout"] .v163-new-session {
+  transition: opacity 1200ms ease, visibility 1200ms ease;
+}
+
+/* Whisper pill: fixed 1.2s crossfade. Positioned near the bottom
+   of the screen, at the same vertical anchor as the entropic-mode
+   End Session pill (bottom 13%) so the two composition rhythms
+   feel like siblings. Sits above the +New Session pill (bottom
+   5.5%) with a comfortable gap. */
+.v163-zen-sentence {
+  position: absolute;
+  left: 50%;
+  bottom: 13%;
+  top: auto;
+  transform: translateX(-50%);
+  max-width: min(80vw, 360px);
+  padding: 0 18px;
+  text-align: center;
+  font-family: "Instrument Serif", "Cormorant Garamond", "Georgia", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(15px, 3.6vw, 18px);
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  color: rgba(251, 246, 236, 0.55);
+  text-shadow: 0 1px 24px rgba(0, 0, 0, 0.65);
+  opacity: 0;
+  transition: opacity 1200ms ease-in-out;
+  pointer-events: none;
+}
+.v163-zen-sentence[data-visible="true"] {
+  opacity: 1;
+}
+
+/* New Session pill: sits at the bottom of the summary screen,
+   fades in and out with the M3 text cluster (see phase rules).
+   Same visual language as the Entropy End Session pill so the two
+   feel like siblings. */
+.v163-new-session {
+  position: absolute;
+  left: 50%;
+  bottom: 5.5%;
+  transform: translateX(-50%);
+  padding: 12px 28px;
+  border-radius: 999px;
+  border: 1.25px solid rgba(251, 246, 236, 0.55);
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(251, 246, 236, 0.9);
+  font-family: var(--ea-font-sans, "Inter Tight", system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: v163-breathe 5.2s ease-in-out infinite;
+  z-index: 6;
+}
+.v163-new-session:hover {
+  border-color: rgba(251, 246, 236, 0.9);
+  color: rgba(251, 246, 236, 1);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Respect reduced motion by killing the breathing loop. The
+   fade-in/out on the sentence stays: it is a slow crossfade that
+   is content, not decoration. */
+@media (prefers-reduced-motion: reduce) {
+  .v163-new-session {
+    animation: none;
+  }
+}
+
+/* Zen M3 Timeline back pill. Sits in the upper-left corner of the
+   Zen layer, mirroring the panel header .v163-panel-header__back
+   position when the panel is open. Always visible in Replay Mode,
+   independent of the cluster fade cycle. Uses the same pill
+   language as .v163-new-session for visual continuity, but sized
+   smaller to sit alongside the Emotion Map toggle without
+   crowding. Safe-area top clearance keeps it below the notch. */
+.v163-zen-timeline {
+  /* v1.6.3.7: TIMELINE mirrors the Emotion Map anchor's gutter.
+     Emotion Map sits at right:16px inside .ea-summary__topbar;
+     TIMELINE sits at left:16px inside the same topbar. Same y
+     (top:16px), same distance from its edge, opposite sides.
+     The two pills form a symmetric top control bar. Because they
+     live on opposite edges of a 414px viewport, the Emotion Map
+     label can unfurl to its widest state without ever colliding
+     with TIMELINE. */
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: auto;
+  transform: none;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1.25px solid rgba(251, 246, 236, 0.55);
+  background: rgba(0, 0, 0, 0.32);
+  color: rgba(251, 246, 236, 0.9);
+  font-family: var(--ea-font-sans, "Inter Tight", system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 44px;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 7;
+  animation: v163-breathe 5.2s ease-in-out infinite;
+}
+.v163-zen-timeline:hover,
+.v163-zen-timeline:focus-visible {
+  border-color: rgba(251, 246, 236, 0.9);
+  color: rgba(251, 246, 236, 1);
+  background: rgba(0, 0, 0, 0.45);
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v163-zen-timeline {
+    animation: none;
+  }
+}
+
+/* v1.6.3.9: When the Emotion Map panel is OPEN (M2 dominant view),
+   hide the TIMELINE pill. TIMELINE only exists on the M3 zen surface
+   (behind the panel). Also hide it while the panel is closing so it
+   doesn't flash back before the panel state resets. */
+body[data-v163-replay="on"][data-v163-panel="open"] .v163-zen-timeline {
+  display: none !important;
+}
+
+/* v1.6.3.11: In Zen mode the TIMELINE pill is part of the fading
+   text cluster. During the empty phase (14s idle) the surface holds
+   only three things: emotion word upper-left, Emotion Map icon
+   upper-right, whisper "Tap anywhere" at bottom. TIMELINE is hidden.
+   It fades in with the rest of the cluster in fadein/visible and
+   fades out in fadeout. */
+body[data-v163-zen-phase="empty"] .v163-zen-timeline {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+body[data-v163-zen-phase="fadein"] .v163-zen-timeline,
+body[data-v163-zen-phase="visible"] .v163-zen-timeline {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+body[data-v163-zen-phase="fadeout"] .v163-zen-timeline {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+body[data-v163-zen-phase="fadein"] .v163-zen-timeline,
+body[data-v163-zen-phase="fadeout"] .v163-zen-timeline {
+  transition: opacity 1200ms ease, visibility 1200ms ease;
+}
+
+/* v1.6.3.9: Hide the scrollbar rail inside the Emotion Map panel.
+   Content still scrolls via touch, the visual rail is suppressed to
+   match the pre-320px behaviour. Applies to WebKit (iOS Safari) and
+   Firefox. */
+body[data-v163-replay="on"][data-v163-panel="open"] .ea-summary__panel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+body[data-v163-replay="on"][data-v163-panel="open"] .ea-summary__panel::-webkit-scrollbar,
+body[data-v163-replay="on"][data-v163-panel="open"] .ea-summary__panel *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+}
+body[data-v163-replay="on"][data-v163-panel="open"] .ea-summary__panel::-webkit-scrollbar-thumb,
+body[data-v163-replay="on"][data-v163-panel="open"] .ea-summary__panel *::-webkit-scrollbar-thumb {
+  background: transparent !important;
+}
+
+/* v1.6.3.9: Belt-and-suspenders on the X close. The base topbar
+   was intercepting taps at the X's own coordinates on real iPhone.
+   Raise the button above ALL topbar siblings and force pointer
+   events, and disable pointer events on the topbar itself except
+   its direct children (so the container never eats the tap). */
+body[data-v163-replay="on"] .ea-summary__topbar {
+  pointer-events: none !important;
+}
+body[data-v163-replay="on"] .ea-summary__topbar > * {
+  pointer-events: auto !important;
+}
+body[data-v163-replay="on"][data-v163-panel="open"] #btn-summary-panel-close {
+  z-index: 999 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   v1.6.3.13, Adaptive text contrast (adaptive ink).
+
+   The Zen replay puts light cream text over the fluid canvas. When the
+   fluid glows bright (Contemplation, Serenity), cream text dissolves
+   into the pool. When the fluid runs dark, cream reads fine. A 6 Hz
+   luminance probe in v163-layer.js flips body[data-v163-ink] between
+   "light" (default cream) and "dark" (dark ink for bright backgrounds).
+
+   Two CSS variables carry the ink and its opposite-tone halo. We apply
+   both to Zen text cluster, three pill controls, and the whisper.
+   Panel-internal chrome (Emotion Map labels, brain-wave rows, voice
+   notes) is intentionally not adapted because the map panel provides
+   its own dark contrast.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* v1.6.3.15 adaptive ink. Each text row samples its own local fluid
+   region and gets its own --v163-ink-<slot> variable, updated by JS
+   at 10 Hz with EMA smoothing. Fallback --v163-text-ink stays for
+   any element that isn't per-slot bound. All rows keep the same
+   two-color palette (warm cream vs warm near-black), so a card can
+   have some rows in cream and others in dark, but never in some
+   third color, which preserves the piece's visual language.
+
+   Also: hair-thin -webkit-text-stroke in the OPPOSITE pole at low
+   alpha, as Anti-Interference edge insurance. No blur, no halo, just
+   a single-pixel rim that keeps glyphs crisp when they cross a
+   mid-luminance seam in the fluid. */
+body {
+  --v163-text-ink:              #FBF6EC;
+  --v163-pill-border-ink:       rgba(251, 246, 236, 0.42);
+  --v163-pill-label-ink:        #FBF6EC;
+  --v163-ink-eyebrow:           #FBF6EC;
+  --v163-ink-title:             #FBF6EC;
+  --v163-ink-meta:              #FBF6EC;
+  --v163-ink-narrative:         #FBF6EC;
+  --v163-ink-timeline:          #FBF6EC;
+  --v163-ink-newsession:        #FBF6EC;
+  --v163-ink-whisper:           #FBF6EC;
+  --v163-ink-eyebrow-stroke:    rgba(10, 8, 6, 0.55);
+  --v163-ink-title-stroke:      rgba(10, 8, 6, 0.55);
+  --v163-ink-meta-stroke:       rgba(10, 8, 6, 0.55);
+  --v163-ink-narrative-stroke:  rgba(10, 8, 6, 0.55);
+  --v163-ink-timeline-stroke:   rgba(10, 8, 6, 0.55);
+  --v163-ink-newsession-stroke: rgba(10, 8, 6, 0.55);
+  --v163-ink-whisper-stroke:    rgba(10, 8, 6, 0.55);
+  --v163-ink-timeline-border:   rgba(251, 246, 236, 0.42);
+  --v163-ink-newsession-border: rgba(251, 246, 236, 0.42);
+  /* v1.6.3.16: per-slot pill FILL tint. Same pole as the label ink at
+     10% alpha. Lets the pill sit in the same visual family as its
+     label while yielding to the fluid, so we never get a hazy dark
+     blob on a dark background. */
+  --v163-ink-timeline-fill:     rgba(251, 246, 236, 0.10);
+  --v163-ink-newsession-fill:   rgba(251, 246, 236, 0.10);
+  --v163-ink-title-fill:        rgba(251, 246, 236, 0.10);
+}
+
+/* Shared reset for every text row in replay. Kills baseline
+   text-shadow, opacity, and any color overrides from components.css.
+   Specificity of body[attr] + class beats every baseline rule that
+   would otherwise apply. */
+body[data-v163-replay="on"] .ea-summary__head,
+body[data-v163-replay="on"] .ea-summary__eyebrow,
+body[data-v163-replay="on"] .ea-summary__title,
+body[data-v163-replay="on"] .ea-summary__meta,
+body[data-v163-replay="on"] .ea-summary__meta .ea-session-narrative,
+body[data-v163-replay="on"] .ea-summary__meta .ea-session-meta__line,
+body[data-v163-replay="on"] .ea-session-narrative,
+body[data-v163-replay="on"] #btn-summary-panel-toggle-label,
+body[data-v163-replay="on"] .v163-zen-timeline,
+body[data-v163-replay="on"] .v163-zen-timeline-label,
+body[data-v163-replay="on"] .v163-new-session,
+body[data-v163-replay="on"] .v163-new-session-label,
+body[data-v163-replay="on"] .v163-zen-sentence {
+  text-shadow: none !important;
+  opacity: 1 !important;
+  transition: color 300ms linear, -webkit-text-stroke-color 300ms linear, border-color 300ms linear;
+}
+
+/* Per-slot fill + stroke bindings. Each row reads its own slot vars.
+   -webkit-text-stroke draws a 0.5 px rim in the opposite ink pole,
+   sharpening the letterform edge without producing a soft glow. */
+/* v1.6.3.20: All text slots share the title's ink var directly.
+   The JS still updates each --v163-ink-<key> individually, but slotting
+   every text element to --v163-ink-title guarantees a single pole across
+   the whole panel even if a per-slot var was stale for a frame. Pills
+   keep their own -border/-fill vars because they are visual objects. */
+body[data-v163-replay="on"] .ea-summary__eyebrow,
+body[data-v163-replay="on"] .ea-summary__title,
+body[data-v163-replay="on"] .ea-summary__meta,
+body[data-v163-replay="on"] .ea-summary__meta .ea-session-meta__line,
+body[data-v163-replay="on"] .ea-session-narrative,
+body[data-v163-replay="on"] .ea-summary__meta .ea-session-narrative,
+body[data-v163-replay="on"] #btn-summary-panel-toggle-label,
+body[data-v163-replay="on"] .v163-zen-timeline-label,
+body[data-v163-replay="on"] .v163-zen-timeline,
+body[data-v163-replay="on"] .v163-new-session-label,
+body[data-v163-replay="on"] .v163-new-session,
+body[data-v163-replay="on"] .v163-zen-sentence {
+  color: var(--v163-ink-title) !important;
+  -webkit-text-stroke: 0.5px var(--v163-ink-title-stroke);
+  opacity: 1;
+}
+
+/* v1.6.3.16: Pills adapt on THREE properties, not just border+label.
+   Border tracks the pill's own ink, fill tracks the pill's own ink at
+   10% alpha, and backdrop-filter drops from 8-10 px to 3 px so we no
+   longer read as fog on dark scenes. The previous version left the
+   fill baked at rgba(0,0,0,0.32), which produced the hazy dark blob
+   TIMELINE showed on the Contemplation teal scene. */
+body[data-v163-replay="on"] #btn-summary-panel-toggle {
+  border-color: var(--v163-pill-border-ink) !important;
+  background: var(--v163-ink-title-fill) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  transition: background-color 300ms linear, border-color 300ms linear;
+}
+body[data-v163-replay="on"] .v163-zen-timeline {
+  border-color: var(--v163-ink-timeline-border) !important;
+  background: var(--v163-ink-timeline-fill) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  transition: background-color 300ms linear, border-color 300ms linear;
+}
+body[data-v163-replay="on"] .v163-new-session {
+  border-color: var(--v163-ink-newsession-border) !important;
+  background: var(--v163-ink-newsession-fill) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  transition: background-color 300ms linear, border-color 300ms linear;
+}
+
+/* v1.6.3.16: WCAG-gated escape hatch. When JS detects that neither
+   cream nor near-black clears 4.5:1 for a row, it adds that row's
+   slot key to data-v163-ink-fallback. The rule below flips only that
+   one row to mix-blend-mode: difference and lets the browser compute
+   the inverse of the fluid. isolation: isolate scopes the blend to
+   the fluid layer beneath, not the entire page stack. The stroke is
+   dropped in this mode because a stroke fights difference blending. */
+body[data-v163-replay="on"][data-v163-ink-fallback~="eyebrow"] .ea-summary__eyebrow,
+body[data-v163-replay="on"][data-v163-ink-fallback~="title"] .ea-summary__title,
+body[data-v163-replay="on"][data-v163-ink-fallback~="meta"] .ea-summary__meta,
+body[data-v163-replay="on"][data-v163-ink-fallback~="meta"] .ea-summary__meta .ea-session-meta__line,
+body[data-v163-replay="on"][data-v163-ink-fallback~="narrative"] .ea-session-narrative,
+body[data-v163-replay="on"][data-v163-ink-fallback~="narrative"] .ea-summary__meta .ea-session-narrative,
+body[data-v163-replay="on"][data-v163-ink-fallback~="timeline"] .v163-zen-timeline-label,
+body[data-v163-replay="on"][data-v163-ink-fallback~="newsession"] .v163-new-session-label,
+body[data-v163-replay="on"][data-v163-ink-fallback~="whisper"] .v163-zen-sentence {
+  color: #FFFFFF !important;
+  mix-blend-mode: difference;
+  isolation: isolate;
+  -webkit-text-stroke: 0 transparent !important;
+}
+
+/* Panel-interior labels (brainwaves, voice notes) sit over the map
+   panel, not the fluid. They stay a fixed light color and are not
+   driven by the adaptive ink. */
+body[data-v163-replay="on"][data-v163-panel="open"] .ea-summary-panel *,
+body[data-v163-replay="on"][data-v163-panel="open"] .ea-brainwaves *,
+body[data-v163-replay="on"][data-v163-panel="open"] .ea-voice-notes * {
+  color: #FBF6EC;
+  text-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   v1.6.3.17 -- Adaptive-ink treatment for the copyright/legal mark in
+   Replay and Zen. The base .ea-legal-mark style paints a dark blob over
+   cream backgrounds; over the fluid canvas that blob becomes hazy and
+   fights the whisper/pills. In Replay we override the paint to use the
+   same per-slot ink vars that the pills use, so it reads as clean glass
+   over any fluid color. Attribution: Eyal Gever, 2026-07-18.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Slot fill/border/text defaults for the legal mark. Emitted by
+   v163-layer.js on every frame based on the fluid sampled directly
+   under the mark's client rect. */
+:root {
+  --v163-ink-legal:        rgb(251, 246, 236);
+  --v163-ink-legal-border: rgba(251, 246, 236, 0.42);
+  --v163-ink-legal-fill:   rgba(251, 246, 236, 0.10);
+}
+
+body[data-v163-replay="on"] #ea-legal-mark {
+  background: var(--v163-ink-legal-fill) !important;
+  color:      var(--v163-ink-legal) !important;
+  border:     1px solid var(--v163-ink-legal-border) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  opacity: 0.85 !important;
+  transition: background-color 300ms linear,
+              color 300ms linear,
+              border-color 300ms linear;
+  z-index: 40 !important;
+}
+
+body[data-v163-replay="on"] #ea-legal-mark .ea-legal-mark__c,
+body[data-v163-replay="on"] #ea-legal-mark .ea-legal-mark__link,
+body[data-v163-replay="on"] #ea-legal-mark .ea-legal-mark__sep {
+  color: var(--v163-ink-legal) !important;
+}
+
+body[data-v163-replay="on"] #ea-legal-mark .ea-legal-mark__link {
+  text-decoration-color: var(--v163-ink-legal-border) !important;
+}
+
+body[data-v163-replay="on"] #ea-legal-mark:hover,
+body[data-v163-replay="on"] #ea-legal-mark:focus-visible {
+  opacity: 1 !important;
+}
+
+/* When the panel opens (Emotion Map circumplex view), the mark now
+   sits ABOVE the panel. Move it above the panel's bottom edge so it
+   floats on the circumplex surface rather than getting occluded, and
+   pin its ink to cream since the panel interior is a stable dark
+   surface (not the fluid). */
+body[data-v163-replay="on"][data-v163-panel="open"] #ea-legal-mark {
+  --v163-ink-legal:        rgb(251, 246, 236);
+  --v163-ink-legal-border: rgba(251, 246, 236, 0.35);
+  --v163-ink-legal-fill:   rgba(0, 0, 0, 0.32);
+}
+
+/* WCAG dead-zone fallback for the legal mark, symmetric with the other
+   text slots. */
+body[data-v163-replay="on"][data-v163-ink-fallback~="legal"] #ea-legal-mark .ea-legal-mark__c,
+body[data-v163-replay="on"][data-v163-ink-fallback~="legal"] #ea-legal-mark .ea-legal-mark__link,
+body[data-v163-replay="on"][data-v163-ink-fallback~="legal"] #ea-legal-mark .ea-legal-mark__sep {
+  color: #FFFFFF !important;
+  mix-blend-mode: difference;
+  isolation: isolate;
+  -webkit-text-stroke: 0 transparent !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   v1.6.3.19 -- Unified legibility system.
+
+   One rule for the whole Replay Mode surface: adaptive ink, no strokes,
+   no per-slot plates. Body text is bare on the fluid; every pill
+   (TIMELINE, EMOTION MAP, i-trigger, NEW SESSION, legal mark) shares
+   one glass-plate treatment. The sampler decides ink pole (light or
+   dark) globally, and every element follows.
+
+   Also raises the NEW SESSION pill above the legal mark so they no
+   longer overlap on short mobile viewports.
+
+   Attribution: Eyal Gever, 2026-07-18.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* --- (1) NEW SESSION pill sits above the legal mark -------------------- */
+body[data-v163-replay="on"] .v163-new-session {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 72px) !important;
+}
+@media (max-height: 720px) {
+  body[data-v163-replay="on"] .v163-new-session {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 60px) !important;
+    padding: 10px 22px;
+    font-size: 12px;
+  }
+}
+
+/* --- (2) Body text: bare on the fluid, no plate, no stroke ------------- */
+/* The narrative and the ambient hint are body copy. They ride the
+   fluid directly. Legibility comes from the sampler picking the right
+   ink pole (cream on dark bg, dark on bright bg), NOT from a rectangle
+   painted underneath. Strokes are dropped everywhere in Replay Mode. */
+body[data-v163-replay="on"] .ea-session-narrative,
+body[data-v163-replay="on"] .ea-summary__meta .ea-session-narrative,
+body[data-v163-replay="on"] .ea-replay-zen__hint,
+body[data-v163-replay="on"] .ea-replay-zen__hint--ambient,
+body[data-v163-replay="on"] .ea-replay-zen__hint--info,
+body[data-v163-replay="on"] .v163-zen-sentence,
+body[data-v163-replay="on"] .v163-new-session-label {
+  -webkit-text-stroke: 0 transparent !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+/* Give the narrative its own comfy line-length without a plate. */
+body[data-v163-replay="on"] .ea-session-narrative,
+body[data-v163-replay="on"] .ea-summary__meta .ea-session-narrative {
+  padding: 0 4px !important;
+}
+
+/* v1.6.3.20 fix: the visible tap-anywhere text is .v163-zen-sentence (the
+   whisper), NOT .ea-replay-zen__hint--ambient (which is display:none in
+   Zen). Push the whisper ABOVE the NEW SESSION pill with a real gap and
+   raise its stacking context so it is never covered by the pill. */
+body[data-v163-replay="on"] .v163-zen-sentence {
+  /* NEW SESSION pill sits at bottom: 72px, is ~40px tall. Whisper needs
+     to clear the pill top (72 + 40 = 112px) with a 24px breathing gap. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 140px) !important;
+  z-index: 30 !important;
+  color: var(--v163-ink-title, #FBF6EC) !important;
+  text-shadow: none !important;
+  opacity: 0.88 !important;
+  font-style: normal !important;
+  letter-spacing: 0.06em !important;
+  font-family: "Inter Tight", "Inter", system-ui, sans-serif !important;
+  font-size: 13px !important;
+  text-transform: uppercase !important;
+}
+@media (max-height: 720px) {
+  body[data-v163-replay="on"] .v163-zen-sentence {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 124px) !important;
+  }
+}
+/* Suppress the base ambient hint (kept display:none by Zen rule at 847). */
+body[data-v163-replay="on"] .ea-replay-zen__hint--ambient {
+  display: none !important;
+}
+
+/* --- (3) One glass pill system for every pill/mark --------------------- */
+/* Border: single 1.5px, opposite-pole soft alpha, same across all pills
+   and the legal mark. */
+body[data-v163-replay="on"] {
+  --v163-pill-border: rgba(251, 246, 236, 0.72);
+  --v163-pill-plate:  rgba(10, 8, 6, 0.34);
+}
+body[data-v163-replay="on"][data-v163-ink="dark"] {
+  --v163-pill-border: rgba(10, 8, 6, 0.72);
+  --v163-pill-plate:  rgba(251, 246, 236, 0.40);
+}
+
+body[data-v163-replay="on"] #btn-summary-panel-toggle,
+body[data-v163-replay="on"] .v163-zen-timeline,
+body[data-v163-replay="on"] .v163-new-session,
+body[data-v163-replay="on"] #ea-legal-mark,
+body[data-v163-replay="on"] .ea-info-trigger {
+  background: var(--v163-pill-plate) !important;
+  border: 1.5px solid var(--v163-pill-border) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  transition: background-color 300ms linear,
+              border-color 300ms linear,
+              color 300ms linear;
+}
+
+/* Pill labels: solid ink of the current pole. No strokes. */
+body[data-v163-replay="on"] #btn-summary-panel-toggle,
+body[data-v163-replay="on"] .v163-zen-timeline,
+body[data-v163-replay="on"] .v163-new-session,
+body[data-v163-replay="on"] .v163-new-session-label,
+body[data-v163-replay="on"] #ea-legal-mark,
+body[data-v163-replay="on"] #ea-legal-mark a,
+body[data-v163-replay="on"] .ea-info-trigger {
+  color: var(--v163-ink-title, #FBF6EC) !important;
+  -webkit-text-stroke: 0 transparent !important;
+}
+body[data-v163-replay="on"][data-v163-ink="dark"] #btn-summary-panel-toggle,
+body[data-v163-replay="on"][data-v163-ink="dark"] .v163-zen-timeline,
+body[data-v163-replay="on"][data-v163-ink="dark"] .v163-new-session,
+body[data-v163-replay="on"][data-v163-ink="dark"] .v163-new-session-label,
+body[data-v163-replay="on"][data-v163-ink="dark"] #ea-legal-mark,
+body[data-v163-replay="on"][data-v163-ink="dark"] #ea-legal-mark a,
+body[data-v163-replay="on"][data-v163-ink="dark"] .ea-info-trigger {
+  color: rgb(10, 8, 6) !important;
+}
+
+/* Legal mark and info trigger keep their own sizing but share the
+   pill visual language. Trim padding so the copyright doesn't grow
+   into a chunky bar. */
+body[data-v163-replay="on"] #ea-legal-mark {
+  padding: 6px 12px !important;
+  border-radius: 999px !important;
+}
+body[data-v163-replay="on"] .ea-info-trigger {
+  border-radius: 999px !important;
+  /* The info-trigger MUST be visible on every palette. It sits inside
+     the meta line. Bind color + border + background to the panel-wide
+     ink pole (opposite-pole plate + own-pole glyph), so a bright glyph
+     never lands on a bright background. */
+  color: var(--v163-ink-title, #FBF6EC) !important;
+  border-color: var(--v163-pill-border) !important;
+  background: var(--v163-pill-plate) !important;
+  backdrop-filter: blur(8px) saturate(1.05) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.05) !important;
+  font-style: italic !important;
+  font-weight: 600 !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════════
+   v1.6.3.20 -- Emotion Map panel: bigger circumplex, darker plate,
+   taller panel. The map is the primary interaction on this screen and
+   was cropping into the safe-area at both edges.
+   v1.6.3.21 -- Reveal the art. The panel becomes a floating card inset
+   from all four edges so live fluid shows through top, bottom, and
+   sides. A downward chevron in the bottom peek band teaches close-to
+   -reveal, and swipe-down dismisses. The legal capsule is hidden while
+   the panel is open so it does not compete with the peek band.
+   ═════════════════════════════════════════════════════════════════════ */
+
+/* (A) Inset floating card. Panel is now a card that floats above the
+   live fluid canvas, inset on all four sides so a peek band of art is
+   visible around every edge. The X and share buttons stay inside the
+   card so the panel reads as a self-contained window over the art. */
+body[data-v163-panel="open"] .ea-summary__panel {
+  margin-top: 0 !important;
+  position: absolute !important;
+  top: calc(env(safe-area-inset-top, 0px) + 24px) !important;
+  left: 12px !important;
+  right: 12px !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 96px) !important;
+  max-height: none !important;
+  height: auto !important;
+  padding-top: 56px !important;
+  padding-bottom: 20px !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(251, 246, 236, 0.22) !important;
+  box-shadow:
+    0 24px 60px -20px rgba(0, 0, 0, 0.55),
+    0 8px 24px -8px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Shorter phones: give the peek band a smaller reserve so the card
+   still has enough room for the circumplex + share row. */
+@media (max-height: 740px) {
+  body[data-v163-panel="open"] .ea-summary__panel {
+    top: calc(env(safe-area-inset-top, 0px) + 16px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 80px) !important;
+  }
+}
+
+/* (B) Darker plate. 0.72 alpha ghosted the circumplex; 0.88 lets the
+   wheel and trail read cleanly against any fluid palette behind. */
+body[data-v163-panel="open"] .ea-summary__panel {
+  background: rgba(10, 8, 8, 0.88) !important;
+  backdrop-filter: blur(22px) saturate(1.15) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.15) !important;
+}
+
+/* (C) Enlarge circumplex ~28%. 340->440 in muse-on, 400->500 in muse-off.
+   The svg viewBox is 1000x1000 so the wheel scales without geometry
+   changes. Also enlarge every label + axis-label by the same factor. */
+body[data-v163-panel="open"] .ea-summary__circumplex {
+  max-width: 440px !important;
+}
+[data-screen="summary"][data-muse-mode="off"] .ea-summary__circumplex,
+body[data-muse-mode="off"] .ea-summary__circumplex {
+  max-width: 500px !important;
+}
+/* Emotion labels + axis end-caps: scaled up in JS-generated SVG. CSS
+   can only nudge because font-size lives inline. Use text-rendering to
+   keep it crisp at the larger size. */
+body[data-v163-panel="open"] .ea-muse-vis__svg text {
+  text-rendering: geometricPrecision;
+}
+
+/* (D) Hide the legal capsule while the panel is open. It was the
+   loudest object on the lower third of the screen because it sat in a
+   cream capsule below the panel, competing with the peek band of art.
+   The legal link is still reachable elsewhere; during a Map view we
+   let the fluid have that space uninterrupted. */
+body[data-v163-panel="open"] #ea-legal-mark {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 200ms ease !important;
+}
+
+/* (E) Reveal chevron. A small pulsing indicator that lives in the
+   bottom peek band, centered under the panel. It nudges the viewer to
+   close the panel and return to the art. First-open only -- once the
+   user dismisses the panel we set data-v163-chevron-seen and hide it. */
+.v163-reveal-chevron {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 8, 6, 0.42);
+  border: 1px solid rgba(251, 246, 236, 0.55);
+  color: rgba(251, 246, 236, 0.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+  z-index: 40;
+  font-family: var(--ea-font-sans, system-ui, sans-serif);
+  font-size: 22px;
+  line-height: 1;
+  padding: 0;
+  pointer-events: auto;
+  animation: v163-chevron-pulse 2400ms ease-in-out infinite;
+}
+.v163-reveal-chevron__glyph {
+  display: inline-block;
+  transform: translateY(-1px);
+}
+body[data-v163-replay="on"][data-v163-panel="open"]:not([data-v163-chevron-seen="1"]) .v163-reveal-chevron {
+  display: inline-flex;
+}
+/* Dark-pole variant: swap plate + border + glyph. */
+body[data-v163-replay="on"][data-v163-ink="dark"] .v163-reveal-chevron {
+  background: rgba(251, 246, 236, 0.42);
+  border-color: rgba(10, 8, 6, 0.62);
+  color: rgba(10, 8, 6, 0.94);
+}
+@keyframes v163-chevron-pulse {
+  0%, 100% { transform: translate(-50%, 0); box-shadow: 0 0 0 0 rgba(251, 246, 236, 0.28); }
+  50%      { transform: translate(-50%, 4px); box-shadow: 0 0 0 10px rgba(251, 246, 236, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v163-reveal-chevron { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   v1.6.3.22 -- two surgical fixes
+   1) Whisper ("Tap anywhere") must ONLY appear in pure Zen ambient
+      (empty phase). When the title + subtitle + Timeline + Emotion Map
+      + New Session cluster is visible, the whisper is redundant and
+      must be fully hidden, even across the fadein/fadeout tails.
+   2) The centered + NEW SESSION pill collides with the bottom-right
+      copyright capsule at iPhone widths. In Replay Mode we relocate
+      the legal mark to the bottom-left corner so the two never fight
+      for the same pixels.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Fix 1: gate whisper strictly to empty phase in Replay.
+   The v1.6.3.20 block above uses !important on opacity: 0.88, so we
+   must override with !important too. Whisper opacity is 0 unless we
+   are BOTH in the empty phase AND data-visible="true". */
+body[data-v163-replay="on"] .v163-zen-sentence {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+body[data-v163-replay="on"][data-v163-zen-phase="empty"] .v163-zen-sentence[data-visible="true"] {
+  opacity: 0.88 !important;
+}
+
+/* Fix 2: relocate the legal mark to bottom-left in Replay so it stops
+   overlapping the centered + NEW SESSION pill. Copyright rule (mark
+   must appear on every screen except active) is preserved -- only its
+   corner changes. */
+body[data-v163-replay="on"] #ea-legal-mark,
+body[data-v163-replay="on"] .ea-legal-mark {
+  right: auto;
+  left: 16px;
+  bottom: max(14px, env(safe-area-inset-bottom, 14px));
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   EEG signal-quality dots (v1.6.4.0)
+
+   Four dots — TP9, AF7, AF8, TP10 — rendered by
+   src/muse/muse-quality-dots.js. They appear both on the light
+   Active-screen card and inside the dark Emotion Map panel, so the
+   colours are mid-tone enough to read against either surface rather
+   than being tuned for one of them.
+   ───────────────────────────────────────────────────────────── */
+.ea-eeg-dots {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.ea-eeg-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ea-sq-none);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+:root {
+  --ea-sq-good:     #4CA35F;
+  --ea-sq-marginal: #E0A32E;
+  --ea-sq-poor:     #D9483B;
+  --ea-sq-none:     rgba(133, 120, 104, 0.35);
+}
+
+.ea-eeg-dot--good     { background: var(--ea-sq-good);     box-shadow: 0 0 5px rgba(76, 163, 95, 0.55); }
+.ea-eeg-dot--marginal { background: var(--ea-sq-marginal); box-shadow: 0 0 5px rgba(224, 163, 46, 0.55); }
+.ea-eeg-dot--poor     { background: var(--ea-sq-poor);     box-shadow: 0 0 5px rgba(217, 72, 59, 0.55); }
+.ea-eeg-dot--none     { background: var(--ea-sq-none);     box-shadow: none; }
+
+/* On the Active card the dots sit under the card subtitle, with a small
+   caption to their left so the row reads as a labelled readout. */
+.ea-muse-contact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ea-muse-contact__label {
+  font: 500 10px/1 "JetBrains Mono", "SF Mono", monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ea-ink-3);
+}
+
+/* Inside the dark Emotion Map panel the caption would be noise — the dots
+   sit beside the "Muse: live" eyebrow and are self-evident there. */
+.ea-muse-panel__head .ea-eeg-dots { margin-left: 8px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Muse calibration wizard overlay -- terminal style
+
+   Renders top-left of the viewport as monospaced raw text. No card, no
+   border, no icons. Uses mix-blend-mode: difference so the text reads as
+   white on dark fluid and near-black on bright fluid without a designed
+   backdrop. Positioned so it never overlaps the bottom-center poetic
+   sentence that appears when the viewer taps the Zen mode canvas.
+
+   Gated at the JS layer on ?log=1, so this is invisible in normal sessions.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ea-muse-terminal {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 9000;
+  max-width: min(48ch, calc(100vw - 32px));
+  color: #ffffff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-shadow: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.ea-muse-terminal__head {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ea-muse-terminal__instruction {
+  /* v1.6.4.21 -- Slightly more air between the block header and the
+     instruction line so the two read as separate beats. */
+  margin-top: 6px;
+  opacity: 0.85;
+  white-space: pre-wrap;
+}
+
+.ea-muse-terminal__bar {
+  /* v1.6.4.21 -- The instruction line and progress bar were kissing
+     (4px) on iPhone. Push the bar down so the instruction has room to
+     breathe before the block timer starts filling. */
+  margin-top: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+}
+
+.ea-muse-terminal__log {
+  margin: 8px 0 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.7;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* The end-wizard button is the only interactive element, so it opts back in
+   to pointer events and drops the blend mode long enough to be readable. */
+.ea-muse-terminal__end {
+  margin-top: 10px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  pointer-events: auto;
+  mix-blend-mode: normal;
+}
+.ea-muse-terminal__end:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* On small screens, drop the log tail so the wizard head + instruction stay
+   readable, and give the block a little more room since it sits over the
+   fluid on the dark listening screen. Also applied to the iPhone preview
+   mode on wide desktops (body[data-view="iphone"]), which is a CSS scale
+   transform, not a real narrow viewport, so max-width media queries do not
+   match on their own. */
+/* v1.6.4.6 -- restore the setup-screen inline composition: the wizard is
+   mounted inside .ea-screen[data-screen="active"] .ea-screen__inner and
+   flows in normal document order below Start Experience. Position: static
+   drops it out of the fixed/absolute overlay behavior and lets the phone
+   layout centering rules that already govern the setup screen apply. */
+@media (max-width: 640px) {
+  .ea-muse-terminal:not(.ea-muse-terminal--replay) {
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
+    margin: 24px 16px 0;
+    max-width: none;
+    font-size: 11px;
+  }
+  .ea-muse-terminal:not(.ea-muse-terminal--replay) .ea-muse-terminal__log { display: none; }
+}
+
+/* iPhone and Watch preview modes on desktop use the same static composition
+   because the wizard is a child of .ea-screen__inner, which is already the
+   phone-shaped 390x844 or 205x251 box. Nothing extra needed here beyond the
+   mobile rule above; keep the log tail hidden on both. */
+body[data-view="iphone"] .ea-muse-terminal:not(.ea-muse-terminal--replay),
+body[data-view="watch"]  .ea-muse-terminal:not(.ea-muse-terminal--replay) {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  margin: 24px 16px 0;
+  max-width: none;
+  font-size: 11px;
+}
+body[data-view="iphone"] .ea-muse-terminal:not(.ea-muse-terminal--replay) .ea-muse-terminal__log,
+body[data-view="watch"]  .ea-muse-terminal:not(.ea-muse-terminal--replay) .ea-muse-terminal__log { display: none; }
+
+/* Replay variant: sits in DOM flow inside .ea-summary__head so it appears
+   right after the narrative caption. The tight margin above gives a single
+   blank-line breath between the last caption word and the first log line.
+   Because it lives inside the head, it inherits the caption's reveal state
+   automatically: on tap or timed reveal the whole head fades in together;
+   in ambient the whole head fades out. No independent reveal wiring. */
+.ea-muse-terminal--replay {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  transform: none;
+  /* v1.6.4.3 -- one blank-line breath after the narrative caption. The
+     caption's line-height already leaves visual air below its last word
+     so a small explicit margin is enough. */
+  margin: 10px 0 0;
+  max-width: none;
+  max-height: 32vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  pointer-events: auto;
+  padding: 0;
+  /* v1.6.4.20 -- Hide the scrollbar track. Scrolling still works via
+     touch (iPhone) and mouse wheel (PC); we just remove the visual
+     rail because it competes with the ambient art surface behind it. */
+  scrollbar-width: none;         /* Firefox */
+  -ms-overflow-style: none;      /* IE / old Edge */
+  /* Column layout so the inline copy-log button sits directly under
+     the log body, without breaking the pinned copy button. */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.ea-muse-terminal--replay::-webkit-scrollbar {
+  /* Chromium/Safari -- hide the vertical track entirely. */
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .ea-muse-terminal--replay {
+    max-height: 34vh;
+    font-size: 10px;
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 400px) {
+  .ea-muse-terminal--replay {
+    max-height: 30vh;
+    font-size: 9.5px;
+    margin-top: 6px;
+  }
+}
+
+/* v1.6.4.3 -- reveal the log with the same v163 zen-phase system that
+   drives .ea-session-narrative. The log is a sibling inside
+   .ea-summary__head, not a child of .ea-session-narrative, so it does not
+   inherit the sibling's opacity. Give it its own reveal envelope keyed on
+   the same phases so caption and log come in and out together. */
+body[data-v163-replay="on"] .ea-muse-terminal--replay {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 1200ms ease, visibility 1200ms ease;
+}
+body[data-v163-zen-phase="fadein"] .ea-muse-terminal--replay,
+body[data-v163-zen-phase="visible"] .ea-muse-terminal--replay {
+  opacity: 1;
+  visibility: visible;
+}
+body[data-v163-zen-phase="fadeout"] .ea-muse-terminal--replay {
+  opacity: 0;
+  visibility: hidden;
+}
+body[data-v163-zen-phase="empty"] .ea-muse-terminal--replay {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* v1.6.4.30 -- Tap-anywhere hardening for Session Replay Zen.
+
+   The whisper hint says "Tap anywhere" and the zenLayer click handler
+   fast-forwards the empty phase into fadein when it receives a bare
+   canvas tap. That handler only fires if the click actually reaches
+   .v163-zen-layer. Anything inside .ea-summary__head with
+   pointer-events: auto (the narrative caption, the replay log terminal,
+   the meta line container) can swallow a tap in the caption band even
+   though those elements are visually hidden during the empty phase.
+
+   The visibility:hidden rules elsewhere in this file already make the
+   caption and log invisible in the empty phase, but Safari has been
+   known to still route taps to a visibility:hidden element while its
+   opacity transition is running. Belt-and-suspenders: hard-disable
+   pointer events on the whole revealed cluster during empty and
+   fadeout phases, and re-enable only when the cluster is visible.
+   The anchor word (.ea-summary__title), Emotion Map anchor, TIMELINE
+   pill, +New Session pill, and Zen whisper each have their own
+   pointer-events auto rules that beat this because they sit outside
+   .ea-summary__meta / .ea-session-narrative / .ea-muse-terminal--replay. */
+body[data-v163-replay="on"][data-v163-zen-phase="empty"] .ea-summary__meta,
+body[data-v163-replay="on"][data-v163-zen-phase="empty"] .ea-summary__eyebrow,
+body[data-v163-replay="on"][data-v163-zen-phase="empty"] .ea-session-narrative,
+body[data-v163-replay="on"][data-v163-zen-phase="empty"] .ea-muse-terminal--replay,
+body[data-v163-replay="on"][data-v163-zen-phase="fadeout"] .ea-summary__meta,
+body[data-v163-replay="on"][data-v163-zen-phase="fadeout"] .ea-summary__eyebrow,
+body[data-v163-replay="on"][data-v163-zen-phase="fadeout"] .ea-session-narrative,
+body[data-v163-replay="on"][data-v163-zen-phase="fadeout"] .ea-muse-terminal--replay {
+  pointer-events: none !important;
+}
+.ea-muse-terminal__log--replay {
+  opacity: 0.85;
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+/* Custom scrollbar so it does not interrupt the terminal look. */
+.ea-muse-terminal--replay::-webkit-scrollbar { width: 6px; }
+.ea-muse-terminal--replay::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+}
+
+/* Copy-log buttons on the Zen replay overlay.
+   Two variants:
+     --inline: sits directly under the log body, just after 'wizard complete'
+     --pinned: floats at the bottom of the Zen surface so it is always reachable */
+.ea-muse-terminal__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "JetBrains Mono", "IBM Plex Mono", "Menlo", "Consolas", monospace;
+  font-size: 11px;
+  line-height: 1;
+  padding: 8px 12px;
+  color: rgba(240, 234, 220, 0.90);
+  background: rgba(20, 22, 30, 0.55);
+  border: 1px solid rgba(240, 234, 220, 0.22);
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+.ea-muse-terminal__copy:hover:not(:disabled) {
+  color: rgba(255, 255, 255, 0.98);
+  border-color: rgba(240, 234, 220, 0.42);
+  background: rgba(20, 22, 30, 0.75);
+}
+.ea-muse-terminal__copy:disabled { opacity: 0.65; cursor: default; }
+
+/* Inline copy button sits right under the log body.
+   Small top margin so it clears the last log line by a hair. */
+.ea-muse-terminal__copy--inline {
+  margin-top: 14px;
+  align-self: flex-start;
+}
+
+/* Pinned copy button sits at the bottom of the Zen surface.
+   Uses fixed positioning so it does not scroll away with a long log.
+
+   v1.6.4.32 -- The button is now mounted as a direct child of <body>,
+   not inside .ea-muse-terminal--replay. This decouples it from the
+   terminal's opacity transitions and gives it a clean position:fixed
+   anchor against the viewport. The bottom offset now clears the iOS
+   home indicator via safe-area-inset-bottom so the button is fully
+   tappable on notched phones. */
+.ea-muse-terminal__copy--pinned {
+  position: fixed;
+  right: 20px;
+  bottom: calc(max(env(safe-area-inset-bottom, 0px), 20px) + 20px);
+  z-index: 15;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  /* Start hidden. The zen-phase reveal envelope below fades it in
+     together with the log body. */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 1200ms ease, visibility 1200ms ease;
+}
+
+/* v1.6.4.32 -- Reveal envelope. The button rides the same fadein and
+   visible phases as the log body, so both come in and out together.
+   Because the button now lives on <body>, no parent opacity multiplies
+   through -- the values applied here are the ones the viewer sees. */
+body[data-v163-replay="on"][data-v163-zen-phase="fadein"] .ea-muse-terminal__copy--pinned,
+body[data-v163-replay="on"][data-v163-zen-phase="visible"] .ea-muse-terminal__copy--pinned {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* iPhone SE tightens the pinned button so it does not crowd the edge. */
+@media (max-width: 380px) {
+  .ea-muse-terminal__copy--pinned {
+    right: 14px;
+    bottom: calc(max(env(safe-area-inset-bottom, 0px), 14px) + 14px);
+  }
+}
+
+/* -------------------------------------------------------------------- */
+/* v1.6.4.7 -- Listening screen composition                              */
+/* -------------------------------------------------------------------- */
+/* Sits on the dark session screen above the fluid canvas.               */
+/* Approved mock composition:                                            */
+/*   EMPATHIC ART eyebrow                                                */
+/*   "Prepare your session" italic serif title                           */
+/*   Muse status pill                                                    */
+/*   Music status pill                                                   */
+/*   [ Start Experience ] bracket button                                 */
+/*   wizard slot (populated by the wizard host at runtime)               */
+/* -------------------------------------------------------------------- */
+.ea-listening-composition {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Stop above the fixed Voice note + End Session buttons pinned near the
+     bottom of the session screen so nothing overlaps. */
+  bottom: 200px;
+  z-index: 4;
+  padding: 28px 24px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: rgba(240, 234, 220, 0.92);
+  pointer-events: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ea-listening-composition[data-hidden="true"] {
+  display: none;
+}
+/* Re-enable pointer events on the interactive children. */
+.ea-listening-composition__bracket-btn,
+.ea-listening-composition__wizard-slot {
+  pointer-events: auto;
+}
+
+.ea-listening-composition__eyebrow {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  color: rgba(240, 234, 220, 0.58);
+  text-transform: uppercase;
+  margin: 0 0 2px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(240, 234, 220, 0.08);
+}
+
+.ea-listening-composition__title {
+  font-family: "PP Editorial Old", "Instrument Serif", Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: rgba(248, 242, 228, 0.96);
+  margin: 6px 0 4px 0;
+  white-space: nowrap;
+}
+
+.ea-listening-composition__pill {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(240, 234, 220, 0.82);
+  padding: 14px 18px;
+  border: 1px solid rgba(240, 234, 220, 0.14);
+  border-radius: 14px;
+  background: rgba(20, 22, 30, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: color 240ms ease, border-color 240ms ease, background 240ms ease;
+}
+
+/* Muse-status pill states.
+   [data-state="live"]: greenish tint when the Muse is streaming cleanly.
+   [data-state="lost"]: reddish tint when the Muse drops mid-session.
+   The pill transitions between the two whenever the adapter reports a
+   fresh status. */
+.ea-listening-composition__pill[data-state="live"] {
+  color: rgba(190, 240, 200, 0.94);
+  border-color: rgba(112, 200, 130, 0.48);
+  background: rgba(22, 44, 28, 0.42);
+}
+.ea-listening-composition__pill[data-state="lost"] {
+  color: rgba(255, 182, 168, 0.94);
+  border-color: rgba(220, 96, 74, 0.55);
+  background: rgba(60, 22, 22, 0.42);
+}
+/* v1.6.4.19 -- Sim state. Amber/sepia so it reads distinctly as a demo
+   condition, not a real live signal. Slight italic-free warm tone. */
+.ea-listening-composition__pill[data-state="sim"] {
+  color: rgba(248, 216, 168, 0.94);
+  border-color: rgba(196, 156, 96, 0.48);
+  background: rgba(48, 36, 20, 0.42);
+}
+
+.ea-listening-composition__bracket-btn {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(248, 242, 228, 0.94);
+  padding: 16px 18px;
+  border: 1px solid rgba(240, 234, 220, 0.18);
+  border-radius: 14px;
+  background: rgba(20, 22, 30, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+.ea-listening-composition__bracket-btn:hover {
+  border-color: rgba(240, 234, 220, 0.3);
+  background: rgba(20, 22, 30, 0.5);
+}
+
+/* Wizard intro panel -- guidance card that bridges the status pills and the
+   calibration wizard. Same visual weight as the pills but two lines: bracket
+   title on top, plain-language instruction below. Not interactive. */
+.ea-listening-composition__intro {
+  padding: 14px 18px;
+  border: 1px solid rgba(240, 234, 220, 0.14);
+  border-radius: 14px;
+  background: rgba(20, 22, 30, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ea-listening-composition__intro-title {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(248, 242, 228, 0.94);
+  letter-spacing: 0.01em;
+}
+.ea-listening-composition__intro-body {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(240, 234, 220, 0.66);
+  line-height: 1.4;
+}
+
+.ea-listening-composition__wizard-slot {
+  /* v1.6.4.20 -- Breathing room between the intro card and the first
+     wizard line. 4px looked crowded on iPhone; 22px lets the two blocks
+     sit as clearly separate thoughts. */
+  margin-top: 22px;
+  min-height: 120px;
+}
+/* When the wizard mounts inside the slot, override the base fixed-position
+   .ea-muse-terminal so it flows in the composition column. */
+.ea-listening-composition__wizard-slot .ea-muse-terminal {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  margin: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+/* iPhone SE and other narrow screens */
+@media (max-width: 380px) {
+  .ea-listening-composition {
+    /* On iPhone SE screen height is tighter; sit just above the pinned
+       Voice note + End Session buttons. */
+    bottom: 190px;
+    padding: 20px 20px 8px;
+    gap: 8px;
+  }
+  .ea-listening-composition__eyebrow {
+    padding-bottom: 8px;
+  }
+  .ea-listening-composition__title {
+    font-size: 26px;
+    margin: 6px 0 4px 0;
+  }
+  .ea-listening-composition__pill,
+  .ea-listening-composition__bracket-btn,
+  .ea-listening-composition__intro {
+    padding: 11px 16px;
+    border-radius: 12px;
+  }
+  .ea-listening-composition__pill,
+  .ea-listening-composition__bracket-btn {
+    font-size: 12px;
+  }
+  .ea-listening-composition__intro-title {
+    font-size: 12px;
+  }
+  .ea-listening-composition__intro-body {
+    font-size: 11px;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * v1.6.4.23 -- Enriched log entry blocks
+ *
+ * The Zen replay overlay renders every entry as a small block with a
+ * timestamp head, a track label, and one or more layer rows (what,
+ * signal, emotion, story, trigger). The colour swatch on emotion rows
+ * is filled with the emotion's own hex so the palette reads off the log
+ * without opening the app.
+ * ──────────────────────────────────────────────────────────────────── */
+/* v1.6.4.24 -- Adaptive ink for the Zen replay log.
+ *
+ * The log renders directly over the living fluid. In v1.6.4.23 every colour
+ * was hardcoded as rgba(220,220,220,...) which vanished into any bright
+ * teal-white patch under it. Now the log follows the same adaptive ink
+ * signal the wizard and narrative already use: body[data-v163-ink="light"]
+ * (fluid is dark) keeps the cream ink, body[data-v163-ink="dark"] (fluid is
+ * bright) flips everything to a graphite ink so the text stays readable. The
+ * per-track accent colours (state gold, pulse steel, crossing terracotta,
+ * note olive) stay constant -- they are saturated enough to hold on both
+ * backgrounds and give the eye a stable anchor while ink flips around them.
+ */
+:root {
+  /* v1.6.4.26 -- Bumped mute/soft opacities so labels do not disappear over
+     bright teal patches of the fluid. Text-shadow below adds a soft dark
+     halo that survives whichever way the ink flips. */
+  --ea-log-ink:         rgba(240, 240, 240, 0.98);   /* body/track text on dark fluid  */
+  --ea-log-ink-mute:    rgba(230, 230, 230, 0.90);   /* legend / timestamps on dark    */
+  --ea-log-ink-soft:    rgba(232, 232, 232, 0.94);   /* what / trigger secondary rows  */
+  --ea-log-story:       rgba(248, 244, 230, 0.98);   /* narrative row on dark fluid    */
+  --ea-log-rule:        rgba(255, 255, 255, 0.14);
+  --ea-log-halo:        rgba(10, 8, 6, 0.55);        /* text shadow, 1px halo          */
+}
+body[data-v163-ink="dark"] {
+  /* Fluid is bright. Swap to graphite so the log stops dissolving into cream. */
+  --ea-log-ink:         rgba(22, 18, 14, 0.98);
+  --ea-log-ink-mute:    rgba(22, 18, 14, 0.92);
+  --ea-log-ink-soft:    rgba(22, 18, 14, 0.94);
+  --ea-log-story:       rgba(16, 12, 8, 0.98);
+  --ea-log-rule:        rgba(22, 18, 14, 0.18);
+  --ea-log-halo:        rgba(255, 250, 240, 0.55);
+}
+
+.ea-log-legend {
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, Menlo, monospace;
+  font-size: inherit;
+  color: var(--ea-log-ink-mute);
+  white-space: pre;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ea-log-rule);
+  transition: color 250ms ease, border-color 250ms ease;
+  /* Halo carries text across mid-luminance patches of the fluid where
+     neither cream nor graphite ink wins on its own. */
+  text-shadow: 0 0 3px var(--ea-log-halo), 0 1px 0 var(--ea-log-halo);
+}
+.ea-log-entry {
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, Menlo, monospace;
+  padding: 3px 0 6px 0;
+  border-bottom: 1px solid var(--ea-log-rule);
+  transition: color 250ms ease, border-color 250ms ease;
+  text-shadow: 0 0 3px var(--ea-log-halo), 0 1px 0 var(--ea-log-halo);
+}
+.ea-log-entry:last-child { border-bottom: none; }
+.ea-log-head {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.ea-log-time {
+  color: var(--ea-log-ink-mute);
+  font-size: 0.92em;
+  min-width: 130px;
+  transition: color 250ms ease;
+}
+.ea-log-track {
+  color: var(--ea-log-ink);
+  letter-spacing: 0.02em;
+  font-weight: 500;
+  transition: color 250ms ease;
+}
+/* Track accent colours stay constant -- saturated enough to hold on either
+   fluid tone and give the log a consistent visual grammar. */
+.ea-log-track--state       { color: #F4B23A; }
+.ea-log-track--pulse       { color: #8CA2B2; }
+.ea-log-track--crossing    { color: #C46E54; font-weight: 600; }
+.ea-log-track--note        { color: #849868; }
+/* v1.6.4.34 -- self-report label matches the primary CTA colour so the
+   diary opener reads as the user's own moment on the timeline. */
+.ea-log-track--self-report { color: #DE8230; font-weight: 600; letter-spacing: 0.08em; }
+
+.ea-log-layer {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding-left: 20px;
+  margin-top: 2px;
+  color: var(--ea-log-ink);
+  line-height: 1.45;
+  transition: color 250ms ease;
+}
+.ea-log-layer__label {
+  min-width: 62px;
+  color: var(--ea-log-ink-mute);
+  font-size: 0.92em;
+  transition: color 250ms ease;
+}
+.ea-log-layer__value {
+  color: inherit;
+  word-break: break-word;
+}
+.ea-log-layer--story  .ea-log-layer__value  { color: var(--ea-log-story); font-style: normal; }
+.ea-log-layer--trigger .ea-log-layer__value { color: var(--ea-log-ink-soft); font-size: 0.94em; }
+.ea-log-layer--what    .ea-log-layer__value { color: var(--ea-log-ink-soft); }
+
+/* v1.6.4.34 -- Self-report opener. Mirrors the Before Session screen's
+   own headline so the log reads as a diary. Question in the log stays
+   in the same monospace family as the rest of the transcript but goes
+   a step larger and warmer so the eye lands on it first. */
+.ea-log-layer--self-report-question {
+  padding-left: 20px;
+  margin-top: 4px;
+  font-size: 1.10em;
+  font-weight: 600;
+  color: var(--ea-log-ink);
+  letter-spacing: 0.01em;
+}
+.ea-log-layer--self-report-sub {
+  padding-left: 20px;
+  margin-top: 2px;
+  font-size: 0.90em;
+  color: var(--ea-log-ink-soft);
+  font-style: italic;
+}
+.ea-log-layer--self-report-lead {
+  padding-left: 20px;
+  margin-top: 8px;
+  color: var(--ea-log-ink-mute);
+  font-size: 0.92em;
+}
+.ea-log-layer--self-report-axis {
+  padding-left: 40px;
+  margin-top: 1px;
+  gap: 10px;
+}
+.ea-log-layer--self-report-axis .ea-log-layer__label {
+  min-width: 70px;
+  color: var(--ea-log-ink-mute);
+}
+.ea-log-layer__value--self-report-word {
+  color: #DE8230;
+  font-weight: 600;
+  min-width: 82px;
+}
+.ea-log-layer__value--self-report-num {
+  color: var(--ea-log-ink-soft);
+  font-size: 0.90em;
+}
+.ea-log-layer--self-report-outro {
+  padding-left: 20px;
+  margin-top: 8px;
+  color: var(--ea-log-ink-soft);
+  font-style: italic;
+}
+
+.ea-log-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+  vertical-align: middle;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * v1.6.4.24 -- Wizard toggle + sim scenario picker
+ *
+ * Both live inside the Connect Muse card, which uses the cream setup-card
+ * background. Colours are tuned for cream, not for the dark session backdrop.
+ *
+ * v1.6.4.28 -- Card layout flattened. Title sits on its own row, followed
+ * by a single left-aligned action row (Connect + Simulate + scenario), then
+ * Contact dots, then wizard toggle. No more sim-sub-group wrapper. The
+ * legacy .ea-muse-sim-group rules stay in case a downstream page still
+ * uses that hook, but the setup card no longer relies on them.
+ * ──────────────────────────────────────────────────────────────────── */
+.ea-card--muse .ea-muse-actions {
+  /* Override the base .ea-muse-actions justify-content: flex-end so the
+     three controls sit tight to the left edge of the card. */
+  justify-content: flex-start;
+  gap: 10px;
+  margin: 6px 0 14px;
+}
+.ea-card--muse .ea-card__title { margin-bottom: 10px; }
+.ea-card--muse .ea-muse-contact { margin: 4px 0 14px; }
+
+/* v1.6.4.29 -- Inline hint under the action row on browsers that cannot
+   reach Web Bluetooth (iOS Safari and every browser on iPhone, plus macOS
+   Safari and Firefox). Sits between the action row and the Contact dots
+   so it reads as "here is why Connect is dimmed", not as an alert. */
+.ea-card--muse .ea-muse-hint {
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, Menlo, monospace;
+  font-size: 0.82em;
+  line-height: 1.45;
+  color: var(--ea-ink-2);
+  margin: -6px 0 12px;
+  max-width: 42ch;
+}
+
+.ea-muse-sim-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.ea-muse-scenario {
+  font: inherit;
+  font-size: 0.86em;
+  color: var(--ea-ink);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--ea-ink-3);
+  border-radius: 999px;                     /* pill so it visually pairs with the ghost Simulate button */
+  padding: 6px 12px;
+  padding-right: 26px;                      /* room for the native chevron */
+  min-width: 120px;
+  max-width: 160px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ea-ink-2) 50%),
+                    linear-gradient(-45deg, transparent 50%, var(--ea-ink-2) 50%);
+  background-position: right 12px top 50%, right 8px top 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+.ea-muse-scenario:hover {
+  border-color: var(--ea-ink);
+  background-color: rgba(255, 255, 255, 0.92);
+}
+.ea-muse-scenario:focus-visible {
+  outline: 2px solid rgba(196, 110, 84, 0.55);
+  outline-offset: 2px;
+}
+.ea-muse-scenario option { background: #fbf7ef; color: var(--ea-ink); }
+
+.ea-muse-wizard-row { margin-top: 14px; }
+.ea-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+.ea-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0; height: 0;
+}
+.ea-toggle__track {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 3px;
+  width: 34px;
+  height: 20px;
+  background: rgba(27, 21, 18, 0.18);       /* ink-tinted rail on cream */
+  border-radius: 999px;
+  transition: background 160ms ease;
+}
+.ea-toggle__thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fbf7ef;                      /* cream thumb on the rail */
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(27, 21, 18, 0.28);
+  transition: transform 160ms ease, background 160ms ease;
+}
+.ea-toggle input:checked ~ .ea-toggle__track {
+  background: rgba(196, 110, 84, 0.85);     /* terracotta rose when active */
+}
+.ea-toggle input:checked ~ .ea-toggle__track .ea-toggle__thumb {
+  transform: translateX(14px);
+  background: #fff;
+}
+.ea-toggle input:focus-visible ~ .ea-toggle__track {
+  outline: 2px solid rgba(196, 110, 84, 0.55);
+  outline-offset: 2px;
+}
+.ea-toggle__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.35;
+  min-width: 0;
+}
+.ea-toggle__title {
+  font-size: 0.94em;
+  color: var(--ea-ink);
+  font-weight: 500;
+}
+.ea-toggle__meta {
+  font-size: 0.82em;
+  color: var(--ea-ink-2);
+}
+
+@media (max-width: 520px) {
+  /* v1.6.4.28 -- On phones the three controls wrap gracefully across the
+     card width. Picker caps its width so a long label like Contemplation
+     walk cannot push the card into horizontal scroll. */
+  .ea-muse-actions   { justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+  .ea-muse-sim-group { gap: 6px; }
+  .ea-muse-scenario  { min-width: 100px; max-width: 150px; font-size: 0.82em; padding: 5px 22px 5px 10px; }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * v1.6.4.26 -- Contrast lift for the Muse setup card meta text.
+ *
+ * The subtitle, CONTACT eyebrow, and Simulate button were tuned for dark
+ * cards. They kept working there. On the cream setup card they render as
+ * washed grey / pale cream, so the user cannot read them. Overrides below
+ * only bite inside .ea-card--muse so the dark composition-screen usage of
+ * these classes is untouched.
+ * ──────────────────────────────────────────────────────────────────── */
+.ea-card--muse .ea-card__sub {
+  /* From --ea-ink-3 (#857868, ~2.3:1 on cream) to --ea-ink-2 (#4A3F38, ~7.4:1). */
+  color: var(--ea-ink-2);
+}
+.ea-card--muse .ea-muse-contact__label {
+  color: var(--ea-ink-2);
+}
+/* Simulate button on the cream card: swap its dark-card gold ink for the
+   same warm terracotta the Start Experience CTA uses, so it obviously reads
+   as a secondary action next to the outlined Connect button. Keeps the same
+   ghost shape -- only the ink and border change. */
+.ea-card--muse .ea-btn--sim {
+  color: var(--ea-ink);
+  border-color: rgba(196, 110, 84, 0.55);
+}
+.ea-card--muse .ea-btn--sim:hover:not(:disabled) {
+  border-color: rgba(196, 110, 84, 0.85);
+  background: rgba(196, 110, 84, 0.10);
+}
+.ea-card--muse .ea-btn--sim.is-active,
+.ea-card--muse .ea-btn--sim[data-state="on"] {
+  border-color: rgba(196, 110, 84, 0.95);
+  background: rgba(196, 110, 84, 0.20);
+  color: var(--ea-ink);
+}

@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#FBF6EC" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Empathic Art · Boundless Session</title>
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    Empathic Art · v3.0 · Standalone Boundless Session
+    ─────────────────────────────────────────────────────────────────────
+    Author   : Eyal Gever
+    License  : Proprietary — Empathic Art © 2026
+    Purpose  : Handoff-ready reference implementation of the Boundless
+               empathic-art session flow, meant to be integrated into the
+               full Boundless iOS/PWA app by the engineering team.
+
+    Contents:
+      /styles              design tokens + layout grid + components
+      /src/palette         Circumplex XY → RGB emotion mapping
+      /src/muse            Muse EEG source (sim + live adapter hook)
+      /src/audio           Web Audio reactive analyser (RMS + spectral)
+      /src/voice           Hard-stop microphone recorder (no hiss)
+      /src/store           In-memory session state (opt-in persistence)
+      /src/fluid           Original WebGL2 semi-Lagrangian fluid engine
+      /src/app.js          View router + wiring
+      /assets              sound-journey.mp3 (10:35) + reference screens
+    ═══════════════════════════════════════════════════════════════════════
+  -->
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+
+  <link rel="stylesheet" href="./styles/tokens.css?v=1.4.3" />
+  <link rel="stylesheet" href="./styles/layout.css?v=1.4.3" />
+  <link rel="stylesheet" href="./styles/components.css?v=1.5.6" />
+  <link rel="stylesheet" href="./styles/views.css?v=1.5.6" />
+  <link rel="stylesheet" href="./styles/zen.css?v=1.4.3" />
+  <link rel="stylesheet" href="./styles/replay-zen.css?v=1.5.2" />
+  <link rel="stylesheet" href="./styles/legal.css?v=1.4.3" />
+  <link rel="stylesheet" href="./styles/polish.css?v=1.4.3" />
+  <link rel="stylesheet" href="./styles/v163.css?v=1.6.4.37" />
+
+  <!--
+    Umami analytics (privacy-first, no cookies, no personal data).
+    Dashboard: https://cloud.umami.is/websites/dfb1029b-d3f5-4c43-84c1-002c65cfc8c1
+    Owner: Eyal Gever <eyalgever@gmail.com>
+  -->
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="dfb1029b-d3f5-4c43-84c1-002c65cfc8c1"></script>
+</head>
+<body class="ea-body">
+
+  <!--
+    ═════════════════════════════════════════════════════════════════════
+    APP SHELL
+    ─────────────────────────────────────────────────────────────────────
+    The shell is a single CSS grid with three reserved rows that never
+    collide:
+        [ header  ] ← 56 px  ← back · title · clock
+        [ chips   ] ← 48 px  ← voice · muse · gallery (REC lives INSIDE)
+        [ screen  ] ← 1 fr   ← the active view
+
+    Only one .ea-screen carries .ea-screen--active at a time; the router
+    in src/app.js toggles that class. All four screens share the shell —
+    no overlapping DOM, no floating pills.
+    ═════════════════════════════════════════════════════════════════════
+  -->
+  <div class="ea-app" id="ea-app">
+
+    <!-- ─── Header row ────────────────────────────────────────────── -->
+    <header class="ea-header" role="banner">
+      <button class="ea-header__back" type="button" aria-label="Go back">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="ea-header__back-label" id="header-back-label" aria-hidden="true"></span>
+      </button>
+      <div class="ea-header__brand">
+        <span class="ea-header__title">Before Session</span>
+        <span class="ea-header__sub">Empathic Art</span>
+      </div>
+      <div class="ea-header__meta" aria-label="Time">--:--</div>
+    </header>
+
+    <!-- ─── Top bar: single flex row with three slots — [i] · Voice · Emotion Map.
+         Cycle 14: rewritten as a real flex container with justify-content:
+         space-between so the browser guarantees spacing between the three
+         chips regardless of label length. Previously the help chip and
+         plaque were positioned absolutely in opposite corners which allowed
+         the middle Voice chip to touch a widening plaque ("Hide Emotion Map").
+         Now all three sit in one row; overlap is structurally impossible. -->
+    <nav class="ea-chips-band" id="chips-band" aria-label="Session controls" hidden>
+      <!-- Slot 1: help "i" (left). Present in the DOM but visually hidden
+           until the session screen shows it via body[data-screen="session"]. -->
+      <button class="ea-chip ea-chip--help ea-chip--help-inline" id="chip-help-session" type="button" aria-label="How this works" data-ea-tip="session-help">
+        <span class="ea-chip__info-glyph" aria-hidden="true">i</span>
+      </button>
+      <!-- Slot 2: Voice chip (center). REC dot lives inside. -->
+      <button class="ea-chip ea-chip--voice" id="chip-voice" type="button" aria-pressed="false" data-ea-tip="voice-record">
+        <span class="ea-chip__dot" aria-hidden="true"></span>
+        <span class="ea-chip__label">Voice</span>
+        <span class="ea-chip__timer" aria-live="polite"></span>
+      </button>
+      <!-- Zen chip removed. Zen mode is entered automatically on prolonged
+           stillness AND via the Z key (kept as a discoverable shortcut
+           for keyboard users). The top toolbar stays uncluttered — three
+           slots max: [i] · Voice · Emotion Map. -->
+
+      <!-- Slot 3: Emotion Map chip (right). Label ALWAYS reads "Emotion Map";
+           active/dim state is conveyed visually (aria-pressed drives the
+           style). -->
+      <button class="ea-muse-toggle ea-muse-toggle--plaque" id="btn-muse-data" type="button" aria-pressed="false" aria-label="Emotion Map">
+        <svg class="ea-muse-toggle__plaque" width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+          <circle cx="22" cy="22" r="20" stroke="currentColor" stroke-width="1.25" fill="none" opacity="0.55"/>
+          <circle cx="22" cy="22" r="13" stroke="currentColor" stroke-width="0.75" fill="none" opacity="0.28"/>
+          <path d="M8 22 L13 22 L15.5 15 L19.5 30 L22 22 L25 22 L27 18 L30 26 L32.5 22 L36 22" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+        <span class="ea-muse-toggle__label" id="btn-muse-data-label">Emotion Map</span>
+      </button>
+    </nav>
+
+    <!-- ─── Hint band (separate row, never overlaps) ─────────────── -->
+    <div class="ea-hint-band" id="hint" aria-live="polite" hidden>
+      Place a finger anywhere on the wheel to mark how you feel right now.
+    </div>
+
+
+    <!--
+      ═══════════════════════════════════════════════════════════════
+      SCREEN 1 · BEFORE SESSION
+      ───────────────────────────────────────────────────────────────
+      Mirrors iPhone screens 01–03:
+        · Circumplex XY (Negative↔Positive × Energized↔Tired)
+        · Openness slider (Closed↔Open)
+        · "Start Session" CTA
+      ═══════════════════════════════════════════════════════════════
+    -->
+    <section class="ea-screen ea-screen--active" data-screen="before">
+      <div class="ea-screen__inner">
+        <div class="ea-screen__title-row">
+          <h2 class="ea-screen__lede">How are you feeling right now?</h2>
+          <!-- Subtle (i) chip anchored to the title. Opens a single
+               elegant explainer panel covering the circumplex quadrants AND
+               the Openness slider in one place. -->
+          <button
+            type="button"
+            id="before-help-chip"
+            class="ea-help-chip"
+            aria-label="How to use this screen"
+            aria-haspopup="dialog"
+            aria-expanded="false">
+            <span aria-hidden="true">i</span>
+          </button>
+        </div>
+        <p class="ea-screen__sublede">
+          Place yourself on the map. Move the dot, adjust openness, begin.
+        </p>
+
+        <!-- Empathic art style picker. Opens a popover with the full
+             gallery; the chosen style renders live inside the circumplex
+             below and later becomes the session backdrop. -->
+        <div class="ea-style-picker-row">
+          <button
+            type="button"
+            class="ea-style-picker-btn"
+            id="before-style-picker"
+            aria-haspopup="dialog"
+            aria-expanded="false">
+            <span class="ea-style-picker-btn__label">
+              <span class="ea-style-picker-btn__kicker">Empathic Art</span>
+              <span class="ea-style-picker-btn__name" id="before-style-picker-name">Breath</span>
+            </span>
+            <span class="ea-style-picker-btn__hint">Change</span>
+          </button>
+          <!-- Standalone info chip — does not open the picker, only the
+               tooltip. Positioned at the row's edge so the tap targets stay
+               separate. -->
+          <button
+            type="button"
+            class="ea-help-chip ea-help-chip--inline"
+            id="change-style-help-chip"
+            data-ea-tip="change-style"
+            aria-label="About changing styles">
+            <span aria-hidden="true">i</span>
+          </button>
+        </div>
+
+        <!--
+          The Chamber
+          ==========
+          A single rounded-rectangle enclosure that fuses the emotion
+          wheel and the Openness slider onto one continuous surface,
+          after the geometry of a Turrell light chamber. The active
+          visual style renders its field across the whole enclosure;
+          the wheel + openness elements are UI overlays on top of that
+          one shared canvas.
+        -->
+        <div class="ea-chamber" data-visual-style="current">
+          <!-- Full-chamber field canvas: the current visual style
+               renders here. Spans the entire chamber, including
+               the openness lane at the bottom. -->
+          <canvas class="ea-chamber__field" id="circumplex-preview" aria-hidden="true"></canvas>
+
+          <!-- Wheel zone: the circumplex interaction. Overlays sit
+               on top of the field. -->
+          <div class="ea-circumplex" id="circumplex" role="application" aria-label="Emotion wheel">
+            <div class="ea-circumplex__ring" aria-hidden="true"></div>
+            <div class="ea-circumplex__cross" aria-hidden="true"></div>
+            <span class="ea-circumplex__label ea-circumplex__label--top">Energized</span>
+            <span class="ea-circumplex__label ea-circumplex__label--right">Positive</span>
+            <span class="ea-circumplex__label ea-circumplex__label--bottom">Tired</span>
+            <span class="ea-circumplex__label ea-circumplex__label--left">Negative</span>
+            <div class="ea-circumplex__thumb" aria-hidden="true"></div>
+            <div class="ea-circumplex__hint" id="circumplex-hint" aria-hidden="true">
+              tap or drag to place yourself
+            </div>
+          </div>
+
+          <!-- Openness zone: the same field extends underneath. The
+               slider's own background is gone — track and thumb sit
+               directly on the Turrell field. -->
+          <div class="ea-slider-block ea-slider-block--chamber">
+            <div class="ea-slider__labels">
+              <span>Closed</span><span>Openness</span><span>Open</span>
+            </div>
+            <div class="ea-slider" id="openness" role="slider"
+                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"
+                 aria-label="Openness (Closed to Open)">
+              <div class="ea-slider__track">
+                <div class="ea-slider__fill"></div>
+                <div class="ea-slider__thumb"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ea-cta">
+          <button class="ea-btn ea-btn--primary" id="btn-start-session" type="button" disabled>
+            Start Session
+          </button>
+
+          <!-- Secondary row: ways to browse previous sessions without
+               starting a new one. Ghost-styled so the primary CTA still
+               reads as the main call to action. -->
+          <div class="ea-cta__secondary" role="group" aria-label="Browse previous sessions">
+            <button class="ea-btn ea-btn--ghost ea-btn--slim" id="btn-before-timeline" type="button">
+              View Timeline
+            </button>
+            <button class="ea-btn ea-btn--ghost ea-btn--slim" id="btn-before-gallery" type="button">
+              Open Gallery
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!--
+      ═══════════════════════════════════════════════════════════════
+      SCREEN 2 · ACTIVE SESSION SETUP
+      ───────────────────────────────────────────────────────────────
+      Mirrors iPhone screens 04–05:
+        · Connect a Muse headband (optional)
+        · Play music during session: None / Boundless (10:52) / Ambient
+        · "Continue without Muse" checkbox
+        · "Start Experience" CTA (disabled until Muse OR checkbox on)
+      ═══════════════════════════════════════════════════════════════
+    -->
+    <section class="ea-screen" data-screen="active">
+      <div class="ea-screen__inner">
+
+        <div class="ea-card ea-card--compact ea-card--muse">
+          <!-- v1.6.4.28 -- Tightened Muse setup card.
+               Title compressed to "Connect Muse", subtitle removed. The
+               three controls (Connect, Simulate, scenario) are now on a
+               single left-aligned row above the Contact dots so the visual
+               hierarchy is: what -> how -> status. -->
+          <div class="ea-card__title">Connect Muse</div>
+          <div class="ea-muse-actions">
+            <button class="ea-btn ea-btn--ghost" id="btn-muse-connect" type="button">Connect</button>
+            <button class="ea-btn ea-btn--ghost ea-btn--sim" id="btn-muse-simulate" type="button" title="Demo mode -- scripted brain-signal journey with the full listening composition and wizard">Simulate</button>
+            <select id="muse-scenario-picker" class="ea-muse-scenario" aria-label="Simulated journey scenario" title="Which curated journey the Simulate button follows.">
+              <!-- Populated at runtime from src/muse/sim-scenarios.js -->
+            </select>
+          </div>
+
+          <!-- Per-electrode contact, filled in by src/muse/muse-quality-dots.js -->
+          <div class="ea-muse-contact">
+            <span class="ea-muse-contact__label">Contact</span>
+            <span id="muse-quality-dots"></span>
+          </div>
+
+          <!-- v1.6.4.24 -- Calibration wizard toggle. Default state is driven
+               by the persisted hasCalibrated flag: on for the very first
+               session, off once the user has completed the wizard at
+               least once. Users can always opt back in for a re-baseline.
+               v1.6.4.28 -- The wordy meta paragraph is gone; the switch
+               plus its title is enough of a hint. -->
+          <div class="ea-card__row ea-muse-wizard-row">
+            <label class="ea-toggle" for="muse-wizard-toggle">
+              <input id="muse-wizard-toggle" type="checkbox" checked>
+              <span class="ea-toggle__track" aria-hidden="true"><span class="ea-toggle__thumb"></span></span>
+              <span class="ea-toggle__title">Run calibration wizard</span>
+            </label>
+          </div>
+        </div>
+
+        <h3 class="ea-section-title">Play music during session</h3>
+        <div class="ea-tiles" role="radiogroup" aria-label="Session soundtrack">
+          <button class="ea-tile" data-music="none" role="radio" aria-checked="false" type="button">
+            <span class="ea-tile__radio" aria-hidden="true"></span>
+            <span class="ea-tile__body">
+              <span class="ea-tile__title">None</span>
+              <span class="ea-tile__meta">Silent session</span>
+            </span>
+          </button>
+          <button class="ea-tile" data-music="sound-journey" role="radio" aria-checked="true" type="button">
+            <span class="ea-tile__radio" aria-hidden="true"></span>
+            <span class="ea-tile__body">
+              <span class="ea-tile__title">Boundless</span>
+              <span class="ea-tile__meta">10:52 · empathic sound-journey</span>
+            </span>
+          </button>
+          <button class="ea-tile" data-music="ambient" role="radio" aria-checked="false" type="button">
+            <span class="ea-tile__radio" aria-hidden="true"></span>
+            <span class="ea-tile__body">
+              <span class="ea-tile__title">Ambient loop</span>
+              <span class="ea-tile__meta">Continuous · low tempo</span>
+            </span>
+          </button>
+        </div>
+
+        <label class="ea-check" for="continue-without-muse">
+          <input type="checkbox" id="continue-without-muse" />
+          <span class="ea-check__box" aria-hidden="true"></span>
+          <span class="ea-check__label">Continue without Muse</span>
+        </label>
+
+        <div class="ea-cta">
+          <button class="ea-btn ea-btn--primary" id="btn-start-experience" type="button" disabled>
+            Start Experience
+          </button>
+        </div>
+      </div>
+    </section>
+
+
+    <!--
+      ═══════════════════════════════════════════════════════════════
+      SCREEN 3 · COUNTDOWN
+      ───────────────────────────────────────────────────────────────
+      Mirrors iPhone screens 06–11: 5 → 4 → 3 → 2 → 1 → 0.
+      Audio starts on the 0 tick — not before.
+      ═══════════════════════════════════════════════════════════════
+    -->
+    <section class="ea-screen ea-screen--dim" data-screen="countdown">
+      <div class="ea-screen__inner ea-screen__inner--center">
+        <div class="ea-countdown">
+          <div class="ea-countdown__eyebrow">In progress</div>
+          <div class="ea-countdown__meta" id="countdown-meta">♪ Boundless · 10:52</div>
+          <div class="ea-countdown__num" id="countdown-num" aria-live="assertive">5</div>
+          <div class="ea-countdown__hint">Close your eyes when you're ready.</div>
+        </div>
+        <div class="ea-cta">
+          <button class="ea-btn ea-btn--danger" id="btn-countdown-stop" type="button">Stop</button>
+        </div>
+      </div>
+    </section>
+
+
+    <!--
+      ═══════════════════════════════════════════════════════════════
+      SCREEN 4 · SESSION IN PROGRESS
+      ───────────────────────────────────────────────────────────────
+      Mirrors iPhone screens 12–13: fluid canvas fills the frame with
+      a soft HUD ("Session in progress · MM:SS · Tap to show controls").
+      The chips row stays reachable but visually recedes.
+      ═══════════════════════════════════════════════════════════════
+    -->
+    <section class="ea-screen ea-screen--session" data-screen="session">
+      <canvas class="ea-fluid" id="fluid-canvas" aria-label="Fluid painting"></canvas>
+
+      <div class="ea-progress-strip" aria-hidden="true"><div class="ea-progress-strip__fill"></div></div>
+
+      <!--
+        v1.6.4.7 -- Listening screen composition. Sits above the fluid on the
+        dark session screen, matching the approved mock:
+          EMPATHIC ART header
+          "Prepare your session" italic serif title
+          Muse status pill
+          Music status pill
+          [ Start Experience ] bracket-style outline button
+          calibration wizard block (mounts here dynamically)
+        The block is hidden by default; the ?log=1&demo-wizard=1 preview flag
+        reveals it, and a real Muse connect + session start would too.
+      -->
+      <div class="ea-listening-composition" data-hidden="true">
+        <div class="ea-listening-composition__eyebrow">EMPATHIC ART</div>
+        <h1 class="ea-listening-composition__title">Deep Listening</h1>
+        <div class="ea-listening-composition__pill" id="listening-muse-status">
+          Muse: connected &nbsp;.&nbsp; 84% &nbsp;.&nbsp; 3/4 sensors
+        </div>
+        <div class="ea-listening-composition__pill" id="listening-music-status">
+          Music: Boundless &nbsp;.&nbsp; 10:52
+        </div>
+        <!--
+          Wizard intro panel. Not a button. Uses the same rounded dark card
+          style as the Muse and Music pills above so the composition rhythm
+          holds, but reads as guidance so the user knows to follow the wizard
+          for calibration.
+        -->
+        <div class="ea-listening-composition__intro">
+          <div class="ea-listening-composition__intro-title">[ Deep listening begins ]</div>
+          <div class="ea-listening-composition__intro-body">Follow the wizard below to calibrate your session.</div>
+        </div>
+        <div class="ea-listening-composition__wizard-slot" id="listening-wizard-slot"></div>
+      </div>
+
+      <!-- Cycle 17: Fullscreen toggle. Pinned to top-right of the session
+           screen. Uses the standards Fullscreen API on Chrome / Safari
+           desktop; iOS Safari on iPhone doesn't expose Fullscreen for
+           non-video elements, so we fall back to a body[data-immersive]
+           class that uses 100dvh + safe-area padding to fill the viewport.
+           Icon toggles between "enter" (four-corner arrows) and "exit"
+           (four-inward arrows) via aria-pressed. -->
+      <button class="ea-immersive-btn" id="btn-immersive" type="button"
+              aria-pressed="false" aria-label="Enter fullscreen" title="Fullscreen">
+        <svg class="ea-immersive-btn__enter" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 9V4h5"/><path d="M15 4h5v5"/><path d="M20 15v5h-5"/><path d="M9 20H4v-5"/>
+        </svg>
+        <svg class="ea-immersive-btn__exit" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M15 20v-5h5"/><path d="M9 20v-5H4"/>
+        </svg>
+      </button>
+
+      <!-- Cycle 17: Dim-on-stillness "Touch to interact" hint. Fades in
+           when the UI has been dimmed for stillness. Touch-only wake. -->
+      <div class="ea-touch-hint" id="touch-hint" aria-hidden="true">Touch to interact</div>
+
+      <div class="ea-session-idle">
+        <div class="ea-session-idle__line">Session in progress</div>
+        <div class="ea-session-idle__line ea-session-idle__line--big">
+          <span id="session-timer">00:00</span>
+        </div>
+        <div class="ea-emotion-label" id="emotion-label">Serene</div>
+      </div>
+
+      <!-- Emotion word reveal: fades in whenever the journey crosses into a new anchor emotion -->
+      <div class="ea-emotion-reveal" id="emotion-reveal" aria-live="polite" aria-hidden="true">
+        <div class="ea-emotion-reveal__word" id="emotion-reveal-word"></div>
+      </div>
+
+      <!-- Cycle 14: help "i" chip and Emotion Map plaque moved OUT of this
+           section and INTO the top nav (`.ea-chips-band`) so all three
+           top-row elements share one flex row. No more absolute-corner
+           positioning; browser guarantees spacing. See lines ~73–101. -->
+      <aside class="ea-muse-panel" id="muse-panel" aria-hidden="true">
+        <div class="ea-muse-panel__head">
+          <span class="ea-muse-panel__eyebrow">Muse · simulated</span>
+          <!-- Live electrode contact; stays empty in simulated sessions. -->
+          <span id="muse-panel-quality-dots"></span>
+          <button class="ea-info-glyph" type="button" data-ea-tip="emotion-map" aria-label="About the emotion map"><span aria-hidden="true">i</span></button>
+          <button class="ea-muse-panel__close" id="btn-muse-close" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="ea-muse-vis" id="muse-vis">
+          <svg
+            class="ea-muse-vis__svg"
+            id="muse-vis-svg"
+            viewBox="0 0 1000 1000"
+            preserveAspectRatio="xMidYMid meet"
+            role="img"
+            aria-label="Emotional circumplex: valence by arousal, with 19 feelings placed around the wheel"
+          >
+            <!-- Rendered by muse-vis.js: rings, axes, emotion terms, puck -->
+          </svg>
+          <div class="ea-muse-vis__caption">
+            <span class="ea-muse-vis__name" id="muse-vis-name">--</span>
+            <span class="ea-muse-vis__coord" id="muse-vis-coord">v 0.00 &nbsp;·&nbsp; a 0.00 &nbsp;·&nbsp; o 0.50</span>
+            <!-- v1.5.2: entropy readout. Same four-word ladder as the
+                 replay meta line (quiet / gathered / restless / wide),
+                 computed over the last 60 seconds of samples. The tiny
+                 "i" glyph opens the same vocabulary tooltip so the
+                 definition is anchored in one place. -->
+            <span class="ea-muse-vis__entropy" id="muse-vis-entropy">
+              entropy <em id="muse-vis-entropy-label">quiet</em>
+              <button class="ea-info-glyph ea-info-glyph--inline" type="button" data-ea-tip="entropy" aria-label="About entropy"><span aria-hidden="true">i</span></button>
+            </span>
+          </div>
+        </div>
+
+        <div class="ea-muse-waves">
+          <div class="ea-muse-waves__head">
+            <span class="ea-muse-waves__eyebrow">Brain waves</span>
+            <button class="ea-info-glyph" type="button" data-ea-tip="brainwaves" aria-label="About brain waves"><span aria-hidden="true">i</span></button>
+            <span class="ea-muse-waves__hint">EEG bands · simulated</span>
+          </div>
+          <canvas
+            id="muse-brainwaves"
+            class="ea-muse-waves__canvas"
+            aria-label="Live EEG-style visualisation of five brain-wave bands: Delta, Theta, Alpha, Beta, Gamma"
+          ></canvas>
+        </div>
+        <div class="ea-muse-progress">
+          <span class="ea-muse-progress__label">Journey</span>
+          <span class="ea-muse-progress__track"><i id="muse-progress-fill"></i></span>
+          <span class="ea-muse-progress__value" id="muse-journey">0%</span>
+        </div>
+      </aside>
+
+      <div class="ea-cta ea-cta--session">
+        <button class="ea-btn ea-btn--danger" id="btn-session-stop" type="button">
+          End Session
+        </button>
+      </div>
+    </section>
+
+    <!--
+      ═══════════════════════════════════════════════════════════════════
+      Screen: AFTER — Timeline (top) + Gallery (bottom)
+      ───────────────────────────────────────────────────────────────────
+      Post-session hub. Two coordinated views of session history:
+        · Timeline (top): horizontal axis of session waypoints with
+          pinch/wheel zoom, colored by each session's dominant emotion.
+        · Gallery (bottom): vertigo-scrolling deck of session cards
+          with fade-in and depth on scroll.
+      Both dispatch the same custom 'ea:open-summary' event when the user
+      picks a session, which routes to the Summary screen.
+      ═══════════════════════════════════════════════════════════════════
+    -->
+    <section class="ea-screen ea-screen--after" data-screen="after">
+      <div class="ea-after">
+        <header class="ea-after__header">
+          <div class="ea-after__eyebrow">Session Complete</div>
+          <h2 class="ea-after__title" id="after-last-name"> </h2>
+          <p class="ea-after__meta" id="after-last-meta"> </p>
+        </header>
+
+        <div class="ea-after__viewtoggle" role="tablist" aria-label="After view">
+          <button
+            class="ea-after__viewtoggle-btn"
+            id="btn-after-view-timeline"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="timeline"
+            data-view="timeline"
+          >Timeline</button>
+          <button
+            class="ea-after__viewtoggle-btn"
+            id="btn-after-view-gallery"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="gallery"
+            data-view="gallery"
+          >Gallery</button>
+        </div>
+
+        <div class="ea-timeline" id="timeline" aria-label="Session timeline">
+          <div class="ea-timeline__head">
+            <span class="ea-timeline__eyebrow">Timeline</span>
+            <span class="ea-timeline__hint" id="timeline-count">0 sessions</span>
+            <div class="ea-timeline__zoom" id="tl-zoom" role="group" aria-label="Timeline zoom">
+              <button class="ea-timeline__zbtn" id="tl-zoom-out" type="button" aria-label="Zoom out">−</button>
+              <div class="ea-timeline__presets" id="tl-presets">
+                <button type="button" data-zoom="fit" class="active">Fit</button>
+                <button type="button" data-zoom="2">2×</button>
+                <button type="button" data-zoom="4">4×</button>
+                <button type="button" data-zoom="8">8×</button>
+              </div>
+              <button class="ea-timeline__zbtn" id="tl-zoom-in" type="button" aria-label="Zoom in">+</button>
+            </div>
+          </div>
+          <div class="tl-scroll" id="tl-scroll">
+            <div class="tl-inner" id="tl-inner">
+              <div class="tl-ribbon" id="tl-ribbon" role="list" aria-label="Sessions ribbon"></div>
+              <div class="tl-axis" id="tl-axis" aria-hidden="true"></div>
+            </div>
+          </div>
+          <p class="ea-timeline__hover" id="tl-hover">Hover a line to preview · click to open the session</p>
+          <p class="ea-timeline__empty" id="tl-empty" hidden>No sessions yet</p>
+        </div>
+
+        <div class="ea-gallery" id="gallery" aria-label="Session gallery" hidden>
+          <div class="ea-gallery__head">
+            <span class="ea-gallery__eyebrow">Gallery</span>
+            <span class="ea-gallery__hint" id="gallery-count">0 sessions</span>
+          </div>
+          <div class="ea-gallery__reel" id="gallery-reel" role="list"></div>
+          <p class="ea-gallery__empty" id="gallery-empty" hidden>No sessions yet, complete one to see it here.</p>
+        </div>
+
+        <div class="ea-after__cta">
+          <button class="ea-btn ea-btn--ghost" id="btn-after-home" type="button">Start a new session</button>
+        </div>
+      </div>
+    </section>
+
+    <!--
+      ═══════════════════════════════════════════════════════════════════
+      Screen: SUMMARY. Clip playback of a single completed session
+      ───────────────────────────────────────────────────────────────────
+      Re-plays the saved journey against the fluid canvas: audio starts,
+      the circumplex puck traces the recorded trail, brain-wave lanes
+      breathe with the samples, the emotion word overlays the fluid at
+      each crossing, and voice notes fire at their captured timestamps.
+      Two exits: 'Timeline / Gallery' (back to after) or 'Home' (before).
+      ═══════════════════════════════════════════════════════════════════
+    -->
+    <section class="ea-screen ea-screen--summary" data-screen="summary">
+      <canvas class="ea-fluid" id="summary-fluid-canvas" aria-label="Session replay fluid"></canvas>
+
+      <!-- The full-screen overlay reveal is retained ONLY for the
+           fullscreen/immersive replay (when the summary panel is
+           hidden). While the panel is open, the current-emotion word is
+           shown INSIDE the panel between the circumplex and the brain
+           waves, matching the visual rhythm of the live Session. -->
+      <div class="ea-emotion-reveal" id="summary-reveal" aria-live="polite" aria-hidden="true">
+        <div class="ea-emotion-reveal__word" id="summary-reveal-word"></div>
+      </div>
+
+      <!-- Summary top bar, flex row with [i] on the left and Emotion Map
+           plaque on the right. justify-content:space-between guarantees
+           they never touch regardless of label length. Also includes an
+           immersive/full-frame button (mirrors the live session). -->
+      <nav class="ea-summary__topbar" aria-label="Replay controls">
+        <button class="ea-chip ea-chip--help ea-chip--help-inline" id="chip-help-summary" type="button" aria-label="About this replay" data-ea-tip="summary-help">
+          <span class="ea-chip__info-glyph" aria-hidden="true">i</span>
+        </button>
+        <!-- Summary fullscreen icon sits in the bottom-right corner
+             (see #btn-immersive-summary below). The top nav only holds
+             [i] and the Emotion Map plaque. -->
+        <button class="ea-muse-toggle ea-muse-toggle--plaque ea-muse-toggle--summary" id="btn-summary-panel-toggle" type="button" aria-pressed="true" aria-label="Emotion Map">
+          <svg class="ea-muse-toggle__plaque" width="44" height="44" viewBox="0 0 44 44" fill="none" aria-hidden="true">
+            <circle cx="22" cy="22" r="20" stroke="currentColor" stroke-width="1.25" fill="none" opacity="0.55"/>
+            <circle cx="22" cy="22" r="13" stroke="currentColor" stroke-width="0.75" fill="none" opacity="0.28"/>
+            <path d="M8 22 L13 22 L15.5 15 L19.5 30 L22 22 L25 22 L27 18 L30 26 L32.5 22 L36 22" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+          <span class="ea-muse-toggle__label" id="btn-summary-panel-toggle-label">Emotion Map</span>
+        </button>
+      </nav>
+
+      <!-- Summary fullscreen button sits OUT of the top nav (where it
+           would clash with the emotion-word title) in a bottom-right
+           pill. Same visual treatment as the session fullscreen button;
+           positioned in styles/components.css. -->
+      <button class="ea-immersive-btn ea-immersive-btn--summary" id="btn-immersive-summary" type="button"
+              aria-pressed="false" aria-label="Enter fullscreen" title="Fullscreen">
+        <svg class="ea-immersive-btn__enter" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 9V4h5"/><path d="M15 4h5v5"/><path d="M20 15v5h-5"/><path d="M9 20H4v-5"/>
+        </svg>
+        <svg class="ea-immersive-btn__exit" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M15 20v-5h5"/><path d="M9 20v-5H4"/>
+        </svg>
+      </button>
+
+      <!-- Right-column nav intentionally removed in cycle 9: the bottom
+           actions row (Timeline / Gallery + Home) already exposes every
+           destination. Keeping a duplicate cluster next to the plaque made
+           the chrome feel busy and inconsistent. The single Emotion Map
+           plaque now owns the upper-right area. -->
+
+      <div class="ea-summary">
+        <header class="ea-summary__head">
+          <div class="ea-summary__eyebrow">
+            <span>Session Replay</span>
+            <!-- Cycle 11: removed the inline "i" that duplicated the
+                 upper-left help chip. Both used data-ea-tip="summary-help"
+                 so users saw two dots opening the same tooltip. The
+                 upper-left chip (#chip-help-summary) is the single info
+                 affordance, matching the session screen layout. -->
+          </div>
+          <h2 class="ea-summary__title" id="summary-title"> </h2>
+          <p class="ea-summary__meta" id="summary-meta"> </p>
+        </header>
+
+        <div class="ea-summary__panel" id="summary-panel" aria-hidden="false">
+          <button class="ea-muse-panel__close ea-summary__close" id="btn-summary-panel-close" type="button" aria-label="Close panel">×</button>
+          <div class="ea-summary__circumplex">
+            <svg
+              class="ea-muse-vis__svg"
+              id="summary-vis-svg"
+              viewBox="0 0 1000 1000"
+              preserveAspectRatio="xMidYMid meet"
+              role="img"
+              aria-label="Replay circumplex trail"
+            ></svg>
+          </div>
+
+          <!-- Current-emotion word sits BELOW the circumplex and ABOVE
+               the transport/brainwaves, same rhythm the user already
+               knows from the live Session. Colored per-emotion, elegant
+               italic serif, tuned per view. Kept in normal flow so it
+               can never crop or overlap. -->
+          <div
+            class="ea-summary__emotion-word"
+            id="summary-panel-word"
+            aria-live="polite"
+            aria-hidden="true"
+          >
+            <span class="ea-summary__emotion-word__text" id="summary-panel-word-text"></span>
+          </div>
+
+          <!-- Playback transport lives immediately below the circumplex  
+               it's the primary interaction (play / scrub) so it earns the
+               vertical space right below the visual. -->
+          <div class="ea-summary__scrub">
+            <button class="ea-summary__play" id="btn-summary-play" type="button" aria-label="Play / pause" data-ea-tip="play-pause">▶</button>
+            <div class="ea-summary__track" id="summary-track" data-ea-tip="scrub" role="slider" aria-label="Playback position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+              <div class="ea-summary__track-fill" id="summary-track-fill"></div>
+              <div class="ea-summary__notes" id="summary-notes-track" aria-hidden="true"></div>
+              <div class="ea-summary__track-handle" id="summary-track-handle" aria-hidden="true"></div>
+            </div>
+            <span class="ea-summary__timeleft" id="summary-timeleft">-00:00</span>
+          </div>
+
+          <!-- Voice-note pills sit right under the transport so the user
+               sees they exist without scrolling past brainwaves. Each pill
+               plays the recording AND scrubs the timeline to that moment. -->
+          <div class="ea-summary__voicelist" id="summary-voicelist" aria-label="Voice notes"></div>
+
+          <div class="ea-summary__waves">
+            <div class="ea-muse-waves__head">
+              <span class="ea-muse-waves__eyebrow">Brain waves</span>
+              <button class="ea-info-glyph" type="button" data-ea-tip="brainwaves" aria-label="About brain waves"><span aria-hidden="true">i</span></button>
+              <span class="ea-muse-waves__hint" id="summary-clock">00:00</span>
+            </div>
+            <canvas id="summary-brainwaves" class="ea-muse-waves__canvas" aria-label="Replay brain waves"></canvas>
+          </div>
+
+          <!-- Share row: native share sheet (iOS/Android), one‑tap posts to
+               X, Facebook, and Instagram, plus a Copy Link fallback. All
+               five are circular monochrome glyph buttons; the row is
+               centered and sits between the voice notes and the primary
+               actions. -->
+          <div class="ea-summary__share" role="group" aria-label="Share this session">
+            <span class="ea-summary__share-label">
+              <span>Share</span>
+              <button class="ea-info-glyph" type="button" data-ea-tip="share" aria-label="About sharing"><span aria-hidden="true">i</span></button>
+            </span>
+            <div class="ea-summary__share-row">
+              <button class="ea-share-btn" id="btn-share-native" type="button" aria-label="Share via device sheet" title="Share">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M10 3 V13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  <path d="M6 7 L10 3 L14 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                  <path d="M4 12 V16 A1 1 0 0 0 5 17 H15 A1 1 0 0 0 16 16 V12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+                </svg>
+              </button>
+              <button class="ea-share-btn" id="btn-share-x" type="button" aria-label="Share on X" title="X">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </button>
+              <button class="ea-share-btn" id="btn-share-fb" type="button" aria-label="Share on Facebook" title="Facebook">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M13.5 22v-8h2.7l.4-3.2h-3.1V8.7c0-.9.3-1.6 1.6-1.6h1.7V4.2c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.4H7.4V14h2.7v8z"/>
+                </svg>
+              </button>
+              <button class="ea-share-btn" id="btn-share-ig" type="button" aria-label="Share on Instagram" title="Instagram">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="1.6"/>
+                  <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.6"/>
+                  <circle cx="17.2" cy="6.8" r="1.05" fill="currentColor"/>
+                </svg>
+              </button>
+              <button class="ea-share-btn" id="btn-share-copy" type="button" aria-label="Copy link" title="Copy link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M9 6 L6 6 A3 3 0 0 0 6 12 L8 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+                  <path d="M11 14 L14 14 A3 3 0 0 0 14 8 L12 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+                  <path d="M8.5 10 L11.5 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Cycle 10: bottom actions row removed. The header chevron
+               (Timeline / Gallery) is the single source of truth for
+               exiting Session Replay. Duplicating it as a bottom button
+               row violated the one-navigation-affordance rule and stole
+               vertical space from the ghost title + share row. -->
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Ephemeral toast (a11y-friendly, in-context notices) -->
+  <div class="ea-toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    VIEW SWITCHER (dev / preview only)
+    ─────────────────────────────────────────────────────────────────────
+    Floating pill cluster (bottom-right) that lets the user toggle between
+    desktop / iPhone / Watch layouts inside the same live app instance —
+    no iframes, no nested previews. Auto-hides during the session screen
+    so it never covers the fluid painting. Engineers can strip this whole
+    block for production by deleting the .ea-viewswitch element and the
+    corresponding block in src/app.js.
+    ═══════════════════════════════════════════════════════════════════════
+  -->
+  <div class="ea-viewswitch" id="viewswitch" role="group" aria-label="Preview device">
+    <button class="ea-viewswitch__btn" data-view-btn="iphone"  type="button" aria-pressed="true"  title="iPhone layout (press 1)">iPhone</button>
+    <button class="ea-viewswitch__btn" data-view-btn="watch"   type="button" aria-pressed="false" title="Apple Watch layout (press 2)">Watch</button>
+    <button class="ea-viewswitch__btn" data-view-btn="desktop" type="button" aria-pressed="false" title="Full-frame PC layout (press 3)">PC</button>
+  </div>
+
+  <!--
+    Modules load as ES modules directly from disk — no bundler required.
+    The Boundless engineering team can drop /src into any bundler
+    (Vite/esbuild/webpack) as-is, or keep the flat structure.
+  -->
+  <script type="module" src="./src/ui/touch-to-open.js?v=1.4.3"></script>
+  <script type="module" src="./src/app.js?v=1.6.4.37"></script>
+  <script type="module" src="./src/ui/v163-layer.js?v=1.6.4.37"></script>
+</body>
+</html>

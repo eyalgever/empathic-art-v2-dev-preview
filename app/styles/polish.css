@@ -1,0 +1,103 @@
+/* =============================================================
+   Empathic App — Polish pass
+   Tighter Muse card, compact ghost CTA, label anti-collision on
+   the emotion wheel.
+   ============================================================= */
+
+/* Muse-connect card — compact variant.
+   The original ea-card uses --ea-t-h3 (18px) display type + 56px CTA,
+   which forced "Connect a Muse headband" to wrap onto three lines on
+   iPhone widths. Compact variant keeps the card to a single line at
+   iPhone 393 and a graceful two lines at very narrow widths. */
+.ea-card--compact {
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.ea-card--compact .ea-card__row {
+  gap: 12px;
+  align-items: center;
+}
+.ea-card--compact .ea-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.25;
+}
+.ea-card--compact .ea-card__sub {
+  font-size: 12.5px;
+  margin-top: 3px;
+  line-height: 1.35;
+}
+.ea-card--compact .ea-btn--ghost {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+/* Immersive/fullscreen toggle icon — was reading as an empty circle at
+   capture time because contrast against the light fluid backdrop was
+   too low. Boost background darkness + icon stroke weight. */
+.ea-immersive-btn {
+  background: rgba(0, 0, 0, 0.42) !important;
+  color: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.ea-immersive-btn svg {
+  stroke: currentColor;
+  stroke-width: 2 !important;
+}
+
+/* Header title anti-collision with iPhone Dynamic Island / notch.
+   Reduce header title font at narrow widths so the middle label
+   doesn't run behind the pill. */
+@media (max-width: 430px) {
+  .ea-header__title {
+    font-size: 15px;
+    max-width: 40vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ea-header__subtitle {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+  }
+}
+
+/* Emotion-map / universal tooltip layout fix.
+   The base .ea-tip rule sizes itself only by its longest inline word,
+   which caused emotion tooltips on the desktop view to render as a
+   narrow vertical stack of one-word-per-line text. Force the tooltip
+   to grow to its natural content width up to a comfortable maximum,
+   with a sensible floor so short titles do not look pinched, and let
+   the body wrap naturally. */
+.ea-tip {
+  width: max-content;
+  max-width: min(460px, 92vw);
+  min-width: 320px;
+  white-space: normal;
+}
+.ea-tip__title,
+.ea-tip__body,
+.ea-tip__sig,
+.ea-tip__science {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* Hide any legacy iPhone bezel notch / dynamic-island overlay elements
+   that may still be rendered on top of the fluid painting on the
+   iPhone preview and native builds. The real device chrome is drawn
+   by the OS; we do not need a decorative one on top. */
+.ea-iphone-notch,
+.iphone-notch,
+[class*="notch"],
+[class*="dynamic-island"] {
+  display: none !important;
+}

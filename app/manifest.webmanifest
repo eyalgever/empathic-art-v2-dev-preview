@@ -1,0 +1,12 @@
+{
+  "name": "Empathic Art",
+  "short_name": "Empathic",
+  "description": "A biometric-reactive session of emotional fluid painting.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF6EC",
+  "theme_color": "#FBF6EC",
+  "scope": "./",
+  "icons": []
+}
