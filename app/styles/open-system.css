@@ -1,0 +1,347 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Empathic Art v2 — Open editorial overlay
+   ─────────────────────────────────────────────────────────────────
+   A polish layer that sits at the end of the cascade and re-tunes the
+   v1 UI (chamber, buttons, chips, section labels, hints) to the Open
+   design language we already borrowed on the landing:
+
+     • mono uppercase for micro-labels (screen kickers, chip labels,
+       help chips, brand-mark, section captions)
+     • proportional sans (Space Grotesk) for reading and headlines,
+       mixed case, tight leading, negative tracking on titles
+     • restrained CTAs — soft pill in ink or cream, quiet by default,
+       animated on press. Fiery accent moves to icon and puck only.
+     • generous negative space, hairline dividers (10% ink), no drop
+       shadows on chips, one shadow layer max on the primary CTA
+     • Rothko-context palette (cream #FBF6EC + near-black #1B1512)
+       already present in tokens.css — we lean into it, not remix it.
+
+   All rules are additive. Nothing in v1 breaks if this file is removed.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Screen kicker / lede / sublede ─────────────────────────────────── */
+
+.ea-screen__lede {
+  font-family: var(--ea-font-ui);
+  font-weight: 400;
+  letter-spacing: -0.012em;
+  line-height: 1.08;
+  /* Open uses tight leading on the big questions ("How are you feeling
+     right now?" reads like one continuous breath). */
+}
+
+.ea-screen__sublede {
+  font-family: var(--ea-font-ui);
+  font-weight: 300;
+  color: var(--ea-ink-2);
+  letter-spacing: 0.005em;
+  line-height: 1.5;
+  max-width: 34ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* An editorial kicker above screen titles. Not present in v1 markup, but
+   available as an opt-in class so text-pass can wire it in later. */
+.ea-kicker {
+  font-family: var(--ea-font-mono);
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-ink-3);
+  margin-bottom: var(--ea-s-3);
+}
+
+/* ─── Primary CTA (Start Session, Start Experience) ──────────────────── */
+
+/* Open's primary button is a dark ink pill with cream text, no shadow,
+   generous padding, restrained hover (subtle lift only). Our v1 default
+   is a fiery-red accent — we keep the accent alive for micro-signals
+   (puck, dot, active states) but the primary CTA becomes editorial. */
+.ea-btn--primary {
+  background: var(--ea-ink);
+  color: var(--ea-cream);
+  border-radius: var(--ea-r-pill);
+  border: 1px solid var(--ea-ink);
+  padding: 14px 28px;
+  font-family: var(--ea-font-ui);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0.005em;
+  box-shadow: none;
+  transition:
+    background var(--ea-dur-med) var(--ea-ease-out),
+    transform  var(--ea-dur-fast) var(--ea-ease-out),
+    opacity    var(--ea-dur-med) var(--ea-ease-out);
+}
+.ea-btn--primary:hover:not(:disabled) {
+  background: var(--ea-ink-2);
+}
+.ea-btn--primary:active:not(:disabled) {
+  transform: scale(0.985);
+}
+.ea-btn--primary:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ─── Ghost / slim buttons (View Timeline, Open Gallery) ─────────────── */
+
+.ea-btn--ghost,
+.ea-btn--slim {
+  background: transparent;
+  border: 1px solid var(--ea-line-strong);
+  color: var(--ea-ink);
+  border-radius: var(--ea-r-pill);
+  padding: 10px 20px;
+  font-family: var(--ea-font-ui);
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 0.005em;
+  transition:
+    background var(--ea-dur-med) var(--ea-ease-out),
+    border-color var(--ea-dur-med) var(--ea-ease-out);
+}
+.ea-btn--ghost:hover:not(:disabled),
+.ea-btn--slim:hover:not(:disabled) {
+  background: var(--ea-surface-3);
+  border-color: var(--ea-ink);
+}
+
+/* Secondary CTA row gets more air — the two ghost buttons breathe. */
+.ea-cta__secondary {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: var(--ea-s-5);
+  flex-wrap: wrap;
+}
+.ea-cta__secondary .ea-btn--slim + .ea-btn--slim::before {
+  /* v1 draws a middle-dot separator; on the pill treatment it clutters.
+     Suppress it, gap does the work. */
+  content: none;
+}
+
+/* ─── Help chip (i) ──────────────────────────────────────────────────── */
+
+.ea-help-chip {
+  background: transparent;
+  border: 1px solid var(--ea-line-strong);
+  color: var(--ea-ink-2);
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  transition:
+    background var(--ea-dur-fast) var(--ea-ease-out),
+    color      var(--ea-dur-fast) var(--ea-ease-out),
+    border-color var(--ea-dur-fast) var(--ea-ease-out);
+}
+.ea-help-chip:hover,
+.ea-help-chip:focus-visible {
+  background: var(--ea-surface-3);
+  color: var(--ea-ink);
+  border-color: var(--ea-ink);
+}
+.ea-help-chip[aria-expanded="true"] {
+  background: var(--ea-ink);
+  color: var(--ea-cream);
+  border-color: var(--ea-ink);
+}
+
+/* ─── Style-picker button (kicker + name) ────────────────────────────── */
+
+.ea-style-picker-btn {
+  background: transparent;
+  border: 1px solid var(--ea-line-strong);
+  border-radius: var(--ea-r-md);
+  padding: 10px 16px;
+  color: var(--ea-ink);
+  transition:
+    background var(--ea-dur-med) var(--ea-ease-out),
+    border-color var(--ea-dur-med) var(--ea-ease-out);
+}
+.ea-style-picker-btn:hover {
+  background: var(--ea-surface-3);
+  border-color: var(--ea-ink);
+}
+
+.ea-style-picker-btn__kicker {
+  font-family: var(--ea-font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-ink-3);
+  display: block;
+}
+.ea-style-picker-btn__name {
+  font-family: var(--ea-font-ui);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ea-ink);
+  margin-top: 2px;
+}
+.ea-style-picker-btn__hint {
+  font-family: var(--ea-font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-ink-3);
+}
+
+/* ─── Session-controls chips (top band on Session screen) ────────────── */
+
+.ea-chip {
+  background: transparent;
+  border: 1px solid var(--ea-line-strong);
+  color: var(--ea-ink);
+  border-radius: var(--ea-r-pill);
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition:
+    background var(--ea-dur-med) var(--ea-ease-out),
+    border-color var(--ea-dur-med) var(--ea-ease-out),
+    color var(--ea-dur-med) var(--ea-ease-out);
+}
+.ea-chip:hover:not(:disabled) {
+  background: var(--ea-surface-3);
+  border-color: var(--ea-ink);
+}
+.ea-chip[aria-pressed="true"] {
+  background: var(--ea-ink);
+  color: var(--ea-cream);
+  border-color: var(--ea-ink);
+}
+.ea-chip__label {
+  letter-spacing: 0.12em;
+}
+
+/* ─── Sensing row (v2 chips) — re-tune to Open register ──────────────── */
+
+/* The sensing row sits on cream in the Before screen — restyle it as
+   dark editorial chips rather than the near-black bg they had. */
+.ea-sense-chip {
+  background: transparent;
+  border-color: var(--ea-line-strong);
+  color: var(--ea-ink);
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 9px 16px;
+}
+.ea-sense-chip:hover:not([disabled]) {
+  background: var(--ea-surface-3);
+  border-color: var(--ea-ink);
+}
+.ea-sense-chip[aria-pressed="true"] {
+  background: var(--ea-ink);
+  color: var(--ea-cream);
+  border-color: var(--ea-ink);
+}
+.ea-sense-chip__dot {
+  border-color: currentColor;
+}
+.ea-sense-chip[aria-pressed="true"] .ea-sense-chip__dot {
+  animation: ea-sense-dot-pulse 2.4s ease-in-out infinite;
+}
+@keyframes ea-sense-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 246, 236, 0.35); }
+  50%      { box-shadow: 0 0 0 6px rgba(251, 246, 236, 0.00); }
+}
+
+/* Sensing strip — cream-context version. */
+.ea-sensing-strip {
+  background: rgba(27, 21, 18, 0.03);
+  border: 1px solid var(--ea-line);
+  color: var(--ea-ink);
+}
+.ea-sensing-strip__caption {
+  color: var(--ea-ink-2);
+  letter-spacing: 0.06em;
+}
+#sensing-word { color: var(--ea-ink); }
+.ea-sensing-bar__key { color: var(--ea-ink-3); }
+.ea-sensing-bar__track { background: rgba(27, 21, 18, 0.08); }
+.ea-sensing-bar__fill { background: var(--ea-ink); }
+.ea-sensing-strip__privacy { color: var(--ea-ink-3); }
+
+/* ─── Circumplex labels (Energized/Positive/Tired/Negative) ──────────── */
+
+.ea-circumplex__label {
+  font-family: var(--ea-font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-ink-3);
+}
+
+/* ─── Slider labels (Closed / Openness / Open) ───────────────────────── */
+
+.ea-slider__labels > span {
+  font-family: var(--ea-font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-ink-3);
+}
+.ea-slider__labels > span:nth-child(2) {
+  color: var(--ea-ink-2); /* middle label a touch darker */
+}
+
+/* ─── Muse toggle plaque (Emotion Map) ───────────────────────────────── */
+
+.ea-muse-toggle__label {
+  font-family: var(--ea-font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ─── Hint band + circumplex hint ────────────────────────────────────── */
+
+.ea-hint-band {
+  font-family: var(--ea-font-ui);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--ea-ink-2);
+  letter-spacing: 0.005em;
+}
+.ea-circumplex__hint {
+  font-family: var(--ea-font-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  color: var(--ea-ink-3);
+}
+
+/* ─── Footer / copyright mark ────────────────────────────────────────── */
+
+.ea-footer,
+.ea-corner-copyright {
+  font-family: var(--ea-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ea-ink-3);
+}
+
+/* ─── Body cadence ───────────────────────────────────────────────────── */
+
+body {
+  /* Restrained tracking on body text — Open's system uses ~0.005em on
+     Space Grotesk to keep it from feeling too tight on cream. */
+  letter-spacing: 0.005em;
+}
