@@ -24,6 +24,7 @@ import {
 
 let _wired = false;
 let _waveCtx = null;
+let _waveInited = false;
 let _waveBuf = [];
 const WAVE_MAX = 96;
 
@@ -35,9 +36,8 @@ export function wireSensingStrip() {
   const waveEl = document.getElementById("sensing-wave");
   if (!chip || !strip || !waveEl) return; // Before screen not mounted yet
   _wired = true;
-
-  // Prep the wave canvas at DPR for crisp lines on retina.
-  _initWave(waveEl);
+  // Wave canvas is sized lazily on first show — while strip is hidden,
+  // getBoundingClientRect().width is 0 and the canvas would collapse.
 
   // Mirror the openness slider into the sensing engine so the puck's
   // openness stays in sync while sensing is driving V/A.
@@ -67,6 +67,8 @@ export function wireSensingStrip() {
     // the model + camera come up (~1-3s on first load).
     chip.setAttribute("aria-pressed", "true");
     strip.hidden = false;
+    // Now that the strip has real dimensions, size the wave canvas.
+    if (!_waveInited) { _initWave(waveEl); _waveInited = true; }
     _paintCaption("waking up");
     _paintBar("sensing-bar-v", 0);
     _paintBar("sensing-bar-a", 0);

@@ -80,9 +80,23 @@ export async function startSensing({ onFrame } = {}) {
   if (_running) return true;
   _onFrame = typeof onFrame === "function" ? onFrame : null;
 
+  // iOS Safari requires getUserMedia to be called inside the same event
+  // task as the user gesture. We must NOT await the model download
+  // first — that pushes the camera request past the gesture window and
+  // silently rejects the prompt. Ask for the camera first; load the
+  // model in parallel; only start the detect loop once both are ready.
+  let cameraPromise;
   try {
-    await _ensureHuman();
-    await _startCamera();
+    cameraPromise = _startCamera();
+  } catch (err) {
+    console.warn("[sensing] camera request failed", err);
+    return false;
+  }
+  const modelPromise = _ensureHuman();
+
+  try {
+    await cameraPromise;
+    await modelPromise;
   } catch (err) {
     console.warn("[sensing] start failed", err);
     _stopCamera();
