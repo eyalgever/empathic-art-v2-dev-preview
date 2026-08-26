@@ -16,7 +16,11 @@
  * @author  Eyal Gever
  */
 
-const KEY_SEEN_FULL = "ea:v2:opening:seenFull";
+// Bumped from :seenFull to :seenFull:v2 on 2026-08-26 to force every
+// existing session back through the full opening (the old key would
+// have short-circuited to "ready 3 2 1" after a bugfix to the skip
+// path; simpler to just invalidate it once).
+const KEY_SEEN_FULL = "ea:v2:opening:seenFull:v2";
 
 // Sequence content. Each stanza is an array of lines; each line is a
 // string of words. Words are the animation unit for the poetic stanzas.
@@ -130,37 +134,53 @@ function _mount() {
 }
 
 function _unmount() {
+  // Remove data-opening synchronously so the Before screen appears
+  // immediately even if the leave animation is still playing on the
+  // overlay itself. This is the safety line: if anything upstream
+  // ever hangs, the user is not stuck on a black screen.
+  document.body.removeAttribute("data-opening");
   if (!_root) return;
   _root.classList.add("ea-opening--leaving");
-  const done = () => {
-    if (_root && _root.parentElement) _root.parentElement.removeChild(_root);
-    _root = null; _stage = null; _skipHint = null;
-    document.body.removeAttribute("data-opening");
-  };
-  setTimeout(done, 800);
+  const overlay = _root;
+  _root = null; _stage = null; _skipHint = null;
+  setTimeout(() => {
+    if (overlay && overlay.parentElement) overlay.parentElement.removeChild(overlay);
+  }, 800);
 }
 
 function _onSkipTap() {
   if (!_running || _skipped) return;
   _skipped = true;
-  // Fast-forward to the countdown by aborting the current run
-  // and starting a fresh short sequence.
+  // Fast-forward to the countdown: abort the outstanding poem timers
+  // and resolve the pending _wait so the outer _run() promise chain
+  // in startOpening() can continue into the short sequence.
   _abortCurrent();
   _clearStage();
-  _run(SEQ_SHORT).catch(() => {});
+  // The outer run loop will pick up SEQ_SHORT via _skipped flag; see
+  // _run() below.
 }
 
 // ─── Animation primitives ────────────────────────────────────────────
-let _timeouts = new Set();
+// Each waiter is a {id, resolve} pair. Aborting clears the timer AND
+// resolves the promise immediately so the awaiting run loop can
+// proceed instead of hanging on a promise that will never settle.
+let _waiters = new Set();
 function _wait(ms) {
   return new Promise((resolve) => {
-    const id = setTimeout(() => { _timeouts.delete(id); resolve(); }, ms);
-    _timeouts.add(id);
+    const waiter = { id: null, resolve };
+    waiter.id = setTimeout(() => {
+      _waiters.delete(waiter);
+      resolve();
+    }, ms);
+    _waiters.add(waiter);
   });
 }
 function _abortCurrent() {
-  for (const id of _timeouts) clearTimeout(id);
-  _timeouts.clear();
+  for (const w of _waiters) {
+    clearTimeout(w.id);
+    try { w.resolve(); } catch { /* noop */ }
+  }
+  _waiters.clear();
 }
 
 function _clearStage() {
@@ -237,16 +257,31 @@ async function _renderReady() {
 
 async function _run(sequence) {
   for (const step of sequence) {
+    if (_skipped) break;
     if (step.kind === "rest") { await _wait(step.ms); continue; }
     if (step.kind === "poem") {
-      for (const line of step.lines) await _renderPoemLine(line, step.hold, step.gap);
+      for (const line of step.lines) {
+        if (_skipped) break;
+        await _renderPoemLine(line, step.hold, step.gap);
+      }
       continue;
     }
     if (step.kind === "cues") {
-      for (const line of step.lines) await _renderCueLine(line, step.hold, step.gap);
+      for (const line of step.lines) {
+        if (_skipped) break;
+        await _renderCueLine(line, step.hold, step.gap);
+      }
       continue;
     }
     if (step.kind === "ready") { await _renderReady(); continue; }
+  }
+  // If a skip happened mid-sequence, ALWAYS run the short countdown
+  // before finishing. This is the single place that handles both the
+  // "reached the end naturally" and "user tapped to skip" paths.
+  if (_skipped) {
+    for (const step of SEQ_SHORT) {
+      if (step.kind === "ready") { await _renderReady(); }
+    }
   }
 }
 
@@ -261,15 +296,26 @@ export function startOpening({ onDone, forceFull = false } = {}) {
   const seenFull = !forceFull && sessionStorage.getItem(KEY_SEEN_FULL) === "1";
   const seq = seenFull ? SEQ_SHORT : SEQ;
 
-  _run(seq).then(() => {
+  // Safety net: no matter what the sequence does (hang, throw, abort
+  // mid-flight), we ALWAYS unmount within a reasonable upper bound.
+  // The full poem is ~65s; short is ~6s. Set the ceiling to 90s.
+  const SAFETY_MS = seenFull ? 12000 : 90000;
+  const finish = () => {
+    if (!_running) return; // already finished
+    _running = false;
     try { sessionStorage.setItem(KEY_SEEN_FULL, "1"); } catch { /* noop */ }
-    _running = false;
     _unmount();
     if (_onDone) _onDone();
+    _onDone = null;
+  };
+  const safetyTimer = setTimeout(finish, SAFETY_MS);
+
+  _run(seq).then(() => {
+    clearTimeout(safetyTimer);
+    finish();
   }).catch(() => {
-    _running = false;
-    _unmount();
-    if (_onDone) _onDone();
+    clearTimeout(safetyTimer);
+    finish();
   });
 }
 

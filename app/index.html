@@ -862,7 +862,7 @@
        Boundless flow. Sets body[data-opening=true] which hides all other
        surfaces via opening.css until the sequence finishes. -->
   <script type="module">
-    import { startOpening } from "./src/ui/opening.js?v=2.0.0";
+    import { startOpening } from "./src/ui/opening.js?v=2.0.1";
     // Set the attribute synchronously to avoid a flash of the before-screen.
     document.body.setAttribute("data-opening", "true");
     const boot = () => startOpening({ onDone: () => {} });
