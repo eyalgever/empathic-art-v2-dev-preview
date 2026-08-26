@@ -50,6 +50,7 @@
   <link rel="stylesheet" href="./styles/polish.css?v=1.4.3" />
   <link rel="stylesheet" href="./styles/v163.css?v=1.6.4.37" />
   <link rel="stylesheet" href="./styles/opening.css?v=2.0.0" />
+  <link rel="stylesheet" href="./styles/sensing.css?v=2.0.1" />
 
   <!--
     Umami analytics (privacy-first, no cookies, no personal data).
@@ -193,6 +194,34 @@
             aria-label="About changing styles">
             <span aria-hidden="true">i</span>
           </button>
+        </div>
+
+        <!-- ─── Sensing row (v2) ────────────────────────────────────────
+             Camera / rings / Muse. Human.js is wired first (webcam only,
+             no hardware). Rings + Muse chips are placeholders that show
+             the intent from day one; they light up when their adapters
+             ship. All processing on-device. -->
+        <div class="ea-sensing-row" role="group" aria-label="Sensing">
+          <button type="button" class="ea-sense-chip" id="sense-chip-camera" aria-pressed="false">
+            <span class="ea-sense-chip__dot" aria-hidden="true"></span>
+            <span class="ea-sense-chip__label">Sense</span>
+          </button>
+          <button type="button" class="ea-sense-chip ea-sense-chip--disabled" id="sense-chip-ring" aria-disabled="true" disabled>
+            <span class="ea-sense-chip__label">Ring</span>
+          </button>
+          <button type="button" class="ea-sense-chip ea-sense-chip--disabled" id="sense-chip-muse" aria-disabled="true" disabled>
+            <span class="ea-sense-chip__label">Muse</span>
+          </button>
+        </div>
+        <!-- Sensing strip: appears only while Sense is engaged. -->
+        <div class="ea-sensing-strip" id="sensing-strip" hidden aria-live="polite">
+          <div class="ea-sensing-strip__caption" id="sensing-caption">sensing you now:&nbsp;<span id="sensing-word">—</span></div>
+          <div class="ea-sensing-strip__bars" aria-hidden="true">
+            <div class="ea-sensing-bar"><span class="ea-sensing-bar__key">valence</span><span class="ea-sensing-bar__track"><span class="ea-sensing-bar__fill" id="sensing-bar-v"></span></span></div>
+            <div class="ea-sensing-bar"><span class="ea-sensing-bar__key">arousal</span><span class="ea-sensing-bar__track"><span class="ea-sensing-bar__fill" id="sensing-bar-a"></span></span></div>
+          </div>
+          <canvas class="ea-sensing-strip__wave" id="sensing-wave" width="320" height="36" aria-hidden="true"></canvas>
+          <div class="ea-sensing-strip__privacy">no data leaves this device</div>
         </div>
 
         <!--

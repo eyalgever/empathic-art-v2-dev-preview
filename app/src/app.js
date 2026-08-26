@@ -252,6 +252,7 @@ import { mountZen, unmountZen } from "./ui/zen.js?v=1.3.1";
 import { initLegalNotice } from "./ui/legal-notice.js?v=1.3.1";
 import { initBeforeHelp, armCircumplexHint } from "./ui/before-help.js?v=1.3.1";
 import { mountImmersiveHidden } from "./ui/immersive-hidden.js?v=1.3.1";
+import { wireSensingStrip } from "./ui/sensing-strip.js?v=2.0.1";
 
 // Global tooltip system, installs once, handles all [data-ea-tip] anchors.
 installTooltips();
@@ -394,7 +395,14 @@ function onUnmount(name) {
   if (name === "summary") unmountSummary();
   // Stop the wheel preview when the user moves on so we don't hold a
   // WebGL context in the background.
-  if (name === "before") pauseCircumplexPreview();
+  if (name === "before") {
+    pauseCircumplexPreview();
+    // v2: also release the camera + Human.js model. Never let the green
+    // camera dot linger past the Before screen.
+    try {
+      import("./sensing/human-sensing.js?v=2.0.1").then((m) => m.stopSensing?.());
+    } catch { /* noop */ }
+  }
 }
 
 function updateHeader() {
@@ -524,6 +532,12 @@ function initBefore() {
   };
 
   const setFromEvent = (e, el, isSlider = false) => {
+    // v2: while Sense is engaged, the wheel puck is driven by the sensor,
+    // not the finger. Slider (openness) always accepts manual input
+    // because openness is not something the camera can infer.
+    if (!isSlider && document.body.getAttribute("data-sensing") === "true") {
+      return;
+    }
     const rect = el.getBoundingClientRect();
     const t = e.touches?.[0] || e;
     const x = Math.max(0, Math.min(1, (t.clientX - rect.left) / rect.width));
@@ -564,6 +578,10 @@ function initBefore() {
 
   // initial placement
   requestAnimationFrame(() => { placeThumb(); placeSlider(); });
+
+  // v2: wire the Sense chip (Human.js face -> puck). Non-invasive; if the
+  // markup is not present (older cached HTML) this is a no-op.
+  wireSensingStrip();
 
   // v1.6.4.34 -- Diary opener. The Before Session wheel already writes
   // store.startEmotion on every drag, and the Start Session button is
