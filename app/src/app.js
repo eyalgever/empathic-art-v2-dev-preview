@@ -405,6 +405,9 @@ function onUnmount(name) {
     try {
       import("./sensing/muse-sensing.js?v=2.0.1").then((m) => m.stopMuseSensing?.());
     } catch { /* noop */ }
+    try {
+      import("./sensing/pulse-sensing.js?v=2.0.1").then((m) => m.stopPulseSensing?.());
+    } catch { /* noop */ }
   }
 }
 

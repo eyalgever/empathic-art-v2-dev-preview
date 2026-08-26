@@ -28,6 +28,14 @@ import {
   setMuseSensingOpenness,
   isMuseAvailable,
 } from "../sensing/muse-sensing.js";
+import {
+  startPulseSensing,
+  stopPulseSensing,
+  isPulseSensingActive,
+  setPulseOpenness,
+  setPulseValence,
+  isPulseAvailable,
+} from "../sensing/pulse-sensing.js";
 
 let _wired = false;
 let _waveCtx = null;
@@ -37,21 +45,27 @@ const WAVE_MAX = 96;
 
 export function wireSensingStrip() {
   if (_wired) return;
-  const chip     = document.getElementById("sense-chip-camera");
-  const museChip = document.getElementById("sense-chip-muse");
-  const strip    = document.getElementById("sensing-strip");
-  const slider   = document.getElementById("openness");
-  const waveEl   = document.getElementById("sensing-wave");
+  const chip      = document.getElementById("sense-chip-camera");
+  const pulseChip = document.getElementById("sense-chip-ring");
+  const museChip  = document.getElementById("sense-chip-muse");
+  const strip     = document.getElementById("sensing-strip");
+  const slider    = document.getElementById("openness");
+  const waveEl    = document.getElementById("sensing-wave");
   if (!chip || !strip || !waveEl) return; // Before screen not mounted yet
   _wired = true;
 
-  // The Muse chip stays disabled unless the browser supports Web Bluetooth
-  // (iOS Safari does not; Bluefy / Chrome / Bluetooth-capable browsers do).
-  // The v1 flow used a wizard; from the sensing row we do a direct connect.
+  // Both BLE chips need Web Bluetooth. iOS Safari lacks it — the chips
+  // stay disabled there. Bluefy, desktop Chrome, and BLE-capable browsers
+  // enable them.
   if (museChip && isMuseAvailable()) {
     museChip.disabled = false;
     museChip.removeAttribute("aria-disabled");
     museChip.classList.remove("ea-sense-chip--disabled");
+  }
+  if (pulseChip && isPulseAvailable()) {
+    pulseChip.disabled = false;
+    pulseChip.removeAttribute("aria-disabled");
+    pulseChip.classList.remove("ea-sense-chip--disabled");
   }
   // Wave canvas is sized lazily on first show — while strip is hidden,
   // getBoundingClientRect().width is 0 and the canvas would collapse.
@@ -66,6 +80,7 @@ export function wireSensingStrip() {
       const v = Number(slider.getAttribute("aria-valuenow") || "50");
       setSensingOpenness(v / 100);
       setMuseSensingOpenness(v / 100);
+      setPulseOpenness(v / 100);
     };
     slider.addEventListener("pointerdown", () => setTimeout(readOpenness, 0));
     slider.addEventListener("pointermove", () => readOpenness());
@@ -111,6 +126,37 @@ export function wireSensingStrip() {
       }, 2400);
     }
   });
+
+  // Pulse chip — any BLE Heart Rate Service device (chest strap, watch,
+  // ring that speaks 0x180D). Opens the OS device picker on tap.
+  if (pulseChip) {
+    pulseChip.addEventListener("click", async () => {
+      if (isPulseSensingActive()) {
+        stopPulseSensing();
+        pulseChip.setAttribute("aria-pressed", "false");
+        pulseChip.removeAttribute("data-error");
+        closeStrip();
+        return;
+      }
+      if (isSensingActive())     { stopSensing();     chip.setAttribute("aria-pressed", "false"); }
+      if (isMuseSensingActive()) { stopMuseSensing(); museChip?.setAttribute("aria-pressed", "false"); }
+      pulseChip.setAttribute("aria-pressed", "true");
+      openStrip();
+      _paintCaption("pairing pulse sensor");
+      _paintBar("sensing-bar-v", 0);
+      _paintBar("sensing-bar-a", 0);
+
+      const ok = await startPulseSensing({ onFrame: _onFrame });
+      if (!ok) {
+        pulseChip.setAttribute("aria-pressed", "false");
+        pulseChip.setAttribute("data-error", "true");
+        _paintCaption("pairing cancelled");
+        setTimeout(() => {
+          if (!isPulseSensingActive()) { closeStrip(); pulseChip.removeAttribute("data-error"); }
+        }, 2400);
+      }
+    });
+  }
 
   // Muse chip — mirrors the camera chip's behavior. Uses Web Bluetooth
   // pairing (opens the OS device picker on tap; the click IS the gesture).
@@ -158,6 +204,10 @@ function _onFrame({ active, v, a, top }) {
   _paintCaption(top ? top.label : "reading");
   _pushWave(a || 0);
   _drawWave();
+  // Feed valence forward to the pulse adapter so if the user later
+  // switches sources, the puck's valence stays with the last honest
+  // reading rather than snapping back to 0.
+  try { setPulseValence(v || 0); } catch { /* pulse adapter not loaded */ }
 }
 
 function _paintCaption(word) {
